@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools==84.1.0", "wheel==0.48.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoapply-local"
+version = "0.1.0a1"
+description = "Experimental local-first, reviewed job applications with confirmed facts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = ["openpyxl==3.1.5", "pypdf==6.10.0", "et-xmlfile==2.0.0"]
+
+[project.scripts]
+autoapply-local = "autoapply_local.cli:main"
+
+[tool.setuptools]
+packages = ["autoapply_local"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+autoapply_local = ["data/*.tex", "data/*.md", "data/*.json", "adapters/*.cjs", "data/bootstrap/*.py", "data/bootstrap/*.md"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["tests/*", "__pycache__/*", "*.pyc"]

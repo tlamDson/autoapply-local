@@ -1,0 +1,5 @@
+[
+  {"ats": "greenhouse", "board": "anthropic", "company": "Anthropic"},
+  {"ats": "workday", "host": "nvidia.wd5.myworkdayjobs.com", "tenant": "nvidia", "site": "NVIDIAExternalCareerSite", "company": "NVIDIA", "search": "software"},
+  {"ats": "rippling", "board": "spreeai", "company": "SpreeAI"}
+]

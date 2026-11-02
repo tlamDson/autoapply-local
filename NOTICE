@@ -1,0 +1,10 @@
+AutoApply Local experimental release
+
+New implementation is MIT licensed. The generic resume layout uses OLA-style
+LaTeX preamble/macros as a layout reference; no candidate resume body or private
+candidate data is included. LaTeX packages retain their respective licenses.
+openpyxl (MIT), et-xmlfile (MIT), pypdf (BSD-3-Clause), setuptools (MIT), wheel
+(MIT), Chrome, Node.js, selected engine CLIs and chrome-devtools-mcp retain their
+respective licenses. These external tools are not vendored in this source tree.
+
+Synthetic examples are demonstration data and do not describe any real person.
