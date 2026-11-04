@@ -166,7 +166,7 @@ class ReleaseCase(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="autoapply-synthetic-")
         self.addCleanup(cleanup_temporary_directory, self.temporary)
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
 
     def module(self, name):
         # Do not turn missing product modules into skips or configuration failures.
