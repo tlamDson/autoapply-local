@@ -2,6 +2,10 @@
 
 Assumption: runtime root contains profile.json/config.json/answers.json and user/;
 all profile edits invalidate reviews conservatively, even non-dependent edits.
+
+Giả định của người thực thi:
+- PR2 uses the frozen tests' resume_dir/additional_document_dir JSON fields;
+  validate both folders and guides before exclusive creation, preserving edits.
 """
 
 import copy
@@ -89,11 +93,56 @@ def _load(path, default=None):
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else copy.deepcopy(default)
 
 
+def _setup_document_folders(root):
+    folders = {
+        "resume_dir": root / "user/resume",
+        "additional_document_dir": root / "user/additional-document",
+    }
+    guides = {
+        "resume_dir": (
+            "# Resume documents\n\n"
+            "Place your resume PDFs and resume source files (TEX/DOCX) here.\n"
+            "Choose resumes.main_pdf explicitly in user/profile-intake.md using the PDF's absolute path.\n"
+            "Relative PDF paths resolve from the caller's working directory.\n"
+            "Quick apply with an existing PDF does not require LaTeX.\n"
+            "Storing a file does not select a PDF, extract or confirm facts, enable tailoring, or upload it.\n"
+            "Preview profile update and confirm only after checking your facts.\n"
+        ),
+        "additional_document_dir": (
+            "# Additional documents\n\n"
+            "Place transcripts, certificates, cover letters and other supporting documents here.\n"
+            "Storing a file does not extract or confirm facts, enable tailoring, or upload it.\n"
+            "Additional documents are not uploaded automatically.\n"
+            "Preview profile update and confirm only after checking your facts.\n"
+        ),
+    }
+    # Preflight both folders and guides before creating either guide, including
+    # a symlinked user/ ancestor and an existing or dangling README symlink.
+    paths = [(root / "user", True)]
+    for folder in folders.values():
+        paths.extend(((folder, True), (folder / "README.md", False)))
+    for path, directory in paths:
+        if not path.resolve().is_relative_to(root):
+            raise ValueError(f"Document path escapes the runtime: {path}")
+        if (path.exists() or path.is_symlink()) and not (path.is_dir() if directory else path.is_file()):
+            expected = "directory" if directory else "file"
+            raise ValueError(f"Document path must be a {expected}: {path}")
+    for key, folder in folders.items():
+        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            with (folder / "README.md").open("x", encoding="utf-8") as handle:
+                handle.write(guides[key])
+        except FileExistsError:
+            pass
+    return {key: str(folder.resolve()) for key, folder in folders.items()}
+
+
 def setup(root):
     from .boards import install_defaults
     from .storage import Store, atomic_write_json
 
-    root = Path(root)
+    root = Path(root).resolve()
+    document_folders = _setup_document_folders(root)
     root.mkdir(parents=True, exist_ok=True)
     for relative in ("templates/profile-intake.md", "user/profile-intake.md"):
         path = root / relative
@@ -125,7 +174,7 @@ def setup(root):
             atomic_write_json(root / name, value)
     install_defaults(root, defaults["config.json"])
     Store(root)
-    return {"status": "ready", "intake": str(root / "user/profile-intake.md")}
+    return {"status": "ready", "intake": str(root / "user/profile-intake.md"), **document_folders}
 
 
 def _unique_pairs(pairs):

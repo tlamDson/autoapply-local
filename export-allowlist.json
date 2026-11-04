@@ -75,6 +75,7 @@
   "tests/test_browser_complete.py",
   "tests/test_cleanup.py",
   "tests/test_cli_unicode.py",
+  "tests/test_document_folders.py",
   "tests/test_fetch.py",
   "tests/test_fetch_pagination.py",
   "tests/test_fetch_sponsorship_scope.py",

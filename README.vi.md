@@ -101,6 +101,29 @@ Resume sinh ra không phải nguồn fact mới. Đổi học tập/authorizatio
 làm đáp án phụ thuộc và review cũ hết hiệu lực. Câu nhạy cảm cần xác nhận chính
 xác theo câu hỏi, công ty, quốc gia, loại job và thời điểm.
 
+## Thư mục để tài liệu
+
+Setup tạo hai thư mục bên trong runtime đã chọn. JSON kết quả trả `resume_dir`
+và `additional_document_dir`, đều là đường dẫn tuyệt đối tới thư mục đã tạo:
+
+- `user/resume/`: resume PDF và file nguồn resume như TEX hoặc DOCX.
+- `user/additional-document/`: bảng điểm, chứng chỉ, cover letter và tài liệu
+  bổ sung khác.
+
+Mỗi thư mục có README hướng dẫn chung, chỉ tạo khi chưa có. Chạy setup lại giữ
+nguyên tài liệu và README bạn đã sửa; không di chuyển, sao chép, đổi tên hay xóa
+tài liệu. File chiếm chỗ thư mục, thư mục chiếm chỗ README hoặc symlink thoát
+runtime bị từ chối trước khi ghi bất kỳ hướng dẫn nào của hai thư mục.
+Nội dung `user/` của runtime tiếp tục được loại khỏi Git và artifact phát hành.
+
+Đặt tài liệu vào đây chỉ để lưu. Thao tác này không tự chọn resume, trích hoặc
+xác nhận fact, bật tailor hay upload. Bạn phải chọn rõ `main_pdf` trong nhóm
+`resumes` của intake bằng **đường dẫn tuyệt đối** tới PDF. Không dựa vào đường
+dẫn PDF tương đối `user/resume/...`: đường dẫn tương đối được resolve theo thư
+mục làm việc của lệnh gọi. Xem preview `profile update`, kiểm fact rồi xác nhận
+rõ bằng `--confirm`. Quick apply với PDF có sẵn không cần LaTeX; tài liệu bổ sung
+không tự upload.
+
 ## Bắt đầu: setup, cấu hình nguồn, fetch và review
 
 Sau các bước cài đặt/setup trên, chạy từ chính thư mục runtime vừa tạo.
