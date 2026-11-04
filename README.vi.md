@@ -42,14 +42,14 @@ cd autoapply-local
 ## Cài đặt và khởi tạo
 
 Cần Python 3.11+, Chrome, Node.js/npm và CLI engine đã chọn. Từ thư mục mã nguồn
-release, cài package rồi tạo thư mục runtime riêng. Windows PowerShell:
+release, cài package rồi tạo runtime bên trong source root. Windows PowerShell:
 
 ```powershell
 python -m venv ../autoapply-venv
 & ../autoapply-venv/Scripts/Activate.ps1
 python -m pip install .
-python -m autoapply_local --user-dir ../autoapply-user setup
-Set-Location ../autoapply-user
+python -m autoapply_local --user-dir ./.autoapply-local setup
+Set-Location .autoapply-local
 ```
 
 macOS:
@@ -58,25 +58,39 @@ macOS:
 python3 -m venv ../autoapply-venv
 source ../autoapply-venv/bin/activate
 python -m pip install .
-python -m autoapply_local --user-dir ../autoapply-user setup
-cd ../autoapply-user
+python -m autoapply_local --user-dir ./.autoapply-local setup
+cd .autoapply-local
 ```
 
 Nếu tải wheel, thay `python -m pip install .` bằng
 `python -m pip install path/to/autoapply_local-0.1.0a1-py3-none-any.whl`.
 Package đã cài chạy setup từ thư mục bất kỳ, không cần checkout gốc.
+Khi ở ngoài source, chọn runtime tường minh, ví dụ
+`python -m autoapply_local --user-dir ./autoapply-user setup`, rồi mở thư mục đó.
 Dependency được ghim phiên bản.
 Tailor cần thêm pdflatex và Poppler; apply với PDF có sẵn không cần TeX.
 Browser MCP ghim chrome-devtools-mcp 0.14.0; npm có thể tải phiên bản đó ở lần
 đầu bạn phê duyệt connector. Không dùng profile Chrome cá nhân thường ngày.
 
-Khởi tạo bằng `python -m autoapply_local --user-dir PATH setup`, rồi mở chính thư
-mục runtime vừa tạo trong engine đã chọn, với virtual environment vẫn kích hoạt.
-Setup cài command, skill, file hỗ trợ và launcher `autoapply-local.py`, giữ nguyên
-file đã có và không ghi cấu hình toàn cục hay hook. Launcher luôn dùng thư mục
-chứa nó, kể cả khi AUTOAPPLY_LOCAL_HOME trỏ nơi khác. Đặt đường dẫn có dấu cách
-trong dấu nháy. Nếu không truyền root, setup dùng AUTOAPPLY_LOCAL_HOME hoặc mặc
-định `~/.autoapply-local`; mở đúng thư mục mà setup tạo.
+Trong checkout hoặc ZIP source đã giải nén, chạy `python autoapply-local.py`
+không có đối số để setup tại `<source>/.autoapply-local`. Launcher nguồn chọn theo
+vị trí của chính nó, kể cả khi gọi từ thư mục khác. Cũng có thể chạy
+`python -m autoapply_local setup` từ source root hoặc thư mục con.
+Nhận diện source cần `pyproject.toml` có tên project `autoapply-local`, package
+và `export-allowlist.json`; không cần metadata Git.
+
+Với lệnh module, thứ tự chọn runtime là `--user-dir PATH`, rồi
+`AUTOAPPLY_LOCAL_HOME`, rồi `.autoapply-local` trong source đã nhận diện, cuối cùng
+`~/.autoapply-local` khi ngoài source (kể cả bản cài wheel). Root tường minh và
+biến môi trường cũng ưu tiên hơn mặc định của launcher nguồn. Runtime cũ không
+tự di chuyển hoặc migrate.
+
+Mở chính thư mục runtime vừa tạo trong engine đã chọn, với virtual environment
+vẫn kích hoạt. Setup cài command, skill, file hỗ trợ và launcher runtime
+`autoapply-local.py`, giữ nguyên file đã có và không ghi cấu hình toàn cục hay
+hook. Launcher được tạo trong runtime luôn dùng thư mục chứa nó, kể cả khi
+AUTOAPPLY_LOCAL_HOME trỏ nơi khác. Đặt đường dẫn có dấu cách trong dấu nháy.
+Setup không tự phê duyệt browser MCP; dùng quy trình phê duyệt bình thường.
 
 Sửa một form `user/profile-intake.md`, xem preview bằng
 `python autoapply-local.py profile update PATH`, kiểm lại rồi thêm `--confirm`.
@@ -104,8 +118,8 @@ xác theo câu hỏi, công ty, quốc gia, loại job và thời điểm.
 ## Bắt đầu: setup, cấu hình nguồn, fetch và review
 
 Sau các bước cài đặt/setup trên, chạy từ chính thư mục runtime vừa tạo.
-Launcher chọn rõ root cho mọi lệnh; chỉ đổi thư mục làm việc không chọn root
-cho `python -m autoapply_local`.
+Dùng launcher được tạo trong runtime cho các lệnh dưới đây để chọn rõ runtime
+đó, kể cả khi gọi từ thư mục làm việc khác.
 
 ```text
 python autoapply-local.py source extract path/to/resume.pdf
