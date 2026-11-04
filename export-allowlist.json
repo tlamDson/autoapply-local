@@ -79,6 +79,7 @@
   "tests/test_fetch_pagination.py",
   "tests/test_fetch_sponsorship_scope.py",
   "tests/test_gmail.py",
+  "tests/test_install_stream_encoding.py",
   "tests/test_intake.py",
   "tests/test_intake_complete.py",
   "tests/test_mcp_broker.py",
