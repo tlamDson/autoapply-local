@@ -1,5 +1,5 @@
 include README.md README.vi.md LICENSE NOTICE AGENTS.md CLAUDE.md
-include requirements.txt pyproject.toml MANIFEST.in setup.py export-allowlist.json .gitignore
+include requirements.txt pyproject.toml MANIFEST.in setup.py autoapply-local.py export-allowlist.json .gitignore
 recursive-include autoapply_local *.py *.tex *.md *.json *.cjs
 recursive-include scripts *.py
 recursive-include examples *.json
@@ -15,5 +15,6 @@ prune browser
 prune backups
 prune build
 prune dist
+prune .autoapply-local
 global-exclude *.pyc
 global-exclude __pycache__

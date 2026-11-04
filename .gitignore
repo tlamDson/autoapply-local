@@ -5,6 +5,7 @@ backups/
 browser/
 locks/
 .venv/
+.autoapply-local/
 __pycache__/
 *.pyc
 *.egg-info/

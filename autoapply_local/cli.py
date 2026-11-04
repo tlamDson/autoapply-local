@@ -5,7 +5,27 @@ import contextlib
 import json
 import os
 import sys
+import tomllib
 from pathlib import Path
+
+
+def _default_user_dir():
+    if "AUTOAPPLY_LOCAL_HOME" in os.environ:
+        return Path(os.environ["AUTOAPPLY_LOCAL_HOME"])
+    current = Path.cwd().resolve()
+    for source in (current, *current.parents):
+        if not (
+            (source / "autoapply_local/__init__.py").is_file()
+            and (source / "export-allowlist.json").is_file()
+        ):
+            continue
+        try:
+            project = tomllib.loads((source / "pyproject.toml").read_text(encoding="utf-8")).get("project", {})
+        except (OSError, ValueError):
+            continue
+        if isinstance(project, dict) and project.get("name") == "autoapply-local":
+            return source / ".autoapply-local"
+    return Path.home() / ".autoapply-local"
 
 
 def _selection(value, operation):
@@ -37,9 +57,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     stdout = _utf8_process_stream(sys.stdout) if stdout is None else stdout
     stderr = _utf8_process_stream(sys.stderr) if stderr is None else stderr
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--user-dir", type=Path, default=Path(os.environ.get("AUTOAPPLY_LOCAL_HOME", Path.home() / ".autoapply-local"))
-    )
+    parser.add_argument("--user-dir", type=Path)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("setup")
     boards = commands.add_parser("boards").add_subparsers(dest="boards_command", required=True)
@@ -79,7 +97,8 @@ def main(argv=None, services=None, stdout=None, stderr=None):
             except SystemExit as error:
                 return error.code
         name = args.command.replace("-", "_")
-        kwargs = {"root": args.user_dir.expanduser().resolve()}
+        root = args.user_dir if args.user_dir is not None else _default_user_dir()
+        kwargs = {"root": root.expanduser().resolve()}
         if name in ("apply", "review", "submit") and args.approve_browser_tools:
             kwargs["approve_browser_tools"] = True
         if name == "boards":
