@@ -108,6 +108,29 @@ Never infer authorization, visa status, sponsorship or EEO answers from a resume
 Generated resumes cannot become new fact sources.
 Profile changes invalidate dependent answers and reviews.
 
+## Document drop folders
+
+Setup creates two folders inside the selected runtime. Its JSON output includes
+`resume_dir` and `additional_document_dir`, both absolute paths to existing folders:
+
+- `user/resume/`: resume PDFs and resume source files such as TEX or DOCX.
+- `user/additional-document/`: transcripts, certificates, cover letters and other
+  supporting documents.
+
+Each folder has a general README created only when absent. Repeating setup
+preserves your documents and edited guides; it does not move, copy, rename or
+delete documents. A file in place of a folder, a directory in place of a guide,
+or a symlink escaping the runtime is rejected before either guide is written.
+Keep runtime `user/` contents out of Git and release artifacts.
+
+Dropping documents here only stores them. It does not select a resume, extract
+or confirm facts, enable tailoring, or upload anything. Select `main_pdf`
+explicitly in the intake's `resumes` group using the PDF's **absolute path**.
+Do not rely on a relative `user/resume/...` PDF path: relative selection resolves
+from the caller's working directory. Preview `profile update` and explicitly
+confirm after checking the facts. Quick apply with an existing PDF does not
+require LaTeX; additional documents are not uploaded automatically.
+
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.
