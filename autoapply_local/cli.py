@@ -62,12 +62,15 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         command.add_argument("engine", nargs="?", choices=("codex", "claude"))
         if name == "apply":
             command.add_argument("--quick", required=True)
+            command.add_argument("--approve-browser-tools", action="store_true")
         if name == "fetch":
             command.add_argument("--url")
     tailor = commands.add_parser("tailor")
     tailor.add_argument("operands", nargs="+")
     for name in ("review", "submit"):
-        commands.add_parser(name).add_argument("selection")
+        command = commands.add_parser(name)
+        command.add_argument("selection")
+        command.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("status")
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -77,6 +80,8 @@ def main(argv=None, services=None, stdout=None, stderr=None):
                 return error.code
         name = args.command.replace("-", "_")
         kwargs = {"root": args.user_dir.expanduser().resolve()}
+        if name in ("apply", "review", "submit") and args.approve_browser_tools:
+            kwargs["approve_browser_tools"] = True
         if name == "boards":
             name = "boards_" + args.boards_command
             if args.boards_command == "import":

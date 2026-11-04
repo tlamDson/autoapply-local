@@ -168,6 +168,18 @@ class IsolationTests(ReleaseCase):
                     for server in ("personal_notes", "other.server")
                 ]
                 return subprocess.CompletedProcess(argv, 0, stdout=json.dumps(inventory), stderr="")
+            if name == "codex" and "exec" in argv:
+                schema_path = Path(argv[argv.index("--output-schema") + 1])
+                schema = json.loads(schema_path.read_text(encoding="utf-8"))
+                if schema == {
+                    "type": "object",
+                    "properties": {"json_response": {"type": "string"}},
+                    "required": ["json_response"],
+                    "additionalProperties": False,
+                }:
+                    return subprocess.CompletedProcess(
+                        argv, 0, stdout=json.dumps({"json_response": json.dumps(result)}), stderr=""
+                    )
             return self.runner.return_value
 
         self.runner.side_effect = process
@@ -424,7 +436,7 @@ class WorkflowCompatibilityTests(ReleaseCase):
         ]
         supplied = {}
 
-        def evaluate(tab, function):
+        def evaluate(tab, function, *, operation="audit"):
             if ".fill(document, " not in function:
                 return {"fields": fields}
             arguments = function.split(".fill(document, ", 1)[1].rsplit(");", 1)[0]

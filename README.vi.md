@@ -204,6 +204,13 @@ Từ runtime root, chạy `python autoapply-local.py LỆNH`; slash command và 
 Codex cục bộ cũng dùng launcher chọn đúng root này. Nếu gọi thẳng module hoặc
 entrypoint đã cài, đặt `--user-dir PATH` trước tên lệnh.
 
+Với `apply`, `review` và `submit`, `--approve-browser-tools` là opt-in tường minh
+chỉ cho lệnh hiện tại. Cờ chỉ duyệt các tool MCP browser cục bộ mà từng task yêu
+cầu và không được lưu lại. Policy hiện có, gồm managed policy, permission denials
+và review gate, vẫn áp dụng. Cờ không duyệt tool Gmail, analysis hay tailor.
+`apply --quick` và `review` không bao giờ tự nộp; vẫn cần lệnh `submit` tường minh
+sau khi đã review.
+
 - `setup`: khởi tạo intake và state trống, không ghi đè file cũ.
 - `boards list`: xem nguồn khám phá job đã cấu hình.
 - `boards import PATH [--confirm]`: kiểm, chuẩn hóa và bỏ trùng JSON list nguồn;

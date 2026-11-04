@@ -540,7 +540,7 @@ class RestorePdfIsolationTests(ReleaseCase):
         client = Mock(spec=["new_page", "list_pages", "evaluate_script", "upload_file", "submit", "close_page"])
         client.list_pages.return_value = [{"id": record["tab_id"], "url": record["url"]} for record in records]
 
-        def observe(tab_id, function):
+        def observe(tab_id, function, *, operation="audit"):
             record = next(record for record in records if record["tab_id"] == tab_id)
             return {
                 "fields": [

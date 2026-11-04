@@ -185,7 +185,9 @@ def fetch(*, root, engine=None, url=None):
     }
 
 
-def _workflow(root, override=None, launch=False, lane=None):
+def _workflow(root, override=None, launch=False, lane=None, approve_browser_tools=False):
+    if type(approve_browser_tools) is not bool:
+        raise ValueError("approve_browser_tools must be a bool")
     from . import browser, engines
     from .workflow import Workflow
 
@@ -210,7 +212,8 @@ def _workflow(root, override=None, launch=False, lane=None):
     owner = lane or lanes[0]
     lane_id = str(owner.get("lane", 1))
     endpoint = owner["debug_url"]
-    engine = engines.Engine(selected, cwd=root, debug_url=endpoint)
+    options = {"approve_browser_tools": True} if approve_browser_tools else {}
+    engine = engines.Engine(selected, cwd=root, debug_url=endpoint, **options)
     bridge = browser.BrowserBridge(root=root, engine=engine, debug_url=endpoint)
     if hasattr(bridge, "restore"):
         for record in held:
@@ -240,7 +243,9 @@ def _apply_summary(profile, records, pdfs):
     )
 
 
-def apply(*, root, selection, engine=None):
+def apply(*, root, selection, engine=None, approve_browser_tools=False):
+    if type(approve_browser_tools) is not bool:
+        raise ValueError("approve_browser_tools must be a bool")
     from . import browser
     from .storage import lock
     from .workflow import Workflow
@@ -304,14 +309,17 @@ def apply(*, root, selection, engine=None):
                 owner = {**owner, "debug_url": record.get("debug_url", owner["debug_url"])}
             key = (str(owner.get("lane", 1)), owner["debug_url"])
             if key not in runners:
-                runners[key] = _workflow(root, engine, lane=owner)[0]
+                options = {"approve_browser_tools": True} if approve_browser_tools else {}
+                runners[key] = _workflow(root, engine, lane=owner, **options)[0]
             runner = runners[key]
             pdf = pdfs[job_id]
             results.append(runner.apply([job_id], pdf=pdf, engine=selected))
     return {"results": results, **({"reason": reason} if reason else {}), **base.status()}
 
 
-def review(*, root, selection):
+def review(*, root, selection, approve_browser_tools=False):
+    if type(approve_browser_tools) is not bool:
+        raise ValueError("approve_browser_tools must be a bool")
     from .workflow import Workflow
 
     base = Workflow(root, browser=None, engines={})
@@ -328,12 +336,15 @@ def review(*, root, selection):
         owner = {**owner, "debug_url": record.get("debug_url", owner["debug_url"])}
         key = (str(owner.get("lane", 1)), owner["debug_url"])
         if key not in runners:
-            runners[key] = _workflow(root, lane=owner)[0]
+            options = {"approve_browser_tools": True} if approve_browser_tools else {}
+            runners[key] = _workflow(root, lane=owner, **options)[0]
         reviews.extend(runners[key].review([job_id])["reviews"])
     return {"reviews": reviews, **base.status()}
 
 
-def submit(*, root, selection):
+def submit(*, root, selection, approve_browser_tools=False):
+    if type(approve_browser_tools) is not bool:
+        raise ValueError("approve_browser_tools must be a bool")
     from .workflow import Workflow
 
     base = Workflow(root, browser=None, engines={})
@@ -350,7 +361,8 @@ def submit(*, root, selection):
         owner = {**owner, "debug_url": record.get("debug_url", owner["debug_url"])}
         key = (str(owner.get("lane", 1)), owner["debug_url"])
         if key not in runners:
-            runners[key] = _workflow(root, lane=owner)[0]
+            options = {"approve_browser_tools": True} if approve_browser_tools else {}
+            runners[key] = _workflow(root, lane=owner, **options)[0]
         jobs.extend(runners[key].submit([job_id])["jobs"])
     return {"jobs": jobs, **base.status()}
 

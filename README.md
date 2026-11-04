@@ -245,6 +245,13 @@ The local slash commands and Codex skill use this same root-bound launcher.
 If invoking the installed module or entrypoint directly, put `--user-dir PATH`
 before the subcommand.
 
+For `apply`, `review` and `submit`, `--approve-browser-tools` explicitly opts in
+for the current command only. It approves only the local browser MCP tools that
+each task requests and is never saved. Existing policy, including managed policy,
+permission denials and the review gate, still applies. It does not approve Gmail,
+analysis or tailor tools. `apply --quick` and `review` never submit automatically;
+submission still requires an explicit `submit` command after review.
+
 - `setup`: create local intake/templates and blank state safely.
 - `boards list`: show configured discovery sources.
 - `boards import PATH [--confirm]`: validate, normalize and deduplicate a JSON

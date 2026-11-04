@@ -22,6 +22,38 @@ from .storage import atomic_write_json, lock, read_json
 
 
 MCP_VERSION = "0.14.0"
+EVALUATE_SCHEMAS = {
+    "audit": {
+        "type": "object",
+        "properties": {
+            "fields": {"type": "array", "items": {"type": "object"}},
+            "errors": {"type": "array", "items": {"type": "string"}},
+            "text": {"type": "string"},
+            "url": {"type": "string"},
+            "attachments": {"type": "array", "items": {"type": "object"}},
+            "page": {"type": "object"},
+            "required_unknown": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["fields", "errors", "text", "url", "attachments"],
+        "additionalProperties": False,
+    },
+    "fill": {
+        "type": "object",
+        "properties": {
+            "filled": {"type": "array", "items": {"type": "string"}},
+            "blocked": {"type": "array", "items": {"type": "object"}},
+            "uploads": {"type": "array", "items": {"type": "object"}},
+        },
+        "required": ["filled", "blocked", "uploads"],
+        "additionalProperties": False,
+    },
+}
+EVALUATE_CONTRACT = (
+    "Call evaluate_script exactly once on the selected existing page with the function exactly as given. "
+    "Set the single top-level result property to the exact JSON value that function returned. "
+    "Do not wrap it in another result, add tool text or metadata, summarize, reorder, recompute or edit values, "
+    "or copy hashes from the request. If the call fails or returns anything else, do not invent a result."
+)
 
 
 def discover_chrome(override=None):
@@ -277,11 +309,13 @@ class EngineMCPClient:
         # its ID rather than lose the only tab opened by this operation.
         return new[0]
 
-    def evaluate_script(self, tab_id, function):
+    def evaluate_script(self, tab_id, function, *, operation="audit"):
+        if operation not in EVALUATE_SCHEMAS:
+            raise ValueError("Unsupported evaluate readback operation")
         return self._run(
             "evaluate",
-            {"tab_id": tab_id, "function": function},
-            {"result": {"type": "object"}},
+            {"tab_id": tab_id, "function": function, "readback": operation, "response_contract": EVALUATE_CONTRACT},
+            {"result": copy.deepcopy(EVALUATE_SCHEMAS[operation])},
             ["result"],
             ["list_pages", "select_page", "evaluate_script"],
         )["result"]
@@ -463,7 +497,9 @@ return result;"""
             return result
         # Map only supported confirmed facts; all other questions require an
         # exact scoped answer and are left to the native-agent interaction.
-        scanned = self.client.evaluate_script(tab_id, self._script("audit", job.get("ats", "greenhouse")))
+        scanned = self.client.evaluate_script(
+            tab_id, self._script("audit", job.get("ats", "greenhouse")), operation="audit"
+        )
         if "blocked" in scanned and "fields" not in scanned:
             return scanned
         answers = {}
@@ -473,7 +509,9 @@ return result;"""
             supplied = resolve_field(profile, field, job)
             if supplied.get("status") == "confirmed":
                 answers[field["id"]] = supplied
-        result = self.client.evaluate_script(tab_id, self._script("fill", job.get("ats", "greenhouse"), answers))
+        result = self.client.evaluate_script(
+            tab_id, self._script("fill", job.get("ats", "greenhouse"), answers), operation="fill"
+        )
         return result
 
     def upload_file(self, tab_id, path):
@@ -500,7 +538,7 @@ return result;"""
         if _url_identity(native["url"]) != _url_identity(binding["url"]):
             raise ValueError("Native current URL belongs to another application")
         live = self.client.evaluate_script(
-            tab_id, self._script("audit", binding.get("job", {}).get("ats", "greenhouse"))
+            tab_id, self._script("audit", binding.get("job", {}).get("ats", "greenhouse")), operation="audit"
         )
         if not isinstance(live, dict) or not isinstance(live.get("fields"), list):
             raise ValueError("Live form readback unavailable")
