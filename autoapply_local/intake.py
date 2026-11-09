@@ -382,7 +382,7 @@ def _reconcile_answers(old, updated, incoming_answers):
     ]
 
 
-def apply_import(root, preview, confirm=False):
+def apply_import(root, preview, confirm=False, *, precondition=None):
     if not confirm:
         return {
             "applied": False,
@@ -393,6 +393,8 @@ def apply_import(root, preview, confirm=False):
 
     root = Path(root)
     with lock(root / "profile-update.lock"):
+        if precondition is not None:
+            precondition()
         if _digest(preview["path"]) != preview["sha256"] or _digest(root / "profile.json") != preview["profile_sha256"]:
             raise ValueError("Intake or profile changed; preview again")
         if _digest(root / "config.json") != preview["config_sha256"]:

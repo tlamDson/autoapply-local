@@ -17,11 +17,49 @@ where autoapply-local is installed. Commands and the Codex skill here use
 including when AUTOAPPLY_LOCAL_HOME names a different root. Existing user files
 are preserved by setup. Keep this launcher in this runtime root.
 
-Edit `user/profile-intake.md`, then preview and confirm your facts:
+For first setup, ask for setup in this host; the local command/skill follows the
+native onboarding loop without requiring JSON editing. It discovers the actual
+top-level question tool, runs `python autoapply-local.py setup --guided --ui UI`,
+invokes its packet and waits for real user answers. UI is `codex-async` for
+available request_user_input_async, `codex` for permitted request_user_input, or
+`claude` for available AskUserQuestion. These flags only choose the packet schema.
+Without a permitted native tool, `--ui none` returns `ui_required` and preserves
+progress; reopen a supported host/mode. Never use chat questions, an engine
+subprocess, another engine/mode or a new server/browser form as fallback.
+
+The host binds tool-call ID and question index to stable question/option IDs,
+saves a private response JSON and calls `setup --answer PATH --ui UI`. Timeouts,
+interruptions and preselected defaults are not answers. At most three questions
+appear at a time; use More/Add/Done for choices and records. Names and paths are
+text entries. Unknown/skip does not mean No; optional EEO can be declined.
+`setup --guided --edit QUESTION_ID --ui UI` revisits a catalog or issued record
+question. Draft answers never silently establish confirmed facts.
+
+To change existing education, experience or authorization, select Edit an existing
+record, choose its numbered option, and answer individual fields. Done keeps draft
+changes; Cancel and keep original record discards them. Skip leaves facts intact,
+including their metadata. Add is for a new record, not for changing an old one.
+
+If dependencies change, the host asks Reload latest confirmed profile / Keep
+current draft in a native popup. Only explicit Reload runs `setup --restart --ui UI`.
+Keep, timeout or an unavailable native tool preserves every draft. Restart reports
+separate backups of the old progress and generated intake, then reloads current
+confirmed facts into a new session without changing them. Old answers/previews
+cannot be reused; finish and inspect a new preview before Confirm.
+
+`setup --finish --ui UI` saves an intake draft and the exact import preview. The
+host shows it and invokes native Confirm/Keep draft choices. Only explicit
+Confirm permits `setup --confirm` using that saved preview. Keep draft, timeout
+or interruption preserves unconfirmed progress. Changed dependencies require
+fresh inspection, not silent preview recomputation. Advanced intake editing and
+`profile update PATH` remain available separately; onboarding does not require
+editing `user/profile-intake.md`. [Official structured UI reference](https://learn.chatgpt.com/docs/app-server)
+describes tool/requestUserInput and MCP elicitation. The CLI does not display
+popups or install an app server; offline packet tests do not certify host UI.
+
+After guided confirmation, continue:
 
 ```text
-python autoapply-local.py profile update user/profile-intake.md
-python autoapply-local.py profile update user/profile-intake.md --confirm
 python autoapply-local.py boards list
 python autoapply-local.py fetch
 python autoapply-local.py apply --quick 1
