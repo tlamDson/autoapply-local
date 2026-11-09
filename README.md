@@ -1,6 +1,6 @@
 # AutoApply Local 0.1.0a1 — experimental
 
-Local job-search tools with one complete editable intake, confirmed facts,
+Local job-search tools with guided native-popup onboarding, confirmed facts,
 role-selected PDF resumes and an explicit fill → review → submit workflow.
 English and Vietnamese instructions: [Tiếng Việt](README.vi.md).
 
@@ -77,10 +77,56 @@ The launcher always selects its own directory, including when
 Without an explicit root, setup uses `AUTOAPPLY_LOCAL_HOME` or the default
 `~/.autoapply-local`; open whichever directory it creates.
 
-Edit `user/profile-intake.md` as one complete form; all 14 groups are visible at
-once. Preview with `python autoapply-local.py profile update PATH`, then use the
-same command with `--confirm` only after checking the proposed facts. A changed
-intake needs a new preview. Setup is repeatable and preserves existing files.
+In that host, ask for setup: the local command/skill discovers its real native
+question tool, calls `python autoapply-local.py setup --guided --ui UI`, displays
+the returned questions through that tool and waits for your answers. You choose
+runtime/language/engine first, then answer up to three questions at a time.
+No JSON editing is required. Names and existing resume paths are text entries;
+lists and multiple education, authorization and experience records have Add/Done
+editors. Large choice lists paginate. Skip/unknown never becomes No, and optional
+EEO can be declined. You can resume and edit previously issued question IDs.
+Setup is repeatable and preserves existing files.
+
+Existing education, experience and authorization records also have an Edit an
+existing record option. Choose the numbered native record, change individual
+fields, and use Done or Cancel and keep original record. Similar names have
+distinct labels. Unchanged fields retain their facts and metadata; edits remain
+drafts until the saved preview receives explicit Confirm. Add creates a new record.
+
+If dependencies change while a draft is open, the host offers Reload latest
+confirmed profile / Keep current draft in a native popup. Only your explicit
+Reload choice runs `setup --restart --ui UI`. Restart preserves separate backups
+of the old progress and generated intake, reports their paths, and starts a fresh
+session from current confirmed facts without changing them. Keep, timeout or no
+native tool preserves the draft. Old answers/previews cannot apply to the new
+session; finish and inspect a new preview before Confirm.
+
+The host maps the actual tool-call ID and question index through the packet's
+stable question/option bindings, writes a private response JSON, and passes it to
+`setup --answer PATH --ui UI`. Only your real answer advances the draft; a timeout,
+interruption or preselected default does not. Answers do not change confirmed
+profile/config/answers/reviews. `setup --finish --ui UI` saves the draft and the
+exact import preview. After showing it, the host asks Confirm/Keep draft in a
+native popup. Only your explicit Confirm runs `setup --confirm` using that saved
+preview. Changed dependencies are rejected; inspect a fresh valid preview rather
+than overwriting concurrent edits. A partial draft may retain unknown fields.
+
+`UI` is `codex-async` for discovered `request_user_input_async`, `codex` for
+permitted `request_user_input`, or `claude` for discovered `AskUserQuestion`.
+The flag selects a payload schema; it cannot grant a tool or change engine mode.
+If the host has no permitted native tool, `--ui none` returns `ui_required` and
+keeps progress so you can reopen a supported host/mode. The CLI itself never
+displays a popup. There is no chat-question fallback, subprocess interview,
+automatic switch to Plan/another engine, custom browser form or server install.
+The [official app-server reference](https://learn.chatgpt.com/docs/app-server)
+describes structured `tool/requestUserInput` and MCP elicitation; this package
+uses the tools your existing host exposes and does not install an app server.
+Offline packet tests do not certify native host rendering or end-to-end UI.
+
+For advanced editing/export, `user/profile-intake.md` still exposes all 14 groups
+in one form. Preview it with `python autoapply-local.py profile update PATH`, then
+use that command with `--confirm` only after inspection. This advanced route is
+separate from guided confirmation, which must retain the saved finish preview.
 
 The form covers runtime/language, contact, resume alternatives and role mapping,
 multiple education records, roles and job types, schedule/locations, work
@@ -90,7 +136,7 @@ policy, Gmail and hardware. Blank facts stay unknown. Planned authorization does
 not establish authorization; current and future sponsorship stay separate.
 Exact employer/question/time scopes are required for sensitive answers.
 
-The packaged bilingual questionnaire supplies actual questions for all 14 groups.
+The guided catalog and packaged bilingual questionnaire cover all 14 groups.
 Confirm given/first and family/last names separately; their order is never guessed
 from the legal full name. Put exact answers in the intake's top-level `answers`
 list, with `question`, `value`, `status`, `provenance`, `confirmed_at` and
@@ -101,9 +147,9 @@ unanswered questions remain unknown.
 
 Source extraction from PDF/TEX/DOCX produces a draft, never confirmed facts.
 With either Codex or Claude selected, use `source extract PATH` to obtain draft
-text, then ask that engine to help draft the intake's contact, education,
-experience and skills from the supplied sources. Check the source for each fact,
-preview `profile update PATH`, then explicitly confirm it with `--confirm`.
+text, then check each fact against its source before entering it through the
+guided questions. For advanced intake editing, preview `profile update PATH`
+before explicitly confirming it with `--confirm`.
 Never infer authorization, visa status, sponsorship or EEO answers from a resume.
 Generated resumes cannot become new fact sources.
 Profile changes invalidate dependent answers and reviews.
@@ -118,14 +164,23 @@ alone does not select a root for `python -m autoapply_local`.
 python autoapply-local.py source extract path/to/resume.pdf
 ```
 
-Edit `user/profile-intake.md`: select your installed engine, set the existing
-resume PDF path and supply your confirmed facts. Use only that selected engine
-to help draft the intake from the extracted text and source documents as described
-above. Inspect the preview before confirming:
+Ask for setup in the selected host. It discovers its native question tool and
+runs the guided loop, including runtime/engine choice, existing resume PDF path,
+facts, source choices and a saved preview. The following are the host's CLI
+steps; answer files are created from your actual popup replies, not typed by you:
 
 ```text
-python autoapply-local.py profile update user/profile-intake.md
-python autoapply-local.py profile update user/profile-intake.md --confirm
+python autoapply-local.py setup --guided --ui codex-async
+python autoapply-local.py setup --answer user/setup-response.json --ui codex-async
+python autoapply-local.py setup --finish --ui codex-async
+python autoapply-local.py setup --confirm
+```
+
+The last line runs only after your explicit native Confirm on the saved preview.
+Use the UI identifier for the tool actually discovered; if unavailable, keep the
+draft with `--ui none`. Then continue with sources, fetch and review:
+
+```text
 python autoapply-local.py boards list
 python autoapply-local.py boards import examples/boards.json
 python autoapply-local.py boards import examples/boards.json --confirm
@@ -252,7 +307,13 @@ permission denials and the review gate, still applies. It does not approve Gmail
 analysis or tailor tools. `apply --quick` and `review` never submit automatically;
 submission still requires an explicit `submit` command after review.
 
-- `setup`: create local intake/templates and blank state safely.
+- `setup`: bootstrap local state safely and show the guided next step.
+- `setup --guided [--edit QUESTION_ID] --ui UI`: start/resume native questions or
+  edit a catalog/issued record question; output is a host tool packet, not a popup.
+- `setup --answer PATH --ui UI`: validate a private, batch-bound response and
+  update only the draft. Actions are mutually exclusive.
+- `setup --finish --ui UI`: save an intake draft and the exact confirmation
+  preview. `setup --confirm` applies it only after an explicit native Confirm.
 - `boards list`: show configured discovery sources.
 - `boards import PATH [--confirm]`: validate, normalize and deduplicate a JSON
   source list; preview additions/changes, then explicitly confirm the merge.

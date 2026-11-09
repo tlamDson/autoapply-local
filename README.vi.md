@@ -1,6 +1,6 @@
 # AutoApply Local 0.1.0a1 — bản thử nghiệm
 
-Công cụ tìm và điền đơn cục bộ, dùng một form intake đầy đủ, fact được xác nhận,
+Công cụ tìm và điền đơn cục bộ, setup qua popup native, fact được xác nhận,
 resume PDF theo role, và luồng điền → kiểm → yêu cầu nộp rõ ràng.
 [Hướng dẫn tiếng Anh](README.md).
 
@@ -78,9 +78,51 @@ chứa nó, kể cả khi AUTOAPPLY_LOCAL_HOME trỏ nơi khác. Đặt đườn
 trong dấu nháy. Nếu không truyền root, setup dùng AUTOAPPLY_LOCAL_HOME hoặc mặc
 định `~/.autoapply-local`; mở đúng thư mục mà setup tạo.
 
-Sửa một form `user/profile-intake.md`, xem preview bằng
+Trong host đó, yêu cầu setup. Command/skill khám phá công cụ hỏi native thực có,
+chạy `python autoapply-local.py setup --guided --ui UI`, gọi chính tool đó với
+packet nhận được và chờ bạn trả lời. Ba câu đầu chọn cách chạy, ngôn ngữ và engine;
+mỗi lượt tối đa ba câu. Không cần sửa JSON. Tên và đường dẫn PDF có sẵn được nhập
+bằng text; danh sách và nhiều record học tập/authorization/kinh nghiệm dùng
+Add/Done từng trường. Danh sách lựa chọn dài có phân trang. Unknown/skip không
+biến thành No; EEO tùy chọn có thể từ chối. Có thể tiếp tục hoặc sửa câu đã hỏi
+bằng `setup --guided --edit QUESTION_ID --ui UI`.
+
+Để sửa record học tập, kinh nghiệm hoặc authorization đã có, chọn Edit an existing
+record rồi chọn đúng mục có số thứ tự trong popup. Sửa từng trường, chọn Done để
+giữ draft hoặc Cancel and keep original record để hủy thay đổi của record đó.
+Các trường bỏ qua giữ nguyên fact và metadata; thay đổi chỉ được xác nhận sau
+preview và Confirm rõ ràng. Add dùng cho record mới.
+
+Nếu dependency đổi, host hỏi Reload latest confirmed profile / Keep current draft
+bằng popup native. Chỉ khi bạn chọn Reload rõ ràng mới chạy
+`setup --restart --ui UI`. Lệnh giữ backup riêng của tiến độ và intake draft cũ,
+báo đường dẫn, rồi tạo phiên mới từ fact hiện tại mà không sửa fact đã xác nhận.
+Keep, timeout hoặc thiếu native tool giữ nguyên draft. Câu trả lời/preview cũ
+không dùng cho phiên mới; cần finish, xem preview mới rồi Confirm.
+
+Host gắn tool-call ID và thứ tự câu hỏi với stable question/option IDs của batch,
+ghi file trả lời JSON riêng tư rồi chạy `setup --answer PATH --ui UI`. Chỉ câu trả
+lời thật mới cập nhật draft; timeout, gián đoạn hay lựa chọn được chọn sẵn không
+phải câu trả lời. Profile/config/answers/reviews chưa thay đổi ở bước này.
+`setup --finish --ui UI` lưu draft và đúng preview sẽ nhập. Host hiển thị preview
+rồi hỏi Confirm/Keep draft bằng popup native; chỉ khi bạn chọn Confirm rõ ràng
+mới chạy `setup --confirm` với preview đã lưu. Dependency đổi thì từ chối để kiểm
+lại, không ghi đè hoặc tính lại preview âm thầm. Có thể giữ draft còn unknown.
+
+`UI` là `codex-async` khi khám phá được `request_user_input_async`, `codex` khi
+`request_user_input` được phép trong mode hiện tại, hoặc `claude` khi có
+`AskUserQuestion`. Flag chỉ chọn schema packet, không cấp quyền hay đổi mode.
+Nếu host thiếu tool hoặc mode cấm, `--ui none` trả `ui_required` và giữ tiến độ để
+bạn mở lại host/mode hỗ trợ. CLI terminal không tự hiển thị popup. Không hỏi thay
+bằng chat prose, không phỏng vấn qua subprocess, không tự chuyển Plan/engine,
+không tạo browser form hay cài server mới. [Tài liệu structured UI chính thức](https://learn.chatgpt.com/docs/app-server)
+mô tả tool/requestUserInput và MCP elicitation; package chỉ dùng công cụ host đã
+có, không cài app server. Test packet offline chưa chứng nhận UI native đầu cuối.
+
+Form `user/profile-intake.md` vẫn dành cho sửa/export nâng cao: preview bằng
 `python autoapply-local.py profile update PATH`, kiểm lại rồi thêm `--confirm`.
-Intake có đủ 14 nhóm: engine/ngôn ngữ, liên hệ, PDF thay thế/role mapping, nhiều
+Lối nâng cao tách khỏi guided confirm vì guided phải dùng đúng preview đã lưu.
+Catalog và intake có đủ 14 nhóm: engine/ngôn ngữ, liên hệ, PDF thay thế/role mapping, nhiều
 hồ sơ học tập, role/job type, thời gian/địa điểm, work authorization, CPT/OPT/STEM
 OPT, chính sách lọc, kinh nghiệm/skill, lương/EEO, lịch sử ứng tuyển, tailor,
 Gmail và tài nguyên máy. Trống vẫn là unknown; không suy ra quyền làm việc hay
@@ -93,9 +135,9 @@ nguyên văn câu hỏi và thời điểm. Lệnh `profile update PATH` hiện 
 án này; thêm `--confirm` sau khi kiểm để nhập. Không cần sửa profile nội bộ.
 
 Trích PDF/TEX/DOCX chỉ tạo draft. Với Codex hoặc Claude đã chọn, chạy
-`source extract PATH` để lấy text nháp, rồi nhờ engine đó giúp soạn nhóm liên hệ,
-học tập, kinh nghiệm và skill trong intake, kèm nguồn cho từng fact. Bạn kiểm
-nguồn, xem preview `profile update PATH`, rồi thêm `--confirm` để xác nhận.
+`source extract PATH` để lấy text nháp, rồi kiểm từng fact với nguồn trước khi
+nhập qua câu hỏi guided. Nếu dùng intake nâng cao, xem preview
+`profile update PATH` trước khi thêm `--confirm` để xác nhận.
 Không suy authorization, visa, sponsorship hoặc đáp án EEO từ resume.
 Resume sinh ra không phải nguồn fact mới. Đổi học tập/authorization/target
 làm đáp án phụ thuộc và review cũ hết hiệu lực. Câu nhạy cảm cần xác nhận chính
@@ -111,13 +153,23 @@ cho `python -m autoapply_local`.
 python autoapply-local.py source extract path/to/resume.pdf
 ```
 
-Sửa `user/profile-intake.md`: chọn engine đã cài, đặt đường dẫn PDF resume có sẵn
-và điền fact đã kiểm. Chỉ dùng engine đã chọn để giúp soạn intake từ text trích
-và tài liệu nguồn theo hướng dẫn trên. Kiểm preview trước khi xác nhận:
+Yêu cầu setup trong host đã chọn để host khám phá native tool rồi chạy vòng hỏi,
+bao gồm engine, PDF resume có sẵn, fact, nguồn job và preview. Các lệnh dưới đây
+là bước CLI do host chạy; file trả lời được tạo từ popup thật, bạn không phải tự
+soạn JSON:
 
 ```text
-python autoapply-local.py profile update user/profile-intake.md
-python autoapply-local.py profile update user/profile-intake.md --confirm
+python autoapply-local.py setup --guided --ui codex-async
+python autoapply-local.py setup --answer user/setup-response.json --ui codex-async
+python autoapply-local.py setup --finish --ui codex-async
+python autoapply-local.py setup --confirm
+```
+
+Dòng cuối chỉ chạy sau khi bạn chọn Confirm rõ ràng trên popup của preview đã
+lưu. Chọn identifier UI đúng tool khám phá được; thiếu tool thì giữ draft bằng
+`--ui none`. Sau đó tiếp tục nguồn, fetch và review:
+
+```text
 python autoapply-local.py boards list
 python autoapply-local.py boards import examples/boards.json
 python autoapply-local.py boards import examples/boards.json --confirm

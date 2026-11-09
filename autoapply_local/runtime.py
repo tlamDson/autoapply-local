@@ -41,12 +41,23 @@ def select_resume(profile, config, job):
     return path
 
 
-def setup(*, root):
+def setup(*, root, guided=False, answer=None, finish=False, confirm=False, restart=False, edit=None, ui="none"):
     from . import browser, intake
     from .bootstrap import install
 
-    result = intake.setup(root)
     root = Path(root)
+    if restart:
+        from .guided import run
+
+        return run(root, restart=True, ui=ui)
+    guided_action = guided or answer is not None or finish or confirm
+    if guided_action and (root / "user/setup-progress.json").exists():
+        from .guided import run
+
+        return run(root, answer=answer, finish=finish, confirm=confirm, edit=edit, ui=ui)
+    if guided_action and not guided:
+        raise ValueError("Start setup --guided before answering, finishing or confirming")
+    result = intake.setup(root)
     install(root)
     # Project-local files only. Never replace global configuration or existing files.
     configs = {
@@ -57,10 +68,16 @@ def setup(*, root):
         path = root / relative
         if not path.exists():
             atomic_write_json(path, value)
+    if guided_action:
+        from .guided import run
+
+        return run(root, edit=edit, ui=ui)
     return {
         **result,
         "next": f"Open this runtime root: {root}. Use python autoapply-local.py COMMAND. "
-        "Edit user/profile-intake.md; preview profile update, then confirm. "
+        "For first setup discover a native question tool, then run setup --guided --ui UI. "
+        "Without a native tool use --ui none (ui_required). "
+        "Advanced editing: user/profile-intake.md; preview profile update, then confirm. "
         "Sign in to your selected engine and approve the project browser MCP normally. "
         "Doctor reports executable presence separately from account/connector readiness.",
     }

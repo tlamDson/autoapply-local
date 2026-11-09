@@ -5,6 +5,27 @@ source. Follow the user's selected engine per task without model pinning or
 fallback. Use only confirmed facts and exact question-scoped answers. Never
 infer work authorization, sponsorship or consent from student status or filters.
 
+For first setup, including when the user only says setup, follow the native
+onboarding loop in `.claude/commands/setup.md` or
+`.codex/skills/autoapply-local/SKILL.md`. Bootstrap safely, discover the actual
+question tool in the top-level host, then run `setup --guided --ui UI` through
+the runtime's `python autoapply-local.py` launcher. Invoke its native packet,
+wait for the user's real answer, map stable IDs, and pass a private response file
+to `setup --answer PATH`. Finish previews a draft; only a native explicit Confirm
+permits `setup --confirm` for the saved preview. No native tool or forbidden mode
+means `--ui none` / `ui_required`, preserving progress. Never ask setup questions
+as chat prose, launch an engine subprocess for the interview, change mode/engine
+or infer an answer from timeout/preselection. The advanced intake remains an
+optional editor/export. This setup flow never permits Submit or Gmail access.
+
+If setup becomes stale, use the native Reload latest confirmed profile / Keep
+current draft popup. Run `setup --restart --ui UI` only after explicit Reload;
+Keep, timeout or no native tool preserves progress. Restart backs up old progress
+and the generated intake inside the runtime, then creates a fresh session without
+changing confirmed facts. Old answers/previews remain invalid. Existing education,
+experience and authorization records have a numbered native picker and field
+editor; Cancel keeps the original record, and unchanged facts retain metadata.
+
 `apply` fills and holds; `review` checks fresh live evidence; only an explicit
 `submit` command permits one Submit click for a reviewed selection. Preserve held
 forms for sign-in, account creation, CAPTCHA, unknown questions, errors and manual
