@@ -62,5 +62,27 @@ or submitting. Keep held tabs open. Submit requires your explicit request for
 reviewed IDs or all-reviewed. Unknown click outcomes need manual reconciliation.
 Gmail needs separate opt-in, verified account and native search/read tools.
 
+## Document drop folders / Thư mục tài liệu
+
+Setup JSON returns absolute `resume_dir` and `additional_document_dir` paths
+inside this runtime. Put resume PDFs and TEX/DOCX resume source files in
+`user/resume/`; put transcripts, certificates, cover letters and other supporting
+documents in `user/additional-document/`. Each folder's general README is created
+only when absent. Repeat setup preserves all documents and edited guides.
+Folder/file conflicts and symlinks escaping the runtime are rejected before
+writing either guide. Keep runtime `user/` data out of Git and release artifacts.
+
+Storing documents does not select a PDF, extract or confirm facts, enable tailor,
+or upload files. Explicitly set `main_pdf` in the intake's `resumes` group to the
+PDF's absolute path; relative paths resolve from the caller's working directory.
+Preview profile update, check facts, then explicitly confirm. PDF-only quick
+apply needs no LaTeX. Additional documents are not uploaded automatically.
+
+Để resume PDF và nguồn TEX/DOCX vào `user/resume/`; để bảng điểm, chứng chỉ,
+cover letter và tài liệu bổ sung vào `user/additional-document/`. Chọn rõ PDF
+bằng đường dẫn tuyệt đối trong intake, xem preview rồi xác nhận fact.
+Chỉ lưu file không tự chọn PDF, trích fact, xác nhận fact, bật tailor hay upload.
+Quick apply với PDF có sẵn không cần LaTeX; tài liệu bổ sung không tự upload.
+
 Live ATS, Gmail, both-engine operation, macOS hardware and an 8 GB machine remain
 untested. See AGENTS.md for runtime constraints. Back up your local runtime data.

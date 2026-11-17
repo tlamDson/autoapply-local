@@ -60,6 +60,11 @@ def setup(*, root):
     return {
         **result,
         "next": f"Open this runtime root: {root}. Use python autoapply-local.py COMMAND. "
+        f"Place resume PDFs and source files in {result['resume_dir']}; "
+        f"place transcripts, certificates, cover letters and supporting documents in {result['additional_document_dir']}. "
+        "Select resumes.main_pdf explicitly using an absolute PDF path in the intake. "
+        "Storing documents does not extract or confirm facts, enable tailoring, or upload files. "
+        "Quick apply with an existing PDF does not require LaTeX. "
         "Edit user/profile-intake.md; preview profile update, then confirm. "
         "Sign in to your selected engine and approve the project browser MCP normally. "
         "Doctor reports executable presence separately from account/connector readiness.",
