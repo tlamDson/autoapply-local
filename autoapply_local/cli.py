@@ -59,7 +59,15 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--user-dir", type=Path)
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("setup")
+    setup = commands.add_parser("setup")
+    setup_actions = setup.add_mutually_exclusive_group()
+    setup_actions.add_argument("--guided", action="store_true")
+    setup_actions.add_argument("--answer", type=Path)
+    setup_actions.add_argument("--finish", action="store_true")
+    setup_actions.add_argument("--confirm", action="store_true")
+    setup_actions.add_argument("--restart", action="store_true")
+    setup.add_argument("--edit")
+    setup.add_argument("--ui", choices=("codex-async", "codex", "claude", "none"), default=None)
     boards = commands.add_parser("boards").add_subparsers(dest="boards_command", required=True)
     boards.add_parser("list")
     boards_import = boards.add_parser("import")
@@ -101,7 +109,17 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         kwargs = {"root": root.expanduser().resolve()}
         if name in ("apply", "review", "submit") and args.approve_browser_tools:
             kwargs["approve_browser_tools"] = True
-        if name == "boards":
+        if name == "setup":
+            if args.edit and not args.guided:
+                raise ValueError("--edit requires setup --guided")
+            if args.guided or args.answer is not None or args.finish or args.confirm or args.restart:
+                kwargs.update(guided=args.guided, answer=args.answer, finish=args.finish,
+                              confirm=args.confirm, edit=args.edit, ui=args.ui or "none")
+                if args.restart:
+                    kwargs["restart"] = True
+            elif args.ui is not None:
+                raise ValueError("--ui requires a guided setup action")
+        elif name == "boards":
             name = "boards_" + args.boards_command
             if args.boards_command == "import":
                 kwargs.update(path=args.path, confirm=args.confirm)
