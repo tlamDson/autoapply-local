@@ -75,6 +75,11 @@ def setup(*, root, guided=False, answer=None, finish=False, confirm=False, resta
     return {
         **result,
         "next": f"Open this runtime root: {root}. Use python autoapply-local.py COMMAND. "
+        f"Place resume PDFs and source files in {result['resume_dir']}; "
+        f"place transcripts, certificates, cover letters and supporting documents in {result['additional_document_dir']}. "
+        "Select resumes.main_pdf explicitly using an absolute PDF path in the intake. "
+        "Storing documents does not extract or confirm facts, enable tailoring, or upload files. "
+        "Quick apply with an existing PDF does not require LaTeX. "
         "For first setup discover a native question tool, then run setup --guided --ui UI. "
         "Without a native tool use --ui none (ui_required). "
         "Advanced editing: user/profile-intake.md; preview profile update, then confirm. "

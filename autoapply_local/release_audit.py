@@ -24,7 +24,10 @@ from email.parser import BytesParser
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 
-_PRIVATE_PARTS = {"user", "logs", "runs", "backups", "credentials", "accounts", ".git", "__pycache__", "build", "dist"}
+_PRIVATE_PARTS = {
+    "user", "logs", "runs", "backups", "credentials", "accounts", ".git", "__pycache__", "build", "dist",
+    ".autoapply-local",
+}
 _PRIVATE_NAMES = {"accounts.md", "secrets.local.md", "profile.json", "answers.json", "reviews.json", "tracker.xlsx"}
 _BINARY_OUTPUTS = {".pdf", ".docx", ".xlsx", ".xls", ".png", ".jpg", ".jpeg", ".gif", ".pyc"}
 _EMAIL = re.compile(r"[A-Z0-9._%+-]+@(?:[A-Z0-9-]+\.)+[A-Z]{2,}", re.IGNORECASE)

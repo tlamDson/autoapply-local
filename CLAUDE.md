@@ -1,9 +1,13 @@
 # AutoApply Local
 
 Read AGENTS.md for this standalone product's scope and safety invariants.
-Use the installed module for initial bootstrap and the generated runtime's
-`python autoapply-local.py` launcher for workflows. All candidates begin with
-unknown facts; there are no personal defaults.
+Use the source launcher or installed module for initial bootstrap and the generated
+runtime's `python autoapply-local.py` launcher for workflows. All candidates begin
+with unknown facts; there are no personal defaults.
+Module commands choose --user-dir, then AUTOAPPLY_LOCAL_HOME, then a detected
+source checkout's .autoapply-local, then ~/.autoapply-local outside source.
+The source autoapply-local.py defaults to setup beside itself; open the generated
+runtime and use its own root-bound launcher for subsequent commands.
 
 For first setup or a plain setup request, follow `.claude/commands/setup.md`:
 discover the real native question tool in the top-level host, run

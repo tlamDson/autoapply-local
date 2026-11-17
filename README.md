@@ -34,15 +34,15 @@ cd autoapply-local
 ## Install
 
 Use Python 3.11+, Chrome, Node.js/npm and your selected installed engine CLI.
-From this release checkout, install and create a separate runtime directory.
+From this release checkout, install and create the runtime inside the source root.
 Windows PowerShell:
 
 ```powershell
 python -m venv ../autoapply-venv
 & ../autoapply-venv/Scripts/Activate.ps1
 python -m pip install .
-python -m autoapply_local --user-dir ../autoapply-user setup
-Set-Location ../autoapply-user
+python -m autoapply_local --user-dir ./.autoapply-local setup
+Set-Location .autoapply-local
 ```
 
 macOS:
@@ -51,13 +51,15 @@ macOS:
 python3 -m venv ../autoapply-venv
 source ../autoapply-venv/bin/activate
 python -m pip install .
-python -m autoapply_local --user-dir ../autoapply-user setup
-cd ../autoapply-user
+python -m autoapply_local --user-dir ./.autoapply-local setup
+cd .autoapply-local
 ```
 
 For a downloaded wheel, replace `python -m pip install .` with
 `python -m pip install path/to/autoapply_local-0.1.0a1-py3-none-any.whl`; the
-installed package can run setup from any directory without the checkout.
+installed package can run setup from any directory without the checkout. Outside
+the source tree, choose a runtime explicitly, for example
+`python -m autoapply_local --user-dir ./autoapply-user setup`, then open that folder.
 Dependencies are pinned in pyproject.toml and requirements.txt. Optional tailoring
 needs a TeX installation with pdflatex plus Poppler (`pdftoppm`, `pdfinfo`,
 `pdftotext`). Quick application with your existing PDF does not need TeX.
@@ -68,14 +70,25 @@ everyday Chrome profile. The product creates persistent clean profiles per lane.
 
 ## Setup and your facts
 
-Initial setup is `python -m autoapply_local --user-dir PATH setup`. Open that
-exact generated runtime directory in your selected engine, with the installed
-package's virtual environment active. Setup installs its local commands, skill,
-support files and `autoapply-local.py` launcher without replacing existing files.
-The launcher always selects its own directory, including when
-`AUTOAPPLY_LOCAL_HOME` points elsewhere. Quote paths containing spaces.
-Without an explicit root, setup uses `AUTOAPPLY_LOCAL_HOME` or the default
-`~/.autoapply-local`; open whichever directory it creates.
+In a source checkout or extracted source ZIP, `python autoapply-local.py` with no
+arguments runs setup in `<source>/.autoapply-local`. This source launcher uses its
+own location even when called from another directory. You can also run
+`python -m autoapply_local setup` from the source root or any subdirectory.
+Source detection requires the `autoapply-local` project name in `pyproject.toml`,
+the package and `export-allowlist.json`; Git metadata is not required.
+
+For module commands, runtime precedence is `--user-dir PATH`, then
+`AUTOAPPLY_LOCAL_HOME`, then the detected source's `.autoapply-local`, then
+`~/.autoapply-local` outside source (including wheel installs). Explicit and
+environment roots also override the source launcher's default. Existing runtimes
+are not moved or migrated automatically.
+
+Open the exact generated runtime directory in your selected engine, with the
+installed package's virtual environment active. Setup installs local commands,
+skill, support files and a runtime-bound `autoapply-local.py` without replacing
+existing files. That generated launcher always selects its own runtime directory,
+including when `AUTOAPPLY_LOCAL_HOME` points elsewhere. Quote paths containing
+spaces. Setup does not approve browser MCP or change global settings.
 
 In that host, ask for setup: the local command/skill discovers its real native
 question tool, calls `python autoapply-local.py setup --guided --ui UI`, displays
@@ -154,11 +167,34 @@ Never infer authorization, visa status, sponsorship or EEO answers from a resume
 Generated resumes cannot become new fact sources.
 Profile changes invalidate dependent answers and reviews.
 
+## Document drop folders
+
+Setup creates two folders inside the selected runtime. Its JSON output includes
+`resume_dir` and `additional_document_dir`, both absolute paths to existing folders:
+
+- `user/resume/`: resume PDFs and resume source files such as TEX or DOCX.
+- `user/additional-document/`: transcripts, certificates, cover letters and other
+  supporting documents.
+
+Each folder has a general README created only when absent. Repeating setup
+preserves your documents and edited guides; it does not move, copy, rename or
+delete documents. A file in place of a folder, a directory in place of a guide,
+or a symlink escaping the runtime is rejected before either guide is written.
+Keep runtime `user/` contents out of Git and release artifacts.
+
+Dropping documents here only stores them. It does not select a resume, extract
+or confirm facts, enable tailoring, or upload anything. Select `main_pdf`
+explicitly in the intake's `resumes` group using the PDF's **absolute path**.
+Do not rely on a relative `user/resume/...` PDF path: relative selection resolves
+from the caller's working directory. Preview `profile update` and explicitly
+confirm after checking the facts. Quick apply with an existing PDF does not
+require LaTeX; additional documents are not uploaded automatically.
+
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.
-Its launcher binds every command to that root; changing the working directory
-alone does not select a root for `python -m autoapply_local`.
+Use its generated launcher for every command below to keep that runtime root
+explicit, including when calling it from another working directory.
 
 ```text
 python autoapply-local.py source extract path/to/resume.pdf
