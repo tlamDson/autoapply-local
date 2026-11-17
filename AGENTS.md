@@ -20,7 +20,7 @@ claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks
 ## Giả định của người thực thi
 
 - Runtime CLI trả exit 2 cho input/schema không hợp lệ, exit 3 cho thiếu dependency/lỗi engine; doctor chỉ báo executable và trạng thái login/connector chưa xác minh.
-- Runtime dữ liệu mặc định ở thư mục người dùng `.autoapply-local`; có thể đổi bằng AUTOAPPLY_LOCAL_HOME hoặc --user-dir.
+- Runtime chọn theo --user-dir > AUTOAPPLY_LOCAL_HOME > source đã nhận diện/.autoapply-local > thư mục người dùng .autoapply-local; giả định PR1: marker package là autoapply_local/__init__.py, TOML thiếu/hỏng không nhận diện source, launcher nguồn không đối số chạy setup cạnh nó; launcher runtime giữ root riêng.
 - Giữ JSON schema nhỏ, kiểm đệ quy type/required/properties/enum/items; payload không khớp bị từ chối trước khi dùng.
 - Bổ sung lối CLI source extract và history import để người dùng thường truy cập workflow đã có; test dispatch mới đỏ trước khi thêm lệnh, không thay assertion cũ.
 - Rewrite dùng đối chiếu từ có thứ tự và giữ qualifier/ownership, từ chối thay đổi ngữ nghĩa chưa có nguồn; đáp án hết hiệu lực giữ provenance và valid=False.

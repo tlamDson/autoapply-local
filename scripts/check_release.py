@@ -82,6 +82,8 @@ def main(argv=None):
     generated = {"__pycache__", ".git", "build", "dist", ".pytest_cache"}
     for path in ROOT.rglob("*"):
         relative = path.relative_to(ROOT)
+        if relative.parts[0] == ".autoapply-local":
+            continue  # Managed runtime only; tracked paths are still audited below.
         if any(part in generated or part.endswith(".egg-info") for part in relative.parts):
             continue
         if path.is_file() and relative.as_posix() not in allowed:
