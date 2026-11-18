@@ -278,7 +278,7 @@ python autoapply-local.py boards list
 python autoapply-local.py boards import examples/boards.json
 python autoapply-local.py boards import examples/boards.json --confirm
 python autoapply-local.py fetch
-python autoapply-local.py apply --quick 1
+python autoapply-local.py apply 1
 python autoapply-local.py review all
 ```
 
@@ -386,8 +386,19 @@ tab đang giữ rồi tự nộp.
 - `fetch [ENGINE] [--url URL]`: lấy board Greenhouse/Workday/Rippling đã cấu hình
   hoặc URL hỗ trợ nhập tay; sửa nguồn qua `boards import` hoặc `resources.boards`
   trong intake, mẫu ở examples/boards.json.
-- `apply [ENGINE] --quick N|ID,ID`: chọn PDF theo role, điền và giữ tab; không nộp. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng tuyển
-  dụng và PDF của từng job đã chọn; stdout cuối vẫn là JSON. Lệnh chạy `track` trước và báo kết quả ở mục `track`.
+- `apply [ENGINE] [N|ID,ID]`: một lượt chạy theo thứ tự: `track` (báo ở mục
+  `track`); form đang giữ mà Chrome đã mất tab (ví dụ sau khi khởi động lại) được
+  mở lại đúng URL và điền lại trước; `fetch` các board đang bật; bỏ job ledger đã
+  có hoặc trùng công ty và role với dòng lịch sử từ Gmail/file nhập; rồi điền tối đa
+  N job mới (mặc định: số job mỗi lượt trong setup; `--quick N` vẫn dùng được) bằng
+  PDF theo role và script driver của ATS. Job trên ATS chưa có driver (iCIMS,
+  SmartRecruiters, Taleo, ...) không bao giờ được mở: chúng vào danh sách tự nộp
+  kèm link và resume gợi ý. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng
+  tuyển dụng và PDF của từng job; cuối lượt stderr in bảng (công ty, role, resume,
+  tab, field cần kiểm), xác nhận tìm thấy, job bị bỏ kèm lý do, danh sách tự nộp và
+  số câu bắt buộc chưa có đáp án (`questions`, xem ở trên; từng field nằm ở
+  `unanswered`). Stdout cuối vẫn là JSON. ID job ghi rõ thì không bị lọc trùng.
+  Lệnh không bao giờ nộp.
 - `review ID,ID|all`: đọc lại form đang giữ, kiểm job/tab/field/fact/PDF còn mới.
 - `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng
   tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
@@ -421,7 +432,7 @@ Kiểm RAM và giới hạn tab là heuristic, chưa phải benchmark máy 8 GB.
 hãy tự nộp các form đang giữ và ghi lại bằng `submitted ID,ID` trước khi mở thêm. Khi cần tạo
 tài khoản, đăng nhập, CAPTCHA/MFA hoặc sửa control chưa hỗ trợ, thao tác trong tab
 đang giữ rồi tiếp tục. Không đóng form chưa nộp. Package không thu/lưu mật khẩu.
-Chạy lại `apply [ENGINE] --quick ID` với đúng ID để tiếp tục cùng tab sau khi xử lý
+Chạy lại `apply [ENGINE] ID` với đúng ID để tiếp tục cùng tab sau khi xử lý
 blocker. Nếu login/CAPTCHA/thiếu dữ liệu còn vướng, giữ trạng thái manual.
 
 Job mới luân phiên lane trong giới hạn opt-in; mỗi job lưu lane/debug endpoint để

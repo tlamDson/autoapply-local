@@ -75,7 +75,7 @@ After guided confirmation, continue:
 ```text
 python autoapply-local.py boards list
 python autoapply-local.py fetch
-python autoapply-local.py apply --quick 1
+python autoapply-local.py apply 1
 python autoapply-local.py review all
 python autoapply-local.py status
 ```

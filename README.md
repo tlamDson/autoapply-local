@@ -287,7 +287,7 @@ python autoapply-local.py boards list
 python autoapply-local.py boards import examples/boards.json
 python autoapply-local.py boards import examples/boards.json --confirm
 python autoapply-local.py fetch
-python autoapply-local.py apply --quick 1
+python autoapply-local.py apply 1
 python autoapply-local.py review all
 ```
 
@@ -436,10 +436,21 @@ Submit capability; you review each held tab and submit it yourself.
   and Rippling boards, or import a supported manual URL. Configure sources through
   `boards import` or intake `resources.boards`. Unknown eligibility
   follows your configured policy and never becomes an inferred fact.
-- `apply [ENGINE] --quick N|ID,ID`: choose a role-mapped existing PDF, fill,
-  upload, and hold tabs. Target roles, recruiting season/window and each selected
-  job's PDF mapping appear on stderr before browser work; final stdout stays JSON.
-  It runs `track` first and reports it under `track`. This command never submits.
+- `apply [ENGINE] [N|ID,ID]`: one run, in order: `track` (reported under
+  `track`); held forms whose tab Chrome lost (for example after a restart) are
+  opened again at the same URL and filled again first; `fetch` the active boards;
+  skip jobs the ledger already holds or that match a Gmail/imported history row by
+  company and role; then fill up to N new jobs (default: jobs per run from setup;
+  `--quick N` still works) with a role-mapped existing PDF and the ATS script
+  driver. Jobs on an ATS with no driver (iCIMS, SmartRecruiters, Taleo, ...) are
+  never opened: they go to a submit-by-hand list with link and suggested resume.
+  Target roles, recruiting season/window and each job's PDF appear on stderr
+  before browser work; at the end stderr shows a table (company, role, resume,
+  tab, fields to check), the confirmations found, skipped jobs with reasons, the
+  submit-by-hand list and the count of required questions still unanswered
+  (`questions`, see above; each field is listed under `unanswered`).
+  Final stdout stays JSON. Named job IDs are not deduplicated. This command never
+  submits.
 - `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
   freshness. It never submits or closes forms.
 - `submitted ID,ID`: record held forms you submitted by hand. It writes the
@@ -474,7 +485,7 @@ Submit capability; you review each held tab and submit it yourself.
 
 For account creation, sign-in, CAPTCHA, MFA or unsupported dynamic controls,
 complete the requested interaction in the held clean Chrome tab and resume.
-Resume with an explicit `apply [ENGINE] --quick ID` after resolving the blocker.
+Resume with an explicit `apply [ENGINE] ID` after resolving the blocker.
 It uses the same held tab, and unresolved login/CAPTCHA/data keeps its manual
 state.
 Passwords are not collected or stored by this package. Do not close unsubmitted
