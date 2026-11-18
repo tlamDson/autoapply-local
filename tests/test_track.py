@@ -170,6 +170,59 @@ class TrackTests(ReleaseCase):
         self.assertEqual(report["held_back_emails"], 1)
         self.assertEqual(self.tracker_ids(), [])
 
+    def two_jobs_and_two_emails(self, order):
+        # Many ATSs send two confirmations; the company-only one may belong to the job already matched.
+        self.held("n-1", "https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics", role="ML Intern")
+        self.held("n-2", "https://jobs.lever.co/northwind/2/apply", company="Northwind Analytics", role="Data Intern")
+        cdp = FakeCDP([{"id": "tab-n-1", "url": "https://jobs.lever.co/northwind/1/apply"},
+                       {"id": "tab-n-2", "url": "https://jobs.lever.co/northwind/2/apply"}])
+        rows = [mail("Northwind Analytics", "ML Intern", thread="th-role"),
+                mail("Northwind Analytics", thread="th-plain")][::order]
+        report = self.reconcile(cdp, rows)
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["n-1"])
+        self.assertEqual(self.store.get("n-2")["state"], "filled")
+        self.assertEqual(report["held_back_emails"], 1)
+        self.assertEqual(report["history"]["added"], 0)
+        again = self.reconcile(cdp, rows)
+        self.assertEqual(again["submitted"], [])
+        self.assertEqual(self.store.get("n-2")["state"], "filled")
+        self.assertEqual(self.tracker_ids(), ["n-1"])
+
+    def test_company_only_email_after_a_role_match_never_marks_the_other_held_job(self):
+        self.two_jobs_and_two_emails(1)
+
+    def test_company_only_email_before_a_role_match_never_marks_the_other_held_job(self):
+        self.two_jobs_and_two_emails(-1)
+
+    def test_email_that_may_belong_to_a_job_just_submitted_from_its_page_is_held_back(self):
+        self.store.enqueue(job("n-0", url="https://jobs.lever.co/northwind/0/apply", company="Northwind Analytics",
+                               role="ML Intern"))
+        self.store.update("n-0", state="claimed", held_at="2026-11-17T08:00:00+00:00")
+        self.store.record_submit_intent("n-0", {"review_id": "r"})
+        self.store.mark_submitted("n-0", {"status": "confirmed", "job_id": "n-0", "text": "page",
+                                          "url": "https://jobs.lever.co/northwind/0/thanks",
+                                          "confirmed_at": "2026-11-17T09:30:00+00:00"})
+        self.held("n-2", "https://jobs.lever.co/northwind/2/apply", company="Northwind Analytics", role="Data Intern")
+        cdp = FakeCDP([{"id": "tab-n-2", "url": "https://jobs.lever.co/northwind/2/apply"}])
+        report = self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")])
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual(self.store.get("n-2")["state"], "filled")
+        self.assertEqual(report["held_back_emails"], 1)
+        self.assertEqual(self.tracker_ids(), ["n-0"])
+
+    def test_submission_long_before_the_email_does_not_block_the_held_job(self):
+        self.store.enqueue(job("n-0", url="https://jobs.lever.co/northwind/0/apply", company="Northwind Analytics",
+                               role="ML Intern"))
+        self.store.update("n-0", state="claimed")
+        self.store.record_submit_intent("n-0", {"review_id": "r"})
+        self.store.mark_submitted("n-0", {"status": "confirmed", "job_id": "n-0", "text": "page",
+                                          "url": "https://jobs.lever.co/northwind/0/thanks",
+                                          "confirmed_at": "2026-09-01T09:30:00+00:00"})
+        self.held("n-2", "https://jobs.lever.co/northwind/2/apply", company="Northwind Analytics", role="Data Intern")
+        cdp = FakeCDP([{"id": "tab-n-2", "url": "https://jobs.lever.co/northwind/2/apply"}])
+        report = self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")])
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["n-2"])
+
     def test_tab_id_now_on_another_jobs_confirmation_page_is_not_this_job(self):
         self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
         cdp = FakeCDP([{"id": "tab-gh-1", "url": "https://job-boards.greenhouse.io/acme/jobs/2/confirmation"}])

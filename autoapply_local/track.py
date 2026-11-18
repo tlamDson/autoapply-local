@@ -12,7 +12,7 @@ it never runs a script in a job tab, so it cannot press any Submit control.
 """
 
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
@@ -211,12 +211,31 @@ def _fits(record, entry, sent, today, tracked):
     )
 
 
-def _mail_matches(held, rows, seen, today=None, tracked=()):
+def _may_be_from(record, entry, sent):
+    """Whether an email sent on ``sent`` may be another confirmation of a job already submitted.
+
+    ATSs often send more than one confirmation. One arriving from the day the
+    job was held (or the day before it was recorded) up to TRACK_DAYS after it
+    was recorded, naming no role or the job's role, may be that job's.
+    """
+    confirmation = record.get("confirmation")
+    done = _day(confirmation.get("confirmed_at")) if isinstance(confirmation, dict) else None
+    if sent is None or done is None:
+        return False
+    start = _day(record.get("held_at")) or done - timedelta(days=1)
+    return start <= sent <= done + timedelta(days=TRACK_DAYS) and (
+        not entry["role"] or _same_role(record["role"], entry["role"]))
+
+
+def _mail_matches(held, rows, seen, today=None, tracked=(), submitted=()):
     """{job id: (row, entry)} for each unseen confirmation naming exactly one held job, and held-back keys.
 
-    A match needs the same company and a confirmation that ``_fits`` the job.
-    Any other email naming a held job's company is held back: neither matched
-    nor added to the history, so it cannot become a second application.
+    An email is matched only when exactly one job could have sent it: one held
+    job of the same company that it ``_fits``, while no other held job fits and
+    no job of that company submitted (earlier or in this run) ``_may_be_from``
+    it. Any other email naming a held job's company is held back: neither
+    matched nor added to the history, so it cannot mark a second job submitted
+    or become a separate application.
     """
     matches, held_back = {}, set()
     for row in rows:
@@ -227,9 +246,11 @@ def _mail_matches(held, rows, seen, today=None, tracked=()):
             continue
         company = [r for r in held if _same_company(r["company"], entry["company"])]
         sent = _day(entry["date"])
-        hits = [r for r in company if r["id"] not in matches and _fits(r, entry, sent, today, tracked)]
-        if len(hits) == 1:
-            matches[hits[0]["id"]] = (row, entry)
+        sources = [r for r in company if _fits(r, entry, sent, today, tracked)]
+        sources += [r for r in submitted if _same_company(r["company"], entry["company"])
+                    and _may_be_from(r, entry, sent)]
+        if len(sources) == 1 and sources[0] in company and sources[0]["id"] not in matches:
+            matches[sources[0]["id"]] = (row, entry)
         elif company:
             held_back.add(entry["key"])
     return matches, held_back
@@ -276,7 +297,8 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
         except (OSError, ValueError, RuntimeError) as error:
             report["gmail"] = f"Gmail unavailable: {error}"
     seen = {event.get("message_id") for event in store.mail_events() if event.get("account") == ACCOUNT}
-    mails, held_back = _mail_matches(held, rows, seen, today, store.tracker_rows())
+    submitted = [r for r in store.jobs() if r["state"] == "submitted"]
+    mails, held_back = _mail_matches(held, rows, seen, today, store.tracker_rows(), submitted)
     for record in held:
         endpoint = record.get("debug_url") or by_lane.get(str(record.get("lane", 1)))
         tab = _tab(record, tabs[endpoint]) if endpoint in tabs else None
