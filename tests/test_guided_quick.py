@@ -386,8 +386,15 @@ class GuidedQuickReviewTests(ReleaseCase):
                          "A clear that once matched the derivation is still the user's edit")
 
     def test_saved_clear_survives_confirmed_reviews_while_sponsorship_changes(self):
-        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [], "answered")])
-        self.change_sponsorship(None, True, confirm=True)
+        self.clear_survives_confirmed_reviews("answered")
+
+    def test_unknown_clear_survives_confirmed_reviews_while_sponsorship_changes(self):
+        self.clear_survives_confirmed_reviews("unknown")
+
+    def clear_survives_confirmed_reviews(self, status):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [], status)])
+        review = self.change_sponsorship(None, True, confirm=True)
+        self.assertNotIn("ITAR", review["prompt"]["en"])
         self.assertEqual(self.document()["filters"]["jd_exclude"], [])
 
     def test_clear_in_the_same_session_survives_sponsorship_unknown_and_back(self):
