@@ -20,6 +20,10 @@ máy 8 GB. Đây là bản thử nghiệm, chưa phải tự động hóa ổn �
 hỗ trợ hoặc bước tài khoản cần người dùng sẽ giữ tab mở cho bạn.
 macOS chưa được thử thật: trên macOS mới chỉ có test offline và job cài đặt của CI.
 
+Lấy job (boards và `--url`) chỉ hỗ trợ Greenhouse, Workday và Rippling trong
+v0.2.0a1. Ashby, Lever và Workable đã có driver điền form nhưng chưa có phần lấy job;
+phần lấy job của chúng có ở bản tiếp theo.
+
 Fill browser native còn rủi ro
 với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
 
@@ -113,7 +117,9 @@ python autoapply-local.py setup --terminal
 5. Số job mỗi lượt (mặc định 10). Trần tab đang giữ được tính từ RAM trống và
    hiện ra.
 6. Gmail: tool mở profile Chrome sạch riêng của nó (`chrome/lane-1`) ở trang Gmail;
-   bạn tự đăng nhập ở đó. Sau đó tool tìm mail xác nhận nộp đơn của 183 ngày qua và
+   bạn tự đăng nhập ở đó, chỉ trên trang web Gmail, và KHÔNG bật đồng bộ Chrome
+   (Chrome sync) trong profile đó (đồng bộ sẽ cài extension của bạn vào đó và mở
+   tab của chúng). Sau đó tool tìm mail xác nhận nộp đơn của 183 ngày qua và
    thêm mỗi đơn vào tracker đúng một lần. Có thể bỏ qua bước này.
 7. Engine đã chọn mở ngay trong terminal này với `/setup` (Codex:
    `$autoapply-local setup`) cho phần 2. `--no-launch` chỉ in bước đó ra.
@@ -210,7 +216,7 @@ Không có N thì điền đúng số job mỗi lượt đã chọn trong setup.
    cho mỗi role trong terminal và nhớ ở `user/resume-choices.json`. Mỗi lựa chọn và
    lý do được in ra trước khi điền.
 5. Điền bằng script driver của ATS: Greenhouse, Workday, Rippling, Ashby, Lever và
-   Workable. Workday đăng nhập bằng tài khoản lưu cho site Workday đó trong
+   Workable (job Ashby, Lever và Workable chưa được lấy về). Workday đăng nhập bằng tài khoản lưu cho site Workday đó trong
    `secrets.json`, tạo tài khoản khi đăng nhập thất bại, và gõ mã xác minh đọc từ
    tab Gmail. Hiện chưa có bước setup nào lưu tài khoản đó; không có tài khoản thì
    tab Workday được giữ để bạn tự đăng nhập.
@@ -323,7 +329,8 @@ skill Codex dùng cùng launcher đó. Không lệnh nào bấm Submit.
 - `history import PATH [--confirm]`: xem preview rồi nhập lịch sử CSV/XLSX.
 - `doctor [ENGINE]`: kiểm executable và dependency; đăng nhập và connector vẫn là
   `not_verified`.
-- `fetch [ENGINE] [--url URL]`: fetch các board đang bật, hoặc một URL job hỗ trợ.
+- `fetch [ENGINE] [--url URL]`: fetch các board đang bật, hoặc một URL job hỗ trợ
+  (chỉ Greenhouse, Workday và Rippling).
 - `apply [ENGINE] [N|ID,ID]`: một lượt như mô tả ở
   [Dùng hằng ngày](#dùng-hằng-ngày-apply); `--quick N` vẫn dùng được và
   `--approve-browser-tools` duyệt công cụ browser chỉ cho lệnh này.

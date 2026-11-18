@@ -94,6 +94,7 @@
   "tests/test_cdp_ready.py",
   "tests/test_cleanup.py",
   "tests/test_cli_unicode.py",
+  "tests/test_docs_fetch_scope.py",
   "tests/test_docs_quick_apply.py",
   "tests/test_document_folders.py",
   "tests/test_engine_quota.py",
@@ -207,5 +208,7 @@
   "tests/test_board_seeds.py",
   "tests/test_fetch_screen.py",
   "tests/test_demo_form.py",
-  "tests/board_payloads.json"
+  "tests/board_payloads.json",
+  "autoapply_local/polite_http.py",
+  "tests/test_workday_rate_limit.py"
 ]

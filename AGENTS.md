@@ -21,11 +21,17 @@ a file there never selects a resume, confirms a fact or uploads anything.
 profiles or secrets), runs `git pull --ff-only` or extracts the release zip,
 reinstalls and runs each pending migration once.
 
+Job fetch (boards and `--url`) supports Greenhouse, Workday and Rippling only
+in v0.2.0a1; Ashby, Lever and Workable have fill drivers but no job fetch until
+the next version.
+
 The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
 engine opens: language, engine with one small login/quota probe call, quota stop
 percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
 saved to `config.json`; then it opens the tool's clean Chrome profile
-(`chrome/lane-1`) on Gmail for the user to sign in and scans 183 days of
+(`chrome/lane-1`) on Gmail for the user to sign in on the web page only (tell
+the user to do NOT turn on Chrome sync in that profile: sync installs their own
+extensions and opens their tabs) and scans 183 days of
 confirmation emails into the tracker (deduplicated). It then hands the terminal to the selected engine with
 `/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
 interview subprocess. Inside an engine, never run `setup --terminal`.
