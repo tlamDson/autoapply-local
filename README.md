@@ -33,26 +33,45 @@ cd autoapply-local
 
 ## Install
 
-Use Python 3.11+, Chrome, Node.js/npm and your selected installed engine CLI.
-From this release checkout, install and create the runtime inside the source root.
-Windows PowerShell:
+One line. Windows PowerShell:
+
+```text
+irm https://raw.githubusercontent.com/tlamDson/autoapply-local/main/install.ps1 | iex
+```
+
+macOS:
+
+```text
+curl -fsSL https://raw.githubusercontent.com/tlamDson/autoapply-local/main/install.sh | bash
+```
+
+The script clones the repository into `./autoapply-local` (or uses the checkout it
+runs from; inside a clone run `./install.ps1` or `./install.sh`). It checks
+Python 3.11+, git, Node.js/npm and Google Chrome. When one is missing it prints the
+exact `winget install ...` or `brew install ...` command and exits with code 3; it
+never installs system software itself. With everything present it creates `.venv`
+inside the repository, runs `pip install -e .` and starts setup. Rerunning it is
+safe: the existing `.venv` is reused and setup keeps every file you edited. Pass
+`--no-setup` to install only. All your data stays in `<repo>/user/` (gitignored).
+
+Manual install, Windows PowerShell:
 
 ```powershell
-python -m venv ../autoapply-venv
-& ../autoapply-venv/Scripts/Activate.ps1
+python -m venv .venv
+& .venv/Scripts/Activate.ps1
 python -m pip install .
-python -m autoapply_local --user-dir ./.autoapply-local setup
-Set-Location .autoapply-local
+python -m autoapply_local --user-dir ./user setup
+Set-Location user
 ```
 
 macOS:
 
 ```bash
-python3 -m venv ../autoapply-venv
-source ../autoapply-venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install .
-python -m autoapply_local --user-dir ./.autoapply-local setup
-cd .autoapply-local
+python -m autoapply_local --user-dir ./user setup
+cd user
 ```
 
 For a downloaded wheel, replace `python -m pip install .` with
@@ -71,17 +90,18 @@ everyday Chrome profile. The product creates persistent clean profiles per lane.
 ## Setup and your facts
 
 In a source checkout or extracted source ZIP, `python autoapply-local.py` with no
-arguments runs setup in `<source>/.autoapply-local`. This source launcher uses its
+arguments runs setup in `<source>/user`. This source launcher uses its
 own location even when called from another directory. You can also run
 `python -m autoapply_local setup` from the source root or any subdirectory.
 Source detection requires the `autoapply-local` project name in `pyproject.toml`,
 the package and `export-allowlist.json`; Git metadata is not required.
 
 For module commands, runtime precedence is `--user-dir PATH`, then
-`AUTOAPPLY_LOCAL_HOME`, then the detected source's `.autoapply-local`, then
+`AUTOAPPLY_LOCAL_HOME`, then the detected source's `user`, then
 `~/.autoapply-local` outside source (including wheel installs). Explicit and
 environment roots also override the source launcher's default. Existing runtimes
-are not moved or migrated automatically.
+(including an older `<source>/.autoapply-local`) are not moved or migrated
+automatically; pass `--user-dir` to keep using one.
 
 Open the exact generated runtime directory in your selected engine, with the
 installed package's virtual environment active. Setup installs local commands,

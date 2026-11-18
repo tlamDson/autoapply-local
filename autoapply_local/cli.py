@@ -24,7 +24,7 @@ def _default_user_dir():
         except (OSError, ValueError):
             continue
         if isinstance(project, dict) and project.get("name") == "autoapply-local":
-            return source / ".autoapply-local"
+            return source / "user"
     return Path.home() / ".autoapply-local"
 
 

@@ -116,5 +116,11 @@
   "tests/test_tailor_complete.py",
   "tests/test_tailor_options.py",
   "tests/test_workflow.py",
-  "tests/test_workflow_complete.py"
+  "tests/test_workflow_complete.py",
+  "install.ps1",
+  "install.sh",
+  "scripts/install.py",
+  "autoapply_local/install_check.py",
+  "tests/test_install_check.py",
+  "tests/test_installer.py"
 ]
