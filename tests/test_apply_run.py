@@ -209,7 +209,11 @@ class RecordingClient:
         self.uploaded.add(str(tab_id))
 
 
-class ApplyEndToEndTests(ReleaseCase):
+class ApplyHarness(ReleaseCase):
+    """A synthetic Greenhouse run: recording browser, recorded postings, fake engine."""
+
+    engine_reply = None
+
     def setUp(self):
         super().setUp()
         self.write_json("profile.json", candidate("authorized"))
@@ -240,13 +244,15 @@ class ApplyEndToEndTests(ReleaseCase):
     def run_apply(self, postings=(), **kwargs):
         from autoapply_local import browser, engines, runtime
 
+        reply = self.engine_reply
+
         class Engine:
             def __init__(self, *args, **kw):
                 self.requests = []
 
             def run(self, request):
                 self.requests.append(request)
-                return {"status": "completed"}
+                return reply(request) if reply else {"status": "completed"}
 
         err, real = io.StringIO(), browser.BrowserBridge
         with (
@@ -271,6 +277,8 @@ class ApplyEndToEndTests(ReleaseCase):
             self.assertNotIn(record["state"], ("submitted", "submit_intent"))
         self.assertNotIn("submit", json.dumps(report.get("rows", [])).casefold())
 
+
+class ApplyEndToEndTests(ApplyHarness):
     def test_apply_n_fetches_filters_picks_resume_fills_and_prints_the_table(self):
         self.store.enqueue(job("icims-1", ats="icims", company="Taleo Corp",
                                url="https://careers-example.icims.com/jobs/1/job"))
