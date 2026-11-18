@@ -21,6 +21,7 @@ from .terminal_text import MESSAGES
 
 ENGINES = ("claude", "codex")
 LANGUAGES = ("en", "vi")
+RETRY_LIMIT = 3
 SETUP_PROMPTS = {"claude": "/setup", "codex": "$autoapply-local setup"}
 
 
@@ -97,6 +98,7 @@ class Wizard:
 
     def step_engine(self):
         engine = self.choose("engine", ENGINES, self.runtime.get("apply_engine"))
+        failures = 0
         while True:
             self.say("probing", engine=engine)
             report = self.probe(engine, cwd=self.root)
@@ -109,7 +111,12 @@ class Wizard:
                 self.say("login_required", hint=login_hint(engine))
             else:
                 self.say("engine_problem", engine=engine, status=status)
-            if self.ask(self.text("retry")).casefold().startswith("q"):
+            failures += 1
+            if failures >= RETRY_LIMIT:
+                self.say("check_failed", count=failures, detail=report.get("detail") or status)
+                if not self.ask(self.text("retry_limit")).casefold().startswith("r"):
+                    raise SetupStopped(self.text("stopped"))
+            elif self.ask(self.text("retry")).casefold().startswith("q"):
                 raise SetupStopped(self.text("stopped"))
         if status == "quota_exhausted":
             self.say("quota_exhausted")
