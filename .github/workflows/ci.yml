@@ -34,7 +34,7 @@ jobs:
         run: |
           cd "$AUTOAPPLY_EXPORT"
           python -m unittest discover -s tests -p "test_*.py" -v
-          node --test tests/adapters.test.cjs tests/gmail.test.cjs
+          node --test tests/adapters.test.cjs tests/gmail.test.cjs tests/rippling.test.cjs
           python scripts/check_release.py
       - name: Build and audit current wheel, sdist and source ZIP
         run: |
