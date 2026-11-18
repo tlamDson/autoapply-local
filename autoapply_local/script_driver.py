@@ -126,7 +126,20 @@ class ScriptDriver:
     def run(self, client, tab_id, profile, job, pdf=None):
         """Scan, plan and fill one held tab; never clicks and never closes it."""
         scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
-        fields = scanned.get("fields", []) if isinstance(scanned, dict) else []
+        if not isinstance(scanned, dict) or "fields" not in scanned:
+            # Sign-in, account creation, CAPTCHA or an unreadable page: hold the
+            # tab for the user before any fill or upload.
+            blocked = scanned.get("blocked") if isinstance(scanned, dict) else None
+            return {
+                "driver": self.name,
+                "filled": [],
+                "blocked": list(blocked or [{"id": None, "reason": "form_not_readable"}]),
+                "uploads": [],
+                "unknown": [],
+                "resume_field": None,
+                "status": "needs_manual",
+            }
+        fields = scanned["fields"]
         plan = self.plan(fields, profile, job, pdf=pdf)
         # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
         confirmed = {key: {"value": value, "status": "confirmed"} for key, value in plan["answers"].items()}

@@ -121,6 +121,24 @@ class GreenhousePlanTests(unittest.TestCase):
         fields[12]["value"] = "Typed by the candidate in the held tab."
         self.assertNotIn("question_1005", unknown_by_id(GreenhouseDriver().plan(fields, profile(), JOB)))
 
+    def test_unconfirmed_eeo_answers_are_never_planned(self):
+        for status in ("unknown", "declined", "not_applicable"):
+            with self.subTest(status=status):
+                data = profile()
+                data["compensation"]["eeo"] = {**fact({"gender": "Decline To Self Identify"}), "status": status}
+                plan = GreenhouseDriver().plan(recorded("scan.json")["fields"], data, JOB)
+                self.assertNotIn("gender", plan["answers"])
+                gender = unknown_by_id(plan)["gender"]
+                self.assertEqual(gender["reason"], "no_confirmed_fact")
+                self.assertNotIn("value", gender)
+
+    def test_ambiguous_option_match_is_reported_not_guessed(self):
+        fields = copy.deepcopy(recorded("scan.json")["fields"])
+        fields[10]["options"] = [{"value": "", "label": "Select..."}, {"value": "1", "label": "Yes"}, {"value": "2", "label": "yes"}]
+        plan = GreenhouseDriver().plan(fields, profile(), JOB)
+        self.assertNotIn("question_1003", plan["answers"])
+        self.assertEqual(unknown_by_id(plan)["question_1003"]["reason"], "option_not_found")
+
     def test_unconfirmed_facts_are_not_used(self):
         data = profile()
         data["contact"]["phone"] = fact("+1 555 0199", "unknown")
@@ -165,6 +183,25 @@ class ScriptDriverRunTests(unittest.TestCase):
         self.assertEqual(len(blocked), 1)
         self.assertEqual((blocked[0]["reason"], blocked[0]["required"]), ("option_not_found", True))
 
+    def test_blocked_audit_holds_the_tab_without_filling(self):
+        for scanned in (
+            {"blocked": [{"id": "page", "reason": "sign_in_required"}]},
+            {"blocked": [{"id": "page", "reason": "captcha"}], "url": JOB["url"]},
+            None,
+        ):
+            with self.subTest(scanned=scanned):
+                client = Mock(spec=["evaluate_script"])
+                client.evaluate_script.return_value = scanned
+                report = GreenhouseDriver().run(client, "tab-1", profile(), JOB, pdf="C:/synthetic/Alex_Rivera_SWE.pdf")
+                client.evaluate_script.assert_called_once()
+                self.assertEqual(client.evaluate_script.call_args.kwargs["operation"], "audit")
+                self.assertEqual(report["status"], "needs_manual")
+                self.assertEqual(report["filled"], [])
+                self.assertEqual(report["uploads"], [])
+                self.assertTrue(report["blocked"])
+                if scanned:
+                    self.assertEqual(report["blocked"], scanned["blocked"])
+
     def test_status_is_filled_when_no_required_field_is_unknown(self):
         fields = [field for field in recorded("scan.json")["fields"] if not field["required"] or field["id"] in recorded("answers.json")["answers"]]
         client = Mock(spec=["evaluate_script"])
@@ -190,6 +227,17 @@ class RegistryAndBridgeTests(unittest.TestCase):
     def test_registry_returns_the_greenhouse_driver_and_none_for_others(self):
         self.assertIsInstance(script_driver.driver_for("greenhouse"), GreenhouseDriver)
         self.assertIsNone(script_driver.driver_for("icims"))
+
+    def test_bridge_returns_a_blocked_audit_so_the_workflow_holds_before_upload(self):
+        client = Mock(spec=["new_page", "list_pages", "evaluate_script", "upload_file", "close_page"])
+        client.list_pages.return_value = [{"id": "tab-1", "url": JOB["url"]}]
+        client.evaluate_script.return_value = {"blocked": [{"id": "page", "reason": "sign_in_required"}]}
+        result = browser.BrowserBridge(client).fill("tab-1", profile(), JOB)
+        self.assertEqual(result["blocked"], [{"id": "page", "reason": "sign_in_required"}])
+        self.assertEqual(result["status"], "needs_manual")
+        client.evaluate_script.assert_called_once()
+        client.upload_file.assert_not_called()
+        client.close_page.assert_not_called()
 
     def test_bridge_fills_greenhouse_through_the_script_driver(self):
         client = Mock(spec=["new_page", "list_pages", "evaluate_script", "upload_file", "close_page"])
