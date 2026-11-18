@@ -14,7 +14,7 @@ from unittest.mock import patch
 from test_setup_root import RUNTIME, SetupRootCase
 
 EMAIL = "alex.rivera@example.invalid"
-PASSWORD = "Synthetic-Pass-4821!"
+PASSWORD = "synthetic-pass-4821!"
 TENANT = "examplecorp.wd5.myworkdayjobs.com"
 URL = "https://ExampleCorp.wd5.myworkdayjobs.com/en-US/Careers/job/Remote/Intern_R-1001"
 
@@ -45,10 +45,10 @@ class CredentialStoreTests(SetupRootCase):
         store = self.store()
         root = self.root / RUNTIME
         store.save(root, TENANT, EMAIL, PASSWORD)
-        store.save(root, "second.wd1.myworkdayjobs.com", EMAIL, "Second-Synthetic-9")
-        store.save(root, TENANT, EMAIL, "Rotated-Synthetic-7")
-        self.assertEqual(store.load(root, TENANT).password, "Rotated-Synthetic-7")
-        self.assertEqual(store.load(root, "second.wd1.myworkdayjobs.com").password, "Second-Synthetic-9")
+        store.save(root, "second.wd1.myworkdayjobs.com", EMAIL, "synthetic-second-9")
+        store.save(root, TENANT, EMAIL, "synthetic-rotated-7")
+        self.assertEqual(store.load(root, TENANT).password, "synthetic-rotated-7")
+        self.assertEqual(store.load(root, "second.wd1.myworkdayjobs.com").password, "synthetic-second-9")
         self.assertEqual(store.tenants(root), sorted([TENANT, "second.wd1.myworkdayjobs.com"]))
 
     def test_tenants_lists_names_without_any_secret(self):
@@ -75,11 +75,11 @@ class CredentialStoreTests(SetupRootCase):
         store = self.store()
         root = self.root / RUNTIME
         store.save(root, TENANT, EMAIL, PASSWORD)
-        store.save(root, TENANT, EMAIL, "Rotated-Synthetic-7")
+        store.save(root, TENANT, EMAIL, "synthetic-rotated-7")
         holders = [
             path.relative_to(root).as_posix()
             for path in root.rglob("*")
-            if path.is_file() and (PASSWORD.encode() in path.read_bytes() or b"Rotated-Synthetic-7" in path.read_bytes())
+            if path.is_file() and (PASSWORD.encode() in path.read_bytes() or b"synthetic-rotated-7" in path.read_bytes())
         ]
         self.assertEqual(holders, ["secrets.json"], "no backup, temp or lock file may hold a password")
 
@@ -127,11 +127,11 @@ class CredentialStoreTests(SetupRootCase):
         store = self.store()
         root = self.root / RUNTIME
         store.save(root, TENANT, EMAIL, PASSWORD)
-        store.save(root, "second.wd1.myworkdayjobs.com", EMAIL, "Second-Synthetic-9")
-        text = f"signin failed for {PASSWORD}; retry with Second-Synthetic-9 ok"
+        store.save(root, "second.wd1.myworkdayjobs.com", EMAIL, "synthetic-second-9")
+        text = f"signin failed for {PASSWORD}; retry with synthetic-second-9 ok"
         cleaned = store.redact(root, text)
         self.assertNotIn(PASSWORD, cleaned)
-        self.assertNotIn("Second-Synthetic-9", cleaned)
+        self.assertNotIn("synthetic-second-9", cleaned)
         self.assertIn("signin failed", cleaned)
         nested = store.redact(root, {"out": [text, {"deep": PASSWORD}], "n": 3})
         self.assertNotIn(PASSWORD, json.dumps(nested))

@@ -34,6 +34,10 @@ sign-in, account creation, CAPTCHA, unknown questions, errors and manual
 inspection. There is no Gmail command in this release; never send, draft,
 archive, label, scrape browser Gmail, or persist verification codes.
 
+Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/wd_cred.py`): never
+print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any
+secrets file; `scripts/check_release.py` fails when git tracks one.
+
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,
 Node adapter tests and scripts/check_release.py from this release root. Do not
