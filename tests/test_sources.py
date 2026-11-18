@@ -373,6 +373,22 @@ class SourceTests(ReleaseCase):
             client.import_url.assert_called_once_with(url)
             client.fetch.assert_not_called()
 
+    def test_rate_limited_board_is_reported_as_rate_limited_not_unknown(self):
+        from email.message import Message
+        from urllib.error import HTTPError
+
+        fetch = self.module("fetch")
+        self.write_json("profile.json", {"schema_version": 1, "revision": 1, "targets": {}})
+        self.config([SEEDS[1], SEEDS[0]])
+        client = Mock(spec=["fetch", "import_url"])
+        limited = HTTPError("https://synthetic.example.invalid/jobs", 429, "Too Many Requests", Message(), None)
+        client.fetch.side_effect = [limited, TimeoutError("synthetic timeout")]
+        with patch.object(fetch, "Fetcher", return_value=client):
+            report = self.module("runtime").fetch(root=self.root)
+        self.assertEqual([item["status"] for item in report["unknown"]], ["rate_limited", "unknown"])
+        self.assertEqual(report["unknown"][0]["board"]["ats"], "workday")
+        self.assertIn("429", report["unknown"][0]["reason"])
+
     def rippling(self, identity=UUID):
         transport = Mock(spec=["get_json", "post_json"])
         transport.get_json.return_value = [
