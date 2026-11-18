@@ -198,6 +198,88 @@ class GuidedQuickTests(ReleaseCase):
         self.assertEqual(profile["contact"]["legal_name"]["value"], "Alex Rivera")
 
 
+class GuidedQuickReviewTests(ReleaseCase):
+    prepared, run_guided, progress, document = (GuidedQuickTests.prepared, GuidedQuickTests.run_guided,
+                                                GuidedQuickTests.progress, GuidedQuickTests.document)
+    entry, reply, drive = GuidedQuickTests.entry, GuidedQuickTests.reply, GuidedQuickTests.drive
+
+    def confirmed_filters(self, answers):
+        self.prepared()
+        base = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
+        packet, _ = self.drive(self.run_guided(), {**base, **answers}, "setup.quick.filters")
+        return self.reply(packet, [self.entry(packet["questions"][0], "confirm")])
+
+    def edit_answer(self, field, value=None, status="answered"):
+        packet = self.run_guided(edit=field)
+        question = next(q for q in packet["questions"] if q["id"] == field)
+        return self.reply(packet, [self.entry(question, value, status)])
+
+    def test_confirm_shows_every_resume_value_it_writes(self):
+        self.prepared()
+        packet = self.run_guided()
+        education, experience = packet["questions"][1]["prompt"]["en"], packet["questions"][2]["prompt"]["en"]
+        self.assertIn("2027-05", education)
+        self.assertIn("expected", education)
+        self.assertIn("Computer Science", education)
+        self.assertIn("Built a caching layer for an internal API", experience)
+        self.assertIn("Maintained a ticket dashboard", experience)
+        self.assertIn("Springfield, IL", experience)
+        self.assertIn("Built a caching layer", packet["questions"][2]["prompt"]["vi"])
+
+    def test_unknown_sponsorship_after_confirm_clears_derived_exclusions(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True})
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ALL_JD)
+        packet = self.edit_answer("authorization.sponsorship_now", status="unknown")
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+        self.assertIn("setup.quick.filters", [q["id"] for q in packet["questions"]],
+                      "Changed answers show the filter review again")
+        self.assertNotIn("ITAR", packet["questions"][0]["prompt"]["en"])
+
+    def test_resync_keeps_filters_the_user_edited(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True})
+        self.edit_answer("filters.jd_exclude", ["itar"])
+        self.edit_answer("authorization.sponsorship_now", False)
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ["itar"])
+
+    def test_unrelated_edit_does_not_requeue_filters(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True})
+        packet = self.edit_answer("contact.city", "Springfield")
+        self.assertNotIn("setup.quick.filters", [q["id"] for q in packet["questions"]])
+
+    def test_terminal_resumes_and_engine_seed_the_draft(self):
+        self.prepared()
+        self.run_guided()
+        runtime, resumes = self.document()["runtime"], self.document()["resumes"]
+        self.assertEqual(runtime["apply_engine"], "claude")
+        self.assertTrue(resumes["main_pdf"].endswith("alex.txt"))
+
+    def test_cleared_alternatives_reach_config_and_kept_ones_keep_tags(self):
+        self.prepared()
+        config = json.loads((self.root / "config.json").read_text(encoding="utf-8"))
+        other = self.root / "resumes/other.txt"
+        other.write_text("Alex Rivera", encoding="utf-8")
+        config["resumes"]["alternatives"] = [{"id": "other", "path": str(other), "tags": ["Data"]}]
+        self.write_json("config.json", config)
+        self.assertEqual(self.document_after_seed()["resumes"]["alternatives"], [str(other)])
+        self.run_guided(finish=True)
+        self.assertTrue(self.run_guided(confirm=True)["applied"])
+        config = json.loads((self.root / "config.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["resumes"]["alternatives"], [{"id": "other", "path": str(other), "tags": ["Data"]}])
+        packet = self.run_guided(edit="resumes.alternatives")
+        question = next(q for q in packet["questions"] if q["id"] == "resumes.alternatives")
+        self.reply(packet, [self.entry(question, status="unknown")])
+        self.assertEqual(self.document()["resumes"]["alternatives"], [])
+        self.run_guided(finish=True)
+        self.assertTrue(self.run_guided(confirm=True)["applied"])
+        config = json.loads((self.root / "config.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["resumes"]["alternatives"], [])
+        self.assertEqual(config["runtime"]["jobs_per_run"], 10)
+
+    def document_after_seed(self):
+        self.run_guided()
+        return self.document()
+
+
 class IntakeCompatibilityTests(ReleaseCase):
     def test_documents_without_the_new_filter_fields_still_validate(self):
         intake = self.module("intake")
