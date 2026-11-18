@@ -8,7 +8,9 @@ infer work authorization, sponsorship or consent from student status or filters.
 The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
 engine opens: language, engine with one small login/quota probe call, quota stop
 percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
-saved to `config.json`. It then hands the terminal to the selected engine with
+saved to `config.json`; then it opens the tool's clean Chrome profile
+(`chrome/lane-1`) on Gmail for the user to sign in and scans 183 days of
+confirmation emails into the tracker (deduplicated). It then hands the terminal to the selected engine with
 `/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
 interview subprocess. Inside an engine, never run `setup --terminal`.
 
@@ -23,7 +25,8 @@ permits `setup --confirm` for the saved preview. No native tool or forbidden mod
 means `--ui none` / `ui_required`, preserving progress. Never ask setup questions
 as chat prose, launch an engine subprocess for the interview, change mode/engine
 or infer an answer from timeout/preselection. The advanced intake remains an
-optional editor/export. This setup flow never permits Submit or Gmail access.
+optional editor/export. This native setup flow never permits Submit or Gmail
+access; only the terminal Gmail step reads the Gmail tab.
 
 Guided setup after terminal setup begins with quick steps: resume fact groups
 (contact, education, experience, skills) for Confirm/Edit, then facts a resume
@@ -44,8 +47,11 @@ clicks a Submit control: no command, workflow, browser call or engine task may
 request one, and the user submits each held form by hand, then records it with
 `submitted ID,ID`, which frees its held-tab slot. Preserve held forms for
 sign-in, account creation, CAPTCHA, unknown questions, errors and manual
-inspection. There is no Gmail command in this release; never send, draft,
-archive, label, scrape browser Gmail, or persist verification codes.
+inspection. There is no Gmail command or OAuth. Gmail is read only in the Gmail
+tab of the tool's own Chrome profile, signed in by the user, through the
+read-only `adapters/gmail.cjs` (search and result rows); never open, send,
+draft, archive or label a message, store a verification email, or persist
+verification codes. Tests use synthetic Gmail DOM and rows only.
 
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,

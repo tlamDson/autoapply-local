@@ -11,7 +11,12 @@ import json
 import re
 from pathlib import Path
 
-ADAPTERS = {"greenhouse": "AutoApplyGreenhouse", "rippling": "AutoApplyRippling", "workday": "AutoApplyWorkday"}
+ADAPTERS = {
+    "greenhouse": "AutoApplyGreenhouse",
+    "lever": "AutoApplyLever",
+    "rippling": "AutoApplyRippling",
+    "workday": "AutoApplyWorkday",
+}
 CLICKS = re.compile(r"\.click\s*\(|requestSubmit|\.submit\s*\(")
 CHOICE_TYPES = {"select", "select-one", "radio"}
 WIDGET_TYPES = {"combobox", "listbox", "checkbox-group"}
@@ -67,6 +72,9 @@ class ScriptDriver:
     """Base class; an ATS driver sets ``name`` and may override ``known``/``is_resume``."""
 
     name = None
+    # True when the ATS parses the uploaded resume and overwrites fields with
+    # what it read, so the resume must be uploaded before the planned fill.
+    upload_before_fill = False
 
     def known(self, field, profile, job):
         """ATS-specific fact for a field, or None to use the generic resolver."""
@@ -176,5 +184,6 @@ class ScriptDriver:
 def driver_for(ats):
     """The script driver for an ATS, or None when only the engine can fill it."""
     from .greenhouse_driver import GreenhouseDriver
+    from .lever_driver import LeverDriver
 
-    return {"greenhouse": GreenhouseDriver}.get(ats, lambda: None)()
+    return {"greenhouse": GreenhouseDriver, "lever": LeverDriver}.get(ats, lambda: None)()

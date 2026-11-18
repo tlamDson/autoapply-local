@@ -338,7 +338,10 @@ tab đang giữ rồi tự nộp.
 - `setup`: khởi tạo intake và state trống, không ghi đè file cũ.
 - `setup --terminal [--no-launch]`: hỏi trên terminal (ngôn ngữ, engine kèm kiểm
   đăng nhập và quota, phần trăm quota để dừng, resume PDF gắn tag vị trí, số job mỗi
-  lượt), lưu vào `config.json`, rồi mở engine đã chọn với `/setup`.
+  lượt), lưu vào `config.json`; sau đó mở profile Chrome sạch riêng của tool
+  (`chrome/lane-1` trong thư mục runtime) ở trang Gmail để bạn đăng nhập, rồi thêm
+  mail xác nhận nộp đơn của sáu tháng qua vào tracker, mỗi đơn một lần; cuối cùng
+  mở engine đã chọn với `/setup`.
 - `boards list`: xem nguồn khám phá job đã cấu hình.
 - `boards import PATH [--confirm]`: kiểm, chuẩn hóa và bỏ trùng JSON list nguồn;
   xem preview nguồn thêm/đổi rồi xác nhận để gộp.
@@ -380,7 +383,11 @@ Luồng nhiều trang truyền PDF đã chọn vào thao tác native, upload t�
 trước Next. Review kiểm text/value mới và attachment khớp receipt upload được
 browser quan sát; hash dự kiến của file cục bộ không tự chứng minh đã upload.
 
-Bản này không có lệnh Gmail; không scrape Gmail trên browser và không tạo OAuth riêng.
+Không có lệnh Gmail và không có OAuth. Truy cập Gmail duy nhất là tab Gmail trong
+profile Chrome riêng của tool, nơi bạn tự đăng nhập: setup tìm trong đó mail xác
+nhận nộp đơn của 183 ngày qua và đọc các dòng kết quả (người gửi, tiêu đề, đoạn
+trích, ngày). Tool không bao giờ mở, gửi, soạn nháp, lưu trữ hay gắn nhãn mail,
+bỏ qua mail xác minh, và chỉ lưu tiêu đề mail xác nhận, công ty, vị trí, ngày.
 
 Tracker XLSX cục bộ là nguồn chuẩn; khôi phục ledger phải đối chiếu mọi trạng thái
 lịch sử. Nhập lịch sử CSV/XLSX cần preview và confirm; trạng thái không biết phải
@@ -389,7 +396,7 @@ xử lý rõ ràng, không biến thành pending. Giữ backup tracker và ledge
 ## Kiểm và export
 
 Từ thư mục release: `python -m unittest discover -s tests -p "test_*.py" -v`,
-`node --test tests/adapters.test.cjs`, `python scripts/check_release.py`.
+`node --test tests/adapters.test.cjs tests/gmail.test.cjs`, `python scripts/check_release.py`.
 Test dùng dữ liệu tổng hợp và mock engine/browser/network; smoke TeX chỉ chạy
 khi có công cụ tùy chọn. Manifest và scanner kiểm nội dung nguồn lẫn archive
 wheel/sdist/ZIP cuối; .gitignore không thay thế kiểm. Không publish user data,
