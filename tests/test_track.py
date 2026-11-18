@@ -285,6 +285,73 @@ class TrackTests(ReleaseCase):
         self.assertEqual(report["history"]["added"], 0)
         self.assertEqual(self.store.get("ab-1")["state"], "filled")
 
+    def northwind_form(self, job_id="n-2"):
+        self.held(job_id, f"https://jobs.lever.co/northwind/{job_id}/apply", company="Northwind Analytics",
+                  role="Data Intern")
+        return {"id": "tab-" + job_id, "url": f"https://jobs.lever.co/northwind/{job_id}/apply"}
+
+    def assert_email_held_back(self, report, submitted=()):
+        self.assertEqual([(item["job_id"], item["via"]) for item in report["submitted"]], list(submitted))
+        self.assertEqual(self.store.get("n-2")["state"], "filled", "the email may belong to the other job")
+        self.assertEqual(report["held_back_emails"], 1)
+        self.assertEqual(report["history"]["added"], 0)
+
+    def test_email_is_held_back_when_a_legacy_job_confirmed_by_its_page_in_this_run_could_have_sent_it(self):
+        self.held("n-1", "https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics", role="ML Intern",
+                  held_at=None)
+        cdp = FakeCDP([{"id": "tab-n-1", "url": "https://jobs.lever.co/northwind/1/thanks"}, self.northwind_form()])
+        rows = [mail("Northwind Analytics", thread="th-plain")]
+        self.assert_email_held_back(self.reconcile(cdp, rows), [("n-1", "page")])
+        self.assertEqual(self.tracker_ids(), ["n-1"])
+        self.assert_email_held_back(self.reconcile(cdp, rows))
+        self.assertEqual(self.tracker_ids(), ["n-1"])
+
+    def test_email_is_held_back_when_a_legacy_held_job_still_on_its_form_could_have_sent_it(self):
+        self.held("n-1", "https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics", role="ML Intern",
+                  held_at=None)
+        cdp = FakeCDP([{"id": "tab-n-1", "url": "https://jobs.lever.co/northwind/1/apply"}, self.northwind_form()])
+        self.assert_email_held_back(self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")]))
+        self.assertEqual(self.store.get("n-1")["state"], "filled")
+        self.assertEqual(self.tracker_ids(), [])
+
+    def test_email_naming_the_role_still_matches_next_to_a_legacy_job_with_another_role(self):
+        self.held("n-1", "https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics", role="ML Intern",
+                  held_at=None)
+        cdp = FakeCDP([{"id": "tab-n-1", "url": "https://jobs.lever.co/northwind/1/apply"}, self.northwind_form()])
+        report = self.reconcile(cdp, [mail("Northwind Analytics", "Data Intern", thread="th-role")])
+        self.assertEqual([(item["job_id"], item["via"]) for item in report["submitted"]], [("n-2", "email")])
+        self.assertEqual(self.store.get("n-1")["state"], "filled")
+
+    def test_email_is_held_back_when_a_filled_job_without_a_tab_could_have_sent_it(self):
+        self.store.enqueue(job("n-1", url="https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics",
+                               role="ML Intern"))
+        self.store.update("n-1", state="filled", held_at="2026-11-17T08:00:00+00:00")
+        cdp = FakeCDP([self.northwind_form()])
+        self.assert_email_held_back(self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")]))
+        self.assertEqual(self.tracker_ids(), [])
+
+    def test_email_is_held_back_when_a_job_being_recorded_by_hand_could_have_sent_it(self):
+        self.store.enqueue(job("n-1", url="https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics",
+                               role="ML Intern"))
+        self.store.update("n-1", state="claimed")
+        self.store.record_submit_intent("n-1", {"review_id": "by-hand"})
+        cdp = FakeCDP([self.northwind_form()])
+        self.assert_email_held_back(self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")]))
+        self.assertEqual(self.tracker_ids(), [])
+
+    def test_email_is_held_back_when_a_recent_application_that_moved_to_a_later_stage_could_have_sent_it(self):
+        self.store.enqueue(job("n-1", url="https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics",
+                               role="ML Intern"))
+        self.store.update("n-1", state="claimed")
+        self.store.record_submit_intent("n-1", {"review_id": "r"})
+        self.store.mark_submitted("n-1", {"status": "confirmed", "job_id": "n-1", "text": "page",
+                                          "url": "https://jobs.lever.co/northwind/1/thanks",
+                                          "confirmed_at": "2026-11-17T09:30:00+00:00"})
+        self.store.update("n-1", state="interview")
+        cdp = FakeCDP([self.northwind_form()])
+        self.assert_email_held_back(self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")]))
+        self.assertEqual(self.tracker_ids(), ["n-1"])
+
     def test_legacy_held_job_matches_an_exact_role_confirmation_from_the_last_two_weeks(self):
         # Held before `held_at` existed: no held day, so the email must name the exact role.
         self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",
