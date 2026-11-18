@@ -8,6 +8,7 @@ import re
 import zipfile
 from xml.etree import ElementTree
 
+from . import resume_places
 from .extraction import extract_source
 
 
@@ -151,11 +152,17 @@ def _experience(lines):
             records.append(record)
         elif record is not None and BULLET.match(line):
             bullets.append(BULLET.sub("", line).strip())
-        elif record is not None and "title" not in record and not bullets:
-            columns = _columns(text)
-            record["title"] = columns[0]
-            if len(columns) > 1:
-                record["location"] = columns[1]
+        elif record is not None and bullets:
+            # A wrapped bullet continues on the next PDF line; a multi-column line is a heading, not prose.
+            if len(_columns(text)) == 1:
+                bullets[-1] = f"{bullets[-1]} {text}"
+        elif record is not None and "title" not in record:
+            # A technology list sits where a location usually does; it is never the title or the location.
+            columns = [column for column in _columns(text) if not resume_places.is_stack(column)]
+            if columns:
+                record["title"] = columns[0]
+            if location := next((column for column in columns[1:] if resume_places.is_place(column)), None):
+                record["location"] = location
     close()
     return [{key: r[key] for key in ("employer", "title", "location", "start", "end", "description") if key in r}
             for r in records]

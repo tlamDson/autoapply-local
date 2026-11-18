@@ -164,6 +164,7 @@
   "autoapply_local/job_filters.py",
   "autoapply_local/job_rules.py",
   "autoapply_local/resume_facts.py",
+  "autoapply_local/resume_places.py",
   "tests/test_guided_quick.py",
   "tests/test_job_filters.py",
   "tests/test_resume_facts.py",
