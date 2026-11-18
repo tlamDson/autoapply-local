@@ -56,6 +56,10 @@ with `questions --refill`. A banked answer is reused only for the same question
 wording, options, country and job type (authorization, sponsorship, consent,
 EEO and pay questions also keep employer and start date); it is never inferred.
 
+Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/wd_cred.py`): never
+print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any
+secrets file; `scripts/check_release.py` fails when git tracks one.
+
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,
 Node adapter tests and scripts/check_release.py from this release root. Do not
