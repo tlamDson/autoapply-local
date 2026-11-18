@@ -119,6 +119,15 @@ Add/Done từng trường. Danh sách lựa chọn dài có phân trang. Unknown
 biến thành No; EEO tùy chọn có thể từ chối. Có thể tiếp tục hoặc sửa câu đã hỏi
 bằng `setup --guided --edit QUESTION_ID --ui UI`.
 
+Sau phần setup trong terminal, setup có hướng dẫn trước hết hiện từng nhóm thông
+tin đọc từ resume (liên hệ, học tập, kinh nghiệm, kỹ năng) với Xác nhận / Sửa, rồi
+hỏi những gì resume không có (quyền làm việc, nhu cầu bảo lãnh, địa chỉ, EEO, kỳ
+tuyển dụng, role mong muốn), rồi hiện bộ lọc job suy ra từ các câu trả lời đó với
+Xác nhận / Sửa: cần bảo lãnh thì bỏ job ghi "no sponsorship", chỉ công dân Mỹ,
+clearance và ITAR; kỳ và loại công việc tạo bộ lọc tiêu đề (ví dụ chỉ thực tập,
+bỏ tiêu đề senior hoặc full-time); job đăng trong 7 ngày; các công ty bạn loại trừ.
+Bộ câu hỏi đầy đủ tiếp tục sau các bước này và vẫn là tùy chọn.
+
 Để sửa record học tập, kinh nghiệm hoặc authorization đã có, chọn Edit an existing
 record rồi chọn đúng mục có số thứ tự trong popup. Sửa từng trường, chọn Done để
 giữ draft hoặc Cancel and keep original record để hủy thay đổi của record đó.

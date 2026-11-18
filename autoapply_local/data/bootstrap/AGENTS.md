@@ -25,6 +25,12 @@ prose, an engine subprocess, another engine/mode or preselected/default/timeout
 answers. The intake is an optional advanced editor/export. Setup grants no
 Submit permission and performs no Gmail access.
 
+Guided setup after terminal setup begins with quick steps: resume fact groups
+(contact, education, experience, skills) for Confirm/Edit, then facts a resume
+lacks (work authorization, sponsorship, address, EEO, season, roles), then job
+filters derived only from explicit answers for Confirm/Edit. An unknown
+sponsorship answer never produces a sponsorship filter.
+
 If setup becomes stale, invoke native Reload latest confirmed profile / Keep
 current draft choices and wait. Run `setup --restart --ui UI` only after explicit
 Reload; Keep, timeout or unavailable native UI makes no changes. Restart saves

@@ -25,6 +25,12 @@ as chat prose, launch an engine subprocess for the interview, change mode/engine
 or infer an answer from timeout/preselection. The advanced intake remains an
 optional editor/export. This setup flow never permits Submit or Gmail access.
 
+Guided setup after terminal setup begins with quick steps: resume fact groups
+(contact, education, experience, skills) for Confirm/Edit, then facts a resume
+lacks (work authorization, sponsorship, address, EEO, season, roles), then job
+filters derived only from explicit answers for Confirm/Edit. An unknown
+sponsorship answer never produces a sponsorship filter.
+
 If setup becomes stale, use the native Reload latest confirmed profile / Keep
 current draft popup. Run `setup --restart --ui UI` only after explicit Reload;
 Keep, timeout or no native tool preserves progress. Restart backs up old progress

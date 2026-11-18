@@ -27,6 +27,9 @@ permits `setup --confirm`. No native tool or forbidden mode returns `ui_required
 with progress kept. Never replace the popup with chat prose, use an engine
 subprocess to interview, switch modes/engines or treat defaults/timeouts as input.
 The complete intake is an optional advanced editor/export, not required setup.
+After terminal setup, guided setup first shows resume fact groups, then the facts
+a resume lacks, then job filters derived from explicit answers, each with
+Confirm/Edit; extracted values stay drafts until the saved preview is confirmed.
 
 For stale dependencies, invoke native Reload latest confirmed profile / Keep
 current draft choices and wait. Only explicit Reload permits `setup --restart
