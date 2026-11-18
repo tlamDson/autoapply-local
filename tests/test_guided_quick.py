@@ -1,0 +1,228 @@
+"""Engine setup part 3.3 steps 1-3: resume groups, missing facts, derived filters."""
+
+import json
+import unittest
+
+from test_resume_facts import RESUME
+from test_support import ReleaseCase
+
+META = ("schema_version", "session_id", "revision", "batch_id")
+ALL_JD = ["no_sponsorship", "us_citizen", "clearance", "itar"]
+MISSING = ["authorization.authorized_now", "authorization.sponsorship_now", "authorization.sponsorship_future",
+           "contact.street", "contact.city", "contact.state", "contact.postcode", "contact.country",
+           "compensation.eeo", "logistics.season", "logistics.year", "targets.job_types", "targets.roles"]
+
+
+class GuidedQuickTests(ReleaseCase):
+    def prepared(self, resume=RESUME, terminal=True):
+        self.module("runtime").setup(root=self.root)
+        config = json.loads((self.root / "config.json").read_text(encoding="utf-8"))
+        if terminal:
+            path = self.root / "resumes/alex.txt"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if resume is not None:
+                path.write_text(resume, encoding="utf-8")
+            config["runtime"].update(language="en", apply_engine="claude", jobs_per_run=10, quota_stop_percent=90)
+            config["resumes"] = {"main_pdf": str(path), "main_tags": ["SWE"], "alternatives": []}
+        self.write_json("config.json", config)
+
+    def run_guided(self, **kwargs):
+        return self.module("guided").run(self.root, ui="codex-async", **kwargs)
+
+    def progress(self):
+        return json.loads((self.root / "user/setup-progress.json").read_text(encoding="utf-8"))
+
+    def document(self):
+        return self.progress()["document"]["groups"]
+
+    def entry(self, question, value=None, status="answered"):
+        result = {"question_id": question["id"], "status": status}
+        if status != "answered":
+            return result
+        values = value if question["kind"] == "multi_choice" else [value]
+        ids = [next((c["id"] for c in question["choices"] if not c.get("control") and type(c["value"]) is type(v)
+                     and c["value"] == v), None) for v in values]
+        if all(ids):
+            result["option_ids"] = ids
+        else:
+            result["value"] = value
+        return result
+
+    def reply(self, packet, entries):
+        path = self.root.parent / (self.root.name + "-quick-response.json")
+        self.addCleanup(path.unlink, missing_ok=True)
+        path.write_text(json.dumps({**{key: packet[key] for key in META}, "answers": entries}), encoding="utf-8")
+        return self.run_guided(answer=path)
+
+    def drive(self, packet, answers, until):
+        """Answer listed fields, skip the rest, until a question with ``until`` ID is issued."""
+        seen = []
+        for _ in range(200):
+            ids = [q["id"] for q in packet["questions"]]
+            seen.extend(ids)
+            if until in ids or packet["status"] != "questions":
+                return packet, seen
+            packet = self.reply(packet, [self.entry(q, answers[q["id"]]) if q["id"] in answers
+                                         else self.entry(q, status="notasked") for q in packet["questions"]])
+        self.fail("setup did not reach " + until)
+
+    def test_resume_groups_come_first_with_confirm_and_edit(self):
+        self.prepared()
+        packet = self.run_guided()
+        ids = [q["id"] for q in packet["questions"]]
+        self.assertEqual(ids, ["setup.quick.resume.contact", "setup.quick.resume.education",
+                               "setup.quick.resume.experience"])
+        contact = packet["questions"][0]
+        self.assertIn("Alex Rivera", contact["prompt"]["en"])
+        self.assertIn("alex.rivera@example.invalid", contact["prompt"]["en"])
+        values = [c["value"] for c in contact["choices"] if not c.get("control")]
+        self.assertEqual(values, ["confirm", "edit"])
+        self.assertIn("Northfield State University", packet["questions"][1]["prompt"]["en"])
+        self.assertIn("Example Labs", packet["questions"][2]["prompt"]["en"])
+        self.assertEqual(packet["ui"]["tool"], "request_user_input_async")
+
+    def test_confirm_writes_group_and_edit_asks_its_fields_with_the_resume_value(self):
+        self.prepared()
+        packet = self.run_guided()
+        contact, education, experience = packet["questions"]
+        packet = self.reply(packet, [self.entry(contact, "confirm"), self.entry(education, "edit"),
+                                     self.entry(experience, "confirm")])
+        groups = self.document()
+        self.assertEqual(groups["contact"]["legal_name"], "Alex Rivera")
+        self.assertEqual(groups["contact"]["github"], "https://github.com/alexrivera-example")
+        self.assertEqual([r["employer"] for r in groups["experience"]["records"]], ["Example Labs", "Campus Tools Office"])
+        # Edit keeps the resume value as the draft and asks each of its fields.
+        self.assertEqual(groups["education"]["records"][0]["school"], "Northfield State University")
+        ids = [q["id"] for q in packet["questions"]]
+        self.assertEqual(ids, ["education.records", "education.gpa", "education.gpa_scale"])
+        self.assertIn("Resume shows", packet["questions"][1]["prompt"]["en"])
+        self.assertIn("3.8", packet["questions"][1]["prompt"]["en"])
+        packet = self.reply(packet, [self.entry(packet["questions"][0], status="notasked"),
+                                     self.entry(packet["questions"][1], 3.9),
+                                     self.entry(packet["questions"][2], status="notasked")])
+        groups = self.document()
+        self.assertEqual(groups["education"]["gpa"], 3.9)
+        self.assertEqual(groups["education"]["gpa_scale"], 4.0)
+        self.assertEqual(len(groups["education"]["records"]), 1)
+        self.assertEqual(packet["questions"][0]["id"], "setup.quick.resume.skills")
+
+    def test_skipping_a_group_writes_nothing(self):
+        self.prepared()
+        packet = self.run_guided()
+        self.reply(packet, [self.entry(q, status="notasked") for q in packet["questions"]])
+        groups = self.document()
+        self.assertIsNone(groups["contact"]["legal_name"])
+        self.assertEqual(groups["experience"]["records"], [])
+
+    def test_missing_facts_then_filters_derived_from_answers(self):
+        self.prepared()
+        answers = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
+        answers.update({"authorization.sponsorship_now": True, "logistics.season": "summer", "logistics.year": 2027,
+                        "targets.job_types": ["internship"], "targets.roles": ["SWE"]})
+        packet, seen = self.drive(self.run_guided(), answers, "setup.quick.filters")
+        catalog = [i for i in seen if not i.startswith("setup.")]
+        self.assertEqual(catalog, MISSING, "Missing facts follow the resume groups; resume fields are not re-asked")
+        self.assertEqual([q["id"] for q in packet["questions"]], ["setup.quick.filters"], "Filters are shown alone")
+        prompt = packet["questions"][0]["prompt"]["en"]
+        for needle in ("7 days", "ITAR", "intern", "senior", "Summer 2027", "SWE"):
+            self.assertIn(needle, prompt)
+        packet = self.reply(packet, [self.entry(packet["questions"][0], "confirm")])
+        filters = self.document()["filters"]
+        self.assertEqual(filters["jd_exclude"], ALL_JD)
+        self.assertEqual(filters["title_include"], ["intern"])
+        self.assertIn("senior", filters["title_exclude"])
+        self.assertEqual(filters["posted_within_days"], 7)
+        # The optional advanced intake continues and never re-asks quick fields.
+        later, rest = self.drive(packet, {}, "never")
+        self.assertEqual(later["status"], "draft_complete")
+        asked = set(MISSING) | {"contact.legal_name", "contact.application_email", "education.records",
+                                "experience.records", "experience.skills", "filters.jd_exclude"}
+        self.assertFalse(asked & set(rest), sorted(asked & set(rest)))
+        self.assertIn("runtime.mode", rest)
+        preview = self.run_guided(finish=True)
+        self.assertEqual(preview["status"], "preview")
+        changed = {change["field"] for change in preview["preview"]["changes"]}
+        self.assertIn("filters.jd_exclude", changed)
+
+    def test_filters_follow_the_latest_answers(self):
+        self.prepared()
+        answers = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
+        answers.update({"authorization.sponsorship_now": False, "authorization.sponsorship_future": False})
+        packet, _ = self.drive(self.run_guided(), answers, "setup.quick.filters")
+        self.assertNotIn("ITAR", packet["questions"][0]["prompt"]["en"])
+        self.reply(packet, [self.entry(packet["questions"][0], "confirm")])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+
+    def test_edit_filters_asks_each_filter_with_the_suggestion(self):
+        self.prepared()
+        answers = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
+        answers.update({"authorization.sponsorship_future": True, "targets.job_types": ["internship"]})
+        packet, _ = self.drive(self.run_guided(), answers, "setup.quick.filters")
+        packet = self.reply(packet, [self.entry(packet["questions"][0], "edit")])
+        self.assertEqual([q["id"] for q in packet["questions"]],
+                         ["filters.posted_within_days", "filters.jd_exclude", "filters.title_include"])
+        self.assertIn("Suggested", packet["questions"][0]["prompt"]["en"])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ALL_JD)
+        packet = self.reply(packet, [self.entry(packet["questions"][0], 3),
+                                     self.entry(packet["questions"][1], ["itar"]),
+                                     self.entry(packet["questions"][2], status="notasked")])
+        filters = self.document()["filters"]
+        self.assertEqual((filters["posted_within_days"], filters["jd_exclude"]), (3, ["itar"]))
+        self.assertEqual(filters["title_include"], ["intern"])
+        self.assertEqual([q["id"] for q in packet["questions"]], ["filters.title_exclude", "filters.excluded_employers"])
+
+    def test_unreadable_resume_starts_with_missing_facts(self):
+        self.prepared(resume=None)
+        packet = self.run_guided()
+        self.assertEqual([q["id"] for q in packet["questions"]], MISSING[:3])
+
+    def test_without_terminal_setup_the_original_order_is_kept(self):
+        self.prepared(terminal=False)
+        packet = self.run_guided()
+        self.assertEqual({q["id"] for q in packet["questions"]}, {"runtime.mode", "runtime.language", "runtime.apply_engine"})
+
+    def test_confirm_keeps_terminal_setup_config(self):
+        self.prepared()
+        packet = self.run_guided()
+        self.reply(packet, [self.entry(q, "confirm") for q in packet["questions"]])
+        self.run_guided(finish=True)
+        result = self.run_guided(confirm=True)
+        self.assertTrue(result["applied"])
+        config = json.loads((self.root / "config.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["runtime"]["jobs_per_run"], 10)
+        self.assertEqual(config["runtime"]["quota_stop_percent"], 90)
+        self.assertEqual(config["resumes"]["main_tags"], ["SWE"])
+        self.assertTrue(config["resumes"]["main_pdf"].endswith("alex.txt"))
+        self.assertEqual(config["runtime"]["apply_engine"], "claude")
+        profile = json.loads((self.root / "profile.json").read_text(encoding="utf-8"))
+        self.assertEqual(profile["contact"]["legal_name"]["value"], "Alex Rivera")
+
+
+class IntakeCompatibilityTests(ReleaseCase):
+    def test_documents_without_the_new_filter_fields_still_validate(self):
+        intake = self.module("intake")
+        document = intake.blank_intake()
+        for name in ("posted_within_days", "title_include", "title_exclude", "jd_exclude"):
+            del document["groups"]["filters"][name]
+        validated = intake._validate_document(document)
+        self.assertEqual(validated["groups"]["filters"]["jd_exclude"], [])
+        self.assertIsNone(validated["groups"]["filters"]["posted_within_days"])
+
+    def test_new_filter_fields_are_typed(self):
+        intake = self.module("intake")
+        document = intake.blank_intake()
+        document["groups"]["filters"]["posted_within_days"] = "seven"
+        with self.assertRaises(ValueError):
+            intake._validate_document(document)
+        document["groups"]["filters"].update(posted_within_days=7, jd_exclude=["telepathy"])
+        with self.assertRaises(ValueError):
+            intake._validate_document(document)
+
+    def test_catalog_offers_the_jd_rules_as_choices(self):
+        question = self.module("guided_catalog").index()["filters.jd_exclude"]
+        self.assertEqual(question["kind"], "multi_choice")
+        self.assertEqual([c["value"] for c in question["choices"]], ALL_JD)
+
+
+if __name__ == "__main__":
+    unittest.main()
