@@ -474,3 +474,41 @@ test('rippling: an earlier place id never passes for a new pick', async () => {
   const partial = await rippling.location(other.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
   assert.equal(reasonOf(partial), 'place_not_selected');
 });
+
+test('rippling: a place id the page restores or sets before the pick never passes', async () => {
+  // The clear works, but typing makes the page put the earlier place id back and
+  // copy the typed text into location; the suggestion click then does nothing.
+  const restored = formsyForm({ model: { location: 'Old Town, NY, USA', externalPlaceId: 'old-place' } });
+  const deadOption = () => {
+    const option = new Node('li', { role: 'option' }, 'Example City, CA, USA');
+    option.listeners.click = () => {};
+    return option;
+  };
+  restored.locationInput.listeners.input = () => {
+    restored.model.location = 'Example City, CA';
+    restored.model.externalPlaceId = 'old-place';
+    restored.document.options = [deadOption()];
+  };
+  const back = await rippling.location(restored.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
+  assertShape('fill', back);
+  assert.equal(reasonOf(back), 'place_not_selected');
+  // No earlier id, but the page sets one while typing, before the tool picks.
+  const early = formsyForm();
+  early.locationInput.listeners.input = () => {
+    early.model.location = 'Example City, CA';
+    early.model.externalPlaceId = 'typed-place';
+    early.document.options = [deadOption()];
+  };
+  const typed = await rippling.location(early.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
+  assert.equal(reasonOf(typed), 'place_not_selected');
+  // A pick that really sets a new id after one appeared while typing still passes.
+  const real = formsyForm({ model: { externalPlaceId: 'old-place' } });
+  const live = suggestion('Example City, CA, USA', real.model, 'place-1');
+  real.locationInput.listeners.input = () => {
+    real.model.externalPlaceId = 'typed-place';
+    real.document.options = [live];
+  };
+  const ok = await rippling.location(real.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
+  assert.deepEqual(ok.filled, ['location']);
+  assert.equal(real.model.externalPlaceId, 'place-1');
+});

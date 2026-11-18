@@ -264,10 +264,9 @@
     const wait = () => new Promise(resolve => setTimeout(resolve, waitMs));
     const view = document.defaultView || root;
     // A place id from an earlier pick must never pass for this one: clear it
-    // first, and remember it in case the page refuses the clear.
+    // first, and remember it in case the page refuses the clear or restores it.
     const stale = state.owner.getModel()?.externalPlaceId;
     state.fields.get('externalPlaceId')?.memoizedProps.setValue('');
-    const leftover = state.owner.getModel()?.externalPlaceId;
     const setter =
       view.HTMLInputElement && Object.getOwnPropertyDescriptor(view.HTMLInputElement.prototype, 'value')?.set;
     input.focus?.();
@@ -287,12 +286,14 @@
     if (matches.length > 1) return { blocked: 'ambiguous_suggestion' };
     const pick = matches[0];
     if (unsafe(pick)) return { blocked: 'unsafe_control' };
-    // Placed = a fresh place id and the location text of the picked suggestion.
+    // Ids seen before the pick (the earlier fill's, or one the page set while
+    // typing) can never prove this pick; the same place picked again blocks.
+    const seen = new Set([stale, state.owner.getModel()?.externalPlaceId].filter(id => !empty(id)));
+    // Placed = a place id set by the pick and the location text of the suggestion.
     const placed = () => {
       const model = state.owner.getModel() || {};
       const id = model.externalPlaceId;
-      const fresh = !empty(id) && (empty(leftover) || id !== stale);
-      return fresh && norm(model.location).startsWith(wanted);
+      return !empty(id) && !seen.has(id) && norm(model.location).startsWith(wanted);
     };
     const settle = async rounds => {
       for (let attempt = 0; attempt < rounds && !placed(); attempt++) await wait();
