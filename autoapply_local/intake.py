@@ -15,6 +15,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .job_rules import JD_RULES
 from .profile import fact, validate_profile
 
 
@@ -27,7 +28,7 @@ FIELDS = {
     "logistics": "season year window earliest_start latest_end hours_per_week weeks term_time_availability preferred_locations excluded_locations work_modes relocation travel housing relocation_support",
     "authorization": "records current_status authorized_now authorized_at_start restrictions sponsorship_now sponsorship_future",
     "international_student": "status intended_mechanism cpt opt stem_opt visa_expiry program_end work_auth_expiry school_support dso_support employer_support unknown_conditions",
-    "filters": "eligibility no_sponsor_conflict priority_employers excluded_employers include_big_tech",
+    "filters": "eligibility no_sponsor_conflict priority_employers excluded_employers include_big_tech posted_within_days title_include title_exclude jd_exclude",
     "experience": "records current most_recent unlisted_projects skills metrics certifications languages",
     "compensation": "minimum range currency period unpaid_consent pronouns eeo decline_preferences",
     "history": "import_files alternate_emails avoid_employers",
@@ -35,13 +36,16 @@ FIELDS = {
     "resources": "gmail_opt_in gmail_account gmail_lookback gmail_permissions lanes chrome_override boards",
 }
 LIST_FIELDS = set(
-    "available_engines alternatives withdrawn_claims superseded_facts records job_types roles include_roles exclude_roles include_stacks exclude_stacks adjacent_roles countries preferred_locations excluded_locations work_modes restrictions unknown_conditions priority_employers excluded_employers unlisted_projects skills metrics certifications languages decline_preferences import_files alternate_emails avoid_employers employers fact_sources section_order required_entries excluded_entries required_bullets excluded_bullets gmail_permissions".split()
+    "available_engines alternatives withdrawn_claims superseded_facts records job_types roles include_roles exclude_roles include_stacks exclude_stacks adjacent_roles countries preferred_locations excluded_locations work_modes restrictions unknown_conditions priority_employers excluded_employers unlisted_projects skills metrics certifications languages decline_preferences title_include title_exclude jd_exclude import_files alternate_emails avoid_employers employers fact_sources section_order required_entries excluded_entries required_bullets excluded_bullets gmail_permissions".split()
 )
 BOOL_FIELDS = set(
     "return_after_internship display_gpa transcript_available authorized_now authorized_at_start sponsorship_now sponsorship_future include_big_tech unpaid_consent enabled allow_rewrite allow_reselection gmail_opt_in term_time_availability travel relocation_support school_support dso_support employer_support".split()
 )
-INT_FIELDS = {"lanes", "gmail_lookback", "pages", "year", "weeks"}
+INT_FIELDS = {"lanes", "gmail_lookback", "pages", "year", "weeks", "posted_within_days"}
 OBJECT_FIELDS = {"role_mapping", "cpt", "opt", "stem_opt", "eeo"}
+# Fields added after schema version 1 shipped: older documents omit them, and a
+# missing one reads as blank instead of failing validation.
+ADDED_FIELDS = {"filters": ("posted_within_days", "title_include", "title_exclude", "jd_exclude")}
 
 
 def blank_intake():
@@ -77,7 +81,9 @@ def template_text():
         "Câu nhạy cảm, pháp lý, đồng ý, quan hệ công ty và tự luận cần xác nhận đúng nguyên văn câu hỏi.\n"
         "Targets / Mục tiêu: internship/co-op/newgrad/experienced; SWE/backend/frontend/fullstack/"
         "mobile/platform/SRE/DevOps/data/AI/ML/research/QA/SDET/security/custom.\n"
-        "Filters: eligibility broad_unknown|explicit_only; no_sponsor_conflict review|exclude.\n"
+        "Filters: eligibility broad_unknown|explicit_only; no_sponsor_conflict review|exclude; "
+        "posted_within_days 1-365; title_include/title_exclude word lists; "
+        "jd_exclude no_sponsorship|us_citizen|clearance|itar.\n"
         "Tailor: scope all|priority|bigtech, user employer list; missing_facts ask|omit; pages 1|2.\n"
         "Gmail is opt-in: permissions search/read/current_job_verification and exact account.\n"
         "Gmail chỉ đọc khi bạn cho phép và chỉ với tài khoản đã chọn; tối đa 3 lane khi tự chọn.\n\n"
@@ -201,6 +207,10 @@ def _validate_document(data):
     groups = data["groups"]
     if set(groups) != set(FIELDS):
         raise ValueError("Keep all fourteen intake groups")
+    for group, names in ADDED_FIELDS.items():
+        for name in names:
+            if isinstance(groups[group], dict) and name not in groups[group]:
+                groups[group][name] = [] if name in LIST_FIELDS else None
     for group, fields in FIELDS.items():
         if not isinstance(groups[group], dict):
             raise ValueError(f"{group} must be an object")
@@ -237,6 +247,10 @@ def _validate_document(data):
                 raise ValueError("Choose one to three lanes")
             if group == "tailor" and field == "pages" and value not in (1, 2):
                 raise ValueError("Choose one or two pages")
+            if field == "posted_within_days" and not 1 <= value <= 365:
+                raise ValueError("Choose a posting window of 1 to 365 days")
+            if field == "jd_exclude" and not set(value) <= set(JD_RULES):
+                raise ValueError("Choose job description rules from " + ", ".join(JD_RULES))
     answers = data.get("answers", [])
     validate_profile({"schema_version": 1, "revision": 1, "answers": answers})
     for answer in answers:
@@ -456,16 +470,25 @@ def apply_import(root, preview, confirm=False, *, precondition=None):
         updated = {**current, **changes, "revision": current["revision"] + 1}
         validate_profile(updated)
         result = _save_profile(root, current, updated, data.get("answers"))
-        config = {
-            **_load(root / "config.json"),
-            **{key: copy.deepcopy(groups[key]) for key in ("runtime", "resources", "resumes", "tailor")},
-        }
+        config = _load(root / "config.json")
+        for key in ("runtime", "resources", "resumes", "tailor"):
+            config[key] = _merge_section(config.get(key), groups[key])
         boards = config["resources"].pop("boards", None)
         if boards is not None:
             config["boards"] = boards
         atomic_write_json(root / "config.json", config)
         atomic_write_json(root / "intake-import.json", data)
         return {**result, "applied": True}
+
+
+def _merge_section(current, incoming):
+    """Keep config keys the intake does not hold (terminal setup answers, tags)
+    and existing values the intake leaves blank; other intake values win."""
+    current = copy.deepcopy(current) if isinstance(current, dict) else {}
+    for key, value in incoming.items():
+        if key not in current or value not in (None, [], {}):
+            current[key] = copy.deepcopy(value)
+    return current
 
 
 def _save_profile(root, old, updated, incoming_answers=None):

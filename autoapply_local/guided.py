@@ -13,7 +13,7 @@ import math
 from pathlib import Path
 from uuid import uuid4
 
-from . import guided_catalog, intake
+from . import guided_catalog, guided_quick, intake
 from .storage import atomic_write_json, lock
 
 
@@ -143,6 +143,10 @@ def _seed(root):
         "queue": conflicts + [_descriptor(q) for q in top[:3]], "cursor": 3,
         "issued": {}, "pages": {}, "editors": {}, "preview": None,
     }
+    if guided_quick.enabled(root):
+        quick = guided_quick.steps(root, document)
+        state["queue"] = conflicts + quick + [_descriptor(q) for q in top[:3]]
+        state["walk_skips"] = guided_quick.walk_skips(quick)
     _new_batch(state)
     return state
 
@@ -182,20 +186,23 @@ def _put(data, path, value):
 
 
 def _advance(state):
-    if not state["queue"]:
-        top = guided_catalog.questions()
+    top = guided_catalog.questions()
+    skips = set(state.get("walk_skips", ()))
+    # Quick setup already asked some catalog questions; the advanced walk skips them.
+    while not state["queue"] and state["cursor"] < len(top):
         cursor = state["cursor"]
-        state["queue"] = [_descriptor(q) for q in top[cursor:cursor + 3]]
+        state["queue"] = [_descriptor(q) for q in top[cursor:cursor + 3] if q["id"] not in skips]
         state["cursor"] = min(cursor + 3, len(top))
 
 
 def _active(state):
     questions = []
     for question in state["queue"][:3]:
-        if question.get("_terminal") and questions:
+        alone = question.get("_terminal") or question.get("_alone")
+        if alone and questions:
             break
         questions.append(question)
-        if question.get("_terminal"):
+        if alone:
             break
     return questions
 
@@ -283,6 +290,8 @@ def _packet(state, ui):
     if ui == "none":
         return {**metadata, "status": "ui_required", "questions": [], "ui": {},
                 "next": "Open a host with an available native question tool in a supported mode, then resume setup --guided --ui UI."}
+    for question in _active(state):
+        guided_quick.refresh(state, question)
     questions = [_visible(state, q, ui) for q in _active(state)]
     state["displayed"] = questions
     state["displayed_ui"] = ui
@@ -517,6 +526,9 @@ def _decode(root, state, question, entry):
 
 def _apply_entry(state, question, status, value, action):
     question_id = question["id"]
+    if question.get("quick_step"):
+        guided_quick.apply(state, question, status, value)
+        return
     if question.get("seed_conflict"):
         if value == "use_draft":
             _put(state, question["_path"], copy.deepcopy(question["_draft"]))

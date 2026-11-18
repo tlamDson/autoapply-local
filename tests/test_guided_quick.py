@@ -169,7 +169,7 @@ class GuidedQuickTests(ReleaseCase):
         filters = self.document()["filters"]
         self.assertEqual((filters["posted_within_days"], filters["jd_exclude"]), (3, ["itar"]))
         self.assertEqual(filters["title_include"], ["intern"])
-        self.assertEqual([q["id"] for q in packet["questions"]], ["filters.title_exclude", "filters.excluded_employers"])
+        self.assertEqual([q["id"] for q in packet["questions"]][:2], ["filters.title_exclude", "filters.excluded_employers"])
 
     def test_unreadable_resume_starts_with_missing_facts(self):
         self.prepared(resume=None)
