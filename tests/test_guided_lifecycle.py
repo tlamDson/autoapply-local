@@ -210,8 +210,13 @@ class GuidedLifecycleTests(LifecycleHarness):
         else:
             self.fail("Natural setup walk did not terminate")
         top = {q["field"] for q in self.module("guided_catalog").questions()}
-        self.assertFalse(top - seen, sorted(top - seen))
-        self.assertEqual({f.split(".")[0] for f in seen}, set(self.module("intake").FIELDS))
+        # Left out: tailoring under the default existing-resumes mode, Gmail questions
+        # without a Gmail opt-in, and the visa status authorization.current_status asked.
+        off = {f for f in top if f.startswith("tailor.")} | {
+            "runtime.tailor_engine", "resources.gmail_account", "resources.gmail_lookback",
+            "resources.gmail_permissions", "international_student.status"}
+        self.assertEqual(top - seen, off, sorted((top - seen) ^ off))
+        self.assertEqual({f.split(".")[0] for f in seen}, set(self.module("intake").FIELDS) - {"tailor"})
         self.assertEqual(self.progress()["document"]["groups"]["history"]["alternate_emails"], ["alex@example.invalid"])
         self.finish()
 
