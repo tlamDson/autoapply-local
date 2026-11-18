@@ -125,6 +125,34 @@ def boards_import(*, root, path, confirm=False):
     return apply_import(root, preview, confirm=True) if confirm else preview
 
 
+def boards_groups(*, root):
+    from .boards import groups
+
+    return {"groups": groups(root)}
+
+
+def boards_group(*, root, group, enabled):
+    from .boards import set_group
+
+    return set_group(root, group, enabled)
+
+
+def demo(*, root, launcher=None, cdp=None):
+    """Fill the offline demo form in the tool's own Chrome (setup step 5)."""
+    from . import demo_form
+
+    config = configuration(root)
+    profile_path = Path(root) / "profile.json"
+    profile = read_json(profile_path) if profile_path.exists() else {}
+    if launcher is None:
+        from .browser import launch_chrome as launcher
+    if cdp is None:
+        from . import cdp
+    lane = launcher(Path(root), lanes=1, available_memory_mb=None,
+                    executable=(config.get("resources") or {}).get("chrome_override") or None)[0]
+    return demo_form.run(root, lane["debug_url"], profile, cdp=cdp)
+
+
 def source_extract(*, root, path):
     import uuid
     from .extraction import extract_source
@@ -182,12 +210,13 @@ def doctor(*, root, engine=None):
     }
 
 
-def fetch(*, root, engine=None, url=None):
-    from .boards import list_boards
-    from .fetch import Fetcher, evaluate_job
+def fetch(*, root, engine=None, url=None, today=None):
+    from .boards import active_boards
+    from .fetch import Fetcher
+    from .fetch_screen import report, screen
 
-    configuration(root)
-    sources = list_boards(root) if not url else []
+    config = configuration(root)
+    sources = active_boards(root) if not url else []
     if not url and not sources:
         raise ValueError(
             "No sources configured: run setup, boards list, or boards import PATH --confirm; or fetch --url URL"
@@ -195,7 +224,7 @@ def fetch(*, root, engine=None, url=None):
     store = Store(root)
     profile_path = Path(root) / "profile.json"
     profile = read_json(profile_path) if profile_path.exists() else {}
-    fetcher = Fetcher()
+    fetcher = Fetcher(today=today)
     accepted, excluded, unknown = [], [], []
     if url:
         imported = fetcher.import_url(url)
@@ -210,15 +239,18 @@ def fetch(*, root, engine=None, url=None):
             except (OSError, ValueError) as error:
                 unknown.append({"board": board, "reason": str(error)})
     for item in batches:
-        verdict = evaluate_job(item, profile)
+        verdict = screen(item, profile, today=today)
         if verdict["decision"] == "exclude":
             excluded.append({"id": item["id"], **verdict})
         else:
             accepted.append(store.enqueue(item))
+    language = (config.get("runtime") or {}).get("language") or "en"
     return {
         "jobs": accepted,
         "excluded": excluded,
         "unknown": unknown,
+        "report": report(boards=len(sources) if not url else 1, failed=len(unknown), fetched=len(batches),
+                         passed=len(accepted), excluded=excluded, language=language),
         "engine": engine,
         "note": "Public board fetch does not call an LLM.",
     }
@@ -507,6 +539,9 @@ def services():
             "profile_update",
             "boards_list",
             "boards_import",
+            "boards_groups",
+            "boards_group",
+            "demo",
             "source_extract",
             "history_import",
             "doctor",

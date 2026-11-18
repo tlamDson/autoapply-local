@@ -73,6 +73,11 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     boards_import = boards.add_parser("import")
     boards_import.add_argument("path", type=Path)
     boards_import.add_argument("--confirm", action="store_true")
+    boards.add_parser("groups")
+    boards_group = boards.add_parser("group")
+    boards_group.add_argument("group")
+    boards_group.add_argument("state", choices=("on", "off"))
+    commands.add_parser("demo")
     profile = commands.add_parser("profile").add_subparsers(dest="profile_command", required=True)
     update = profile.add_parser("update")
     update.add_argument("path", type=Path)
@@ -134,6 +139,8 @@ def main(argv=None, services=None, stdout=None, stderr=None):
             name = "boards_" + args.boards_command
             if args.boards_command == "import":
                 kwargs.update(path=args.path, confirm=args.confirm)
+            elif args.boards_command == "group":
+                kwargs.update(group=args.group, enabled=args.state == "on")
         elif name == "profile":
             name = "profile_update"
             kwargs.update(path=args.path, confirm=args.confirm)

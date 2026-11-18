@@ -11,6 +11,7 @@ import json
 import os
 import socket
 import struct
+import time
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -27,6 +28,28 @@ def _loopback(url, schemes):
     if parsed.scheme not in schemes or parsed.hostname not in _LOOPBACK or not parsed.port:
         raise ValueError("Chrome DevTools must be a loopback endpoint with an explicit port")
     return parsed
+
+
+def wait_ready(debug_url, timeout=20, opener=urlopen, sleep=time.sleep, clock=time.monotonic, interval=0.25):
+    """Poll ``/json/version`` until the tool's Chrome answers, and return its version.
+
+    A freshly launched Chrome opens its debugging port some time after the
+    process starts; callers that open a tab right after a launch wait here first.
+    """
+    _loopback(debug_url, ("http",))
+    deadline = clock() + timeout
+    while True:
+        try:
+            with opener(Request(debug_url.rstrip("/") + "/json/version"), timeout=2) as response:
+                version = json.loads(response.read())
+            if str(version.get("Browser", "")).startswith(("Chrome/", "Chromium/", "HeadlessChrome/")):
+                return version
+        except (OSError, ValueError, AttributeError):
+            pass
+        if clock() >= deadline:
+            raise CDPError(f"Chrome's debugging endpoint did not answer within {timeout} s; close the tool's "
+                           "Chrome window and run the command again")
+        sleep(interval)
 
 
 def pages(debug_url, opener=urlopen):

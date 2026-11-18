@@ -66,6 +66,25 @@ intake remains available for advanced editing/export.
    dependency requires a fresh valid session/preview and user inspection, not
    an overwrite or automatic retry.
 
+After terminal setup, guided setup starts with three quick steps before the
+optional complete intake. First, each group of facts read from your resumes
+(contact, education, experience, skills) appears with Confirm / Edit; Edit asks
+each field with the resume value shown, and skipping keeps it. Second, it asks
+what a resume lacks: work authorization, sponsorship need, address, EEO
+(declinable), recruiting season and target roles. Third, it shows the job
+filters derived from those answers (sponsorship need drops "no sponsorship",
+U.S. citizen, clearance and ITAR jobs; season and job types shape the title
+filter; postings within 7 days; excluded companies) with Confirm / Edit.
+Extracted values stay drafts until the saved preview receives explicit Confirm.
+
+After Confirm, finish with two steps. Run `python autoapply-local.py demo`: it fills an offline demo form
+(a local page with no Submit control, in the tool's own Chrome) from the
+confirmed facts and reports the filled and unknown fields; the tab stays open.
+Then run `python autoapply-local.py fetch` and tell the user the `report.summary` line: how many jobs from
+how many boards passed the filters. Job sources are the shipped public boards
+(S&P 500 and unicorn groups); `boards groups` lists them, `boards group NAME
+on|off` turns a group off or on, and `boards import PATH` adds the user's own.
+
 If a dependency changes, invoke a native popup with exactly two options:
 Reload latest confirmed profile / Keep current draft. Bind that tool call and
 wait for its actual response. Run `setup --restart --ui UI` only after the user

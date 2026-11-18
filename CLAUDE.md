@@ -29,6 +29,17 @@ permits `setup --confirm`. No native tool or forbidden mode returns `ui_required
 with progress kept. Never replace the popup with chat prose, use an engine
 subprocess to interview, switch modes/engines or treat defaults/timeouts as input.
 The complete intake is an optional advanced editor/export, not required setup.
+After terminal setup, guided setup first shows resume fact groups, then the facts
+a resume lacks, then job filters derived from explicit answers, each with
+Confirm/Edit; extracted values stay drafts until the saved preview is confirmed.
+
+Setup then fills an offline demo form (`demo`: a local page with no Submit
+control, in the tool's own Chrome) to prove the stack works, and runs a first
+`fetch` whose `report.summary` says how many jobs from how many boards passed
+the filters. Job sources are the shipped public boards in two groups, S&P 500
+(`sp500`) and unicorns (`unicorn`): `boards groups` lists them, `boards group
+NAME on|off` turns a group off or on without deleting it, and `boards import
+PATH` adds your own boards, which are always fetched.
 
 For stale dependencies, invoke native Reload latest confirmed profile / Keep
 current draft choices and wait. Only explicit Reload permits `setup --restart
