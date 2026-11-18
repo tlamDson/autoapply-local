@@ -845,20 +845,21 @@ test('workday: static Review derives fresh label/value evidence without editable
   assert.equal(submit.clicks, 0);
 });
 
-/* Greenhouse script driver: the DOM is built from tests/fixtures/greenhouse/form.json.
- * scan.json is what the Python driver plans from and answers.json is what it plans;
- * these tests prove the adapter still produces scan.json and fills answers.json.
+/* Greenhouse script driver: tests/greenhouse_form.json holds the synthetic DOM
+ * (form), the adapter's recorded scan of it that the Python driver plans from
+ * (scan) and the answers the driver plans (answers). These tests prove the
+ * adapter still produces that scan and fills those answers.
  */
-const GREENHOUSE_FIXTURE = path.resolve(__dirname, 'fixtures', 'greenhouse');
-const greenhouseJSON = name =>
-  JSON.parse(require('node:fs').readFileSync(path.join(GREENHOUSE_FIXTURE, name), 'utf8'));
+const GREENHOUSE = JSON.parse(
+  require('node:fs').readFileSync(path.resolve(__dirname, 'greenhouse_form.json'), 'utf8'),
+);
 
 function greenhouseForm() {
   const result = makeDocument();
   result.submit.setAttribute('id', 'submit_app');
   result.fields = {};
   result.widgets = {};
-  for (const spec of greenhouseJSON('form.json').fields) {
+  for (const spec of GREENHOUSE.form) {
     const parent = spec.widget
       ? result.form.appendChild(new Element('div', { class: 'select__container' }))
       : result.form;
@@ -880,13 +881,13 @@ const allElements = node => [node, ...node.children.flatMap(allElements)];
 test('greenhouse: scan of the DOM fixture matches the recorded scan the Python driver plans from', () => {
   const adapter = load('greenhouse');
   const { document } = greenhouseForm();
-  assert.deepEqual(adapter.scan(document).fields, greenhouseJSON('scan.json').fields);
+  assert.deepEqual(adapter.scan(document).fields, GREENHOUSE.scan);
 });
 
 test('greenhouse: fill sets every planned field, holds widgets for the engine and never clicks', async () => {
   const adapter = load('greenhouse');
   const { document, fields, submit } = greenhouseForm();
-  const planned = greenhouseJSON('answers.json').answers;
+  const planned = GREENHOUSE.answers;
   const result = await adapter.fill(document, { ...planned, 'candidate-location': 'Springfield' });
   assert.deepEqual([...result.filled].sort(), Object.keys(planned).sort());
   for (const [id, value] of Object.entries(planned)) assert.equal(fields[id].value, value, id);

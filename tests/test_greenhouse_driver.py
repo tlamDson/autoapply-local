@@ -2,9 +2,9 @@
 
 The driver plans every field it can from confirmed facts with no engine call,
 fills them through the Greenhouse adapter, and reports the rest as unknown for
-the engine. tests/fixtures/greenhouse/scan.json is the adapter's recorded scan of
-the synthetic DOM in form.json; adapters.test.cjs proves the adapter produces it
-and fills answers.json. Candidate and employer are invented.
+the engine. tests/greenhouse_form.json holds the synthetic DOM, the adapter's recorded
+scan of it and the planned answers; adapters.test.cjs proves the adapter
+produces that scan and fills those answers. Candidate and employer are invented.
 """
 
 import copy
@@ -21,7 +21,7 @@ from autoapply_local import browser, script_driver  # noqa: E402
 from autoapply_local.greenhouse_driver import GreenhouseDriver  # noqa: E402
 from autoapply_local.profile import fact  # noqa: E402
 
-FIXTURE = RELEASE / "tests" / "fixtures" / "greenhouse"
+FIXTURE = json.loads((RELEASE / "tests" / "greenhouse_form.json").read_text(encoding="utf-8"))
 JOB = {
     "id": "gh-1",
     "ats": "greenhouse",
@@ -35,7 +35,7 @@ AUTH_QUESTION = "Are you legally authorized to work in the United States?"
 
 
 def recorded(name):
-    return json.loads((FIXTURE / name).read_text(encoding="utf-8"))
+    return {"fields": copy.deepcopy(FIXTURE["scan"])} if name == "scan.json" else {"answers": copy.deepcopy(FIXTURE["answers"])}
 
 
 def profile():
