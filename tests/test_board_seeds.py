@@ -115,3 +115,22 @@ class BoardGroupCliTests(ReleaseCase):
         for name in ("boards_groups", "boards_group", "demo"):
             with self.subTest(name=name):
                 self.assertTrue(callable(services[name]))
+
+
+class ImportedBoardGroupTests(ReleaseCase):
+    def test_imported_boards_never_join_a_seed_group(self):
+        boards = self.module("boards")
+        seed = {"ats": "greenhouse", "board": "examplecorp", "company": "Example Corp", "group": "sp500"}
+        other = {"ats": "greenhouse", "board": "otherco", "company": "Other Co", "group": "sp500"}
+        self.write_json("config.json", {"runtime": {}, "resources": {"lanes": 1}, "boards": [seed, other]})
+        mine = [
+            {"ats": "greenhouse", "board": "examplelabs", "company": "Example Labs", "group": "sp500"},
+            {"ats": "greenhouse", "board": "examplecorp", "company": "Example Corp"},
+        ]
+        path = self.write_json("mine.json", mine)
+        preview = boards.preview_import(self.root, path)
+        boards.apply_import(self.root, preview, confirm=True)
+        boards.set_group(self.root, "sp500", False)
+        active = {board["board"] for board in boards.active_boards(self.root)}
+        self.assertEqual(active, {"examplelabs", "examplecorp"})
+        self.assertTrue(all("group" not in board for board in boards.active_boards(self.root)))

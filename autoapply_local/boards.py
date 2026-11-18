@@ -2,7 +2,8 @@
 
 Shipped seeds carry a ``group`` (``sp500``, ``unicorn``); the user turns a whole
 group off in ``config.json`` ``board_groups`` without deleting its boards.
-Boards the user adds carry no group and are always fetched.
+Boards the user imports lose any ``group`` they carry (and an imported board
+that replaces a seed drops the seed's group), so they are always fetched.
 """
 
 import hashlib
@@ -116,6 +117,11 @@ def _digest(content):
     return hashlib.sha256(content).hexdigest()
 
 
+def _user_boards(boards):
+    """Boards the user imports belong to no seed group, so a group switch never turns them off."""
+    return [{key: value for key, value in board.items() if key != "group"} for board in boards]
+
+
 def _merge(current, incoming):
     merged = {identity(board): board for board in normalize(current or [])}
     changes = []
@@ -131,7 +137,7 @@ def _merge(current, incoming):
 def preview_import(root, path):
     root, path = Path(root), Path(path).resolve()
     content = path.read_bytes()
-    incoming = normalize(json.loads(content.decode("utf-8-sig")))
+    incoming = _user_boards(normalize(json.loads(content.decode("utf-8-sig"))))
     _config(root)
     config_content = (root / "config.json").read_bytes()
     merged, changes = _merge(json.loads(config_content).get("boards"), incoming)
@@ -153,7 +159,7 @@ def apply_import(root, preview, confirm=False):
         config_content = (root / "config.json").read_bytes()
         if _digest(content) != preview["sha256"] or _digest(config_content) != preview["config_sha256"]:
             raise ValueError("Boards input or config changed; preview again")
-        incoming = normalize(json.loads(content.decode("utf-8-sig")))
+        incoming = _user_boards(normalize(json.loads(content.decode("utf-8-sig"))))
         config = json.loads(config_content)
         merged, changes = _merge(config.get("boards"), incoming)
         atomic_write_json(root / "config.json", {**config, "boards": merged})

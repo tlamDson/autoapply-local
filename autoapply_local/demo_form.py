@@ -57,16 +57,30 @@ def write(root):
 
 
 class _Tab:
-    """``evaluate_script`` for one tab of the loopback Chrome, as the script driver expects."""
+    """``evaluate_script`` bound to the demo tab and the demo document only.
 
-    def __init__(self, debug_url, cdp):
-        self.debug_url, self.cdp = debug_url, cdp
+    Before every script the tab must still show the demo page, and the script
+    itself re-checks ``location.href`` in the page, so an audit or fill never
+    runs in a document the user navigated to (a real job form, for example).
+    """
+
+    def __init__(self, debug_url, cdp, url):
+        self.debug_url, self.cdp, self.url = debug_url, cdp, url
 
     def evaluate_script(self, tab_id, function, *, operation="audit"):
         pages = [page for page in self.cdp.pages(self.debug_url) if str(page.get("id")) == str(tab_id)]
         if len(pages) != 1:
             raise ValueError("The demo tab was closed; run demo again")
-        return self.cdp.evaluate(pages[0]["ws"], "(" + function + ")()", timeout=60)
+        if pages[0].get("url") != self.url:
+            raise ValueError("The demo tab shows another page; nothing was filled there. Run demo again")
+        expression = (
+            "(async () => {\nif (location.href !== " + json.dumps(self.url) + ") return {wrong_document: true};\n"
+            "return await (" + function + ")();\n})()"
+        )
+        result = self.cdp.evaluate(pages[0]["ws"], expression, timeout=60)
+        if isinstance(result, dict) and result.get("wrong_document"):
+            raise ValueError("The demo tab shows another page; nothing was filled there. Run demo again")
+        return result
 
 
 def run(root, debug_url, profile, cdp=cdp_module):
@@ -76,7 +90,7 @@ def run(root, debug_url, profile, cdp=cdp_module):
     url = write(root).resolve().as_uri()
     page = cdp.open_page(debug_url, url)
     job = {"id": "demo", "ats": "greenhouse", "company": "AutoApply Local demo", "role": "Demo form", "url": url}
-    result = GreenhouseDriver().run(_Tab(debug_url, cdp), page["id"], profile, job)
+    result = GreenhouseDriver().run(_Tab(debug_url, cdp, url), page["id"], profile, job)
     return {
         "status": result["status"],
         "ok": bool(result["filled"]),

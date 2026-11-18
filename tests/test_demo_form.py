@@ -121,6 +121,35 @@ class DemoRunTests(ReleaseCase):
         self.assertEqual(result["resume_field"], "resume")
         self.assertEqual((result["tab_id"], result["url"]), ("T1", page.as_uri()))
 
+    def test_fill_never_runs_after_the_tab_left_the_demo_page(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        real_evaluate = cdp.evaluate
+
+        def navigate_after_audit(ws, expression, timeout=60):
+            result = real_evaluate(ws, expression, timeout)
+            cdp.page["url"] = "https://job-boards.greenhouse.io/examplecorp/jobs/1"
+            return result
+
+        cdp.evaluate = navigate_after_audit
+        with self.assertRaises(ValueError):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        self.assertEqual(len(cdp.expressions), 1, "no fill once the tab shows another document")
+
+    def test_every_script_checks_the_document_it_runs_in(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        url = (self.root / "demo" / "demo-form.html").as_uri()
+        for expression in cdp.expressions:
+            self.assertIn("location.href !== " + json.dumps(url), expression)
+
+    def test_document_mismatch_inside_the_page_stops_the_demo(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        cdp.evaluate = lambda ws, expression, timeout=60: (cdp.expressions.append(expression),
+                                                           {"wrong_document": True})[1]
+        with self.assertRaises(ValueError):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        self.assertEqual(len(cdp.expressions), 1)
+
     def test_nothing_filled_is_not_ok(self):
         demo, cdp = self.module("demo_form"), FakeCDP()
         cdp.fill_result = {"filled": [], "blocked": [], "uploads": []}
