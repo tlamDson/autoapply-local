@@ -213,7 +213,7 @@ class MainTests(TempCase):
         self.assertTrue(all("submit" not in part.casefold() for command in commands for part in command))
         setup_kwargs = calls[1][1]
         self.assertIn("Alex_Rivera_Resume.pdf", setup_kwargs["input"])
-        self.assertTrue(setup_kwargs["env"]["PATH"].startswith(str(self.tmp / "work")))
+        self.assertTrue(setup_kwargs["env"]["PATH"].startswith(str((self.tmp / "work").resolve())))  # macOS: /var is /private/var
         for _, kwargs in calls:
             self.assertEqual(Path(kwargs["cwd"]), repo)
         self.assertEqual(calls[0][0], ["doctor"])

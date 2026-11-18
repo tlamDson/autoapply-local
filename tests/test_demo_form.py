@@ -204,6 +204,43 @@ class DemoRunTests(ReleaseCase):
         self.module("runtime").demo(root=self.root, launcher=launcher, cdp=cdp)
         self.assertEqual(cdp.events[0], ("wait_ready", DEBUG_URL))
 
+    def test_run_waits_while_the_new_tab_is_still_blank(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        real_pages, listed = cdp.pages, []
+
+        def slow_navigation(debug_url):
+            listed.append(debug_url)
+            pages = real_pages(debug_url)
+            if len(listed) <= 2:  # a slow runner: /json/new returned before the navigation committed
+                pages = [{**page, "url": "about:blank"} for page in pages]
+            return pages
+
+        cdp.pages, sleeps = slow_navigation, []
+        result = demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp, sleep=sleeps.append)
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(sleeps), 2)
+        self.assertIn("first_name", result["filled"])
+
+    def test_run_stops_when_the_new_tab_never_shows_the_demo_page(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        real_pages = cdp.pages
+        cdp.pages = lambda debug_url: [{**page, "url": "about:blank"} for page in real_pages(debug_url)]
+        ticks = iter(range(0, 1000))
+        with self.assertRaisesRegex(ValueError, "about:blank"):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp, sleep=lambda seconds: None,
+                     clock=lambda: next(ticks))
+        self.assertEqual(cdp.expressions, [])
+
+    def test_run_refuses_a_new_tab_that_shows_another_page_without_waiting(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        real_pages = cdp.pages
+        other = "https://job-boards.greenhouse.io/examplecorp/jobs/1"
+        cdp.pages = lambda debug_url: [{**page, "url": other} for page in real_pages(debug_url)]
+        sleeps = []
+        with self.assertRaisesRegex(ValueError, "another page"):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp, sleep=sleeps.append)
+        self.assertEqual((sleeps, cdp.expressions), ([], []))
+
     def test_fill_never_runs_after_the_tab_left_the_demo_page(self):
         demo, cdp = self.module("demo_form"), FakeCDP()
         real_evaluate = cdp.evaluate

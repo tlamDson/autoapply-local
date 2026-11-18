@@ -9,6 +9,7 @@ at. The resume field is reported, not uploaded: real uploads happen in apply.
 
 import html
 import json
+import time
 from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -72,7 +73,8 @@ class _Tab:
         if len(pages) != 1:
             raise ValueError("The demo tab was closed; run demo again")
         if pages[0].get("url") != self.url:
-            raise ValueError("The demo tab shows another page; nothing was filled there. Run demo again")
+            raise ValueError(f"The demo tab shows another page ({pages[0].get('url')}); nothing was filled there. "
+                             "Run demo again")
         expression = (
             "(async () => {\nif (location.href !== " + json.dumps(self.url) + ") return {wrong_document: true};\n"
             "return await (" + function + ")();\n})()"
@@ -83,13 +85,36 @@ class _Tab:
         return result
 
 
-def run(root, debug_url, profile, cdp=cdp_module):
+NAVIGATION_TIMEOUT = 20
+BLANK_URLS = ("", "about:blank")
+
+
+def _wait_for_page(debug_url, cdp, tab_id, url, sleep, clock, timeout=NAVIGATION_TIMEOUT):
+    """Wait until the new tab shows the demo page; Chrome lists it as blank until the navigation commits."""
+    deadline = clock() + timeout
+    while True:
+        shown = [page.get("url") for page in cdp.pages(debug_url) if str(page.get("id")) == str(tab_id)]
+        if len(shown) != 1:
+            raise ValueError("The demo tab was closed; run demo again")
+        if shown[0] == url:
+            return
+        if shown[0] not in BLANK_URLS:
+            raise ValueError(f"The demo tab shows another page ({shown[0]}); nothing was filled there. "
+                             "Run demo again")
+        if clock() >= deadline:
+            raise ValueError(f"The demo tab still shows {shown[0] or 'nothing'} after {timeout} s; "
+                             "nothing was filled. Run demo again")
+        sleep(0.25)
+
+
+def run(root, debug_url, profile, cdp=cdp_module, sleep=time.sleep, clock=time.monotonic):
     parsed = urlsplit(debug_url)
     if parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost", "::1") or not parsed.port:
         raise ValueError("The demo needs the tool's loopback Chrome debugging URL")
     url = write(root).resolve().as_uri()
     cdp.wait_ready(debug_url)
     page = cdp.open_page(debug_url, url)
+    _wait_for_page(debug_url, cdp, page["id"], url, sleep, clock)
     job = {"id": "demo", "ats": "greenhouse", "company": "AutoApply Local demo", "role": "Demo form", "url": url}
     result = GreenhouseDriver().run(_Tab(debug_url, cdp, url), page["id"], profile, job)
     return {
