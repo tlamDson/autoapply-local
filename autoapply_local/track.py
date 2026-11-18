@@ -12,17 +12,17 @@ it never runs a script in a job tab, so it cannot press any Submit control.
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
 from . import cdp as cdp_module
 from .identity import canonical_url
-from .mail_history import ACCOUNT, classify, import_confirmations, parse
+from .gmail_tab import MAX_PAGES
+from .mail_history import ACCOUNT, HISTORY_DAYS, classify, import_confirmations, parse
 from .storage import Store, read_json
 
 TRACK_DAYS = 14
-TRACK_PAGES = 3
 HELD_STATES = ("filled", "reviewed", "needs_manual")
 REVIEW_ID = "confirmation-page-detected"
 PAGE_TEXT = "Confirmation page seen in the held tab"
@@ -47,13 +47,29 @@ def confirmation_page(url):
     return False
 
 
-def _norm(text):
-    return re.sub(r"[^a-z0-9]+", "", str(text or "").casefold())
+_SUFFIXES = {"inc", "llc", "ltd", "limited", "corp", "corporation", "co", "company", "plc", "gmbh", "lp", "llp"}
 
 
-def _same(wanted, found):
-    wanted, found = _norm(wanted), _norm(found)
-    return bool(wanted and found) and (wanted in found or found in wanted)
+def _words(text):
+    return re.findall(r"[a-z0-9]+", str(text or "").casefold())
+
+
+def _same_company(wanted, found):
+    """Same company name, ignoring case, punctuation and legal suffixes; never a partial name."""
+    wanted = [word for word in _words(wanted) if word not in _SUFFIXES]
+    found = [word for word in _words(found) if word not in _SUFFIXES]
+    return bool(wanted) and wanted == found
+
+
+def _same_role(wanted, found):
+    return bool(_words(wanted)) and _words(wanted) == _words(found)
+
+
+def _day(text):
+    try:
+        return date.fromisoformat(str(text or "")[:10])
+    except ValueError:
+        return None
 
 
 _FORM_STEPS = ("apply", "application", "thanks", "confirmation")
@@ -96,10 +112,29 @@ def _endpoints(root, held):
     return by_lane, urls
 
 
+def _job_neutral_confirmation(record, url):
+    """A confirmation page that names no job (Workday) on the held job's own site."""
+    try:
+        tab, job = urlsplit(str(url)), urlsplit(str(record["url"]))
+    except ValueError:
+        return False
+    return (
+        confirmation_page(url)
+        and (tab.hostname or "").lower().endswith(".myworkdayjobs.com")
+        and (tab.hostname or "").lower() == (job.hostname or "").lower()
+    )
+
+
+def _belongs(record, tab):
+    wanted = _posting(record["url"])
+    return (wanted is not None and _posting(tab["url"]) == wanted) or _job_neutral_confirmation(record, tab["url"])
+
+
 def _tab(record, tabs):
+    """The tab that still shows this job: its own target if it did not move to another job, else by posting."""
     for tab in tabs:
         if tab["id"] == str(record["tab_id"]):
-            return tab
+            return tab if _belongs(record, tab) else None
     wanted = _posting(record["url"])
     if wanted is None:
         return None
@@ -139,29 +174,40 @@ def _record_mail(store, record, row, entry, clock):
 def _mail_matches(held, rows, seen):
     """{job id: (row, entry)} for each unseen confirmation naming exactly one held job, and held-back keys.
 
-    A confirmation without a role that names the company of several held jobs
-    is held back: it is neither matched nor added to the history.
+    A match needs the same company, the same role when the email names one, and
+    an email dated on or after the day the form was held. Any other email naming
+    a held job's company is held back: neither matched nor added to the history,
+    so it cannot become a second application for the same job.
     """
-    matches, ambiguous = {}, set()
+    matches, held_back = {}, set()
     for row in rows:
         if classify(row) != "confirm":
             continue
         entry = parse(row)
         if entry["key"] in seen or not entry["company"]:
             continue
-        hits = [r for r in held if r["id"] not in matches and _same(r["company"], entry["company"])
-                and (not entry["role"] or _same(r["role"], entry["role"]))]
+        company = [r for r in held if _same_company(r["company"], entry["company"])]
+        sent = _day(entry["date"])
+        hits = [r for r in company if r["id"] not in matches
+                and (not entry["role"] or _same_role(r["role"], entry["role"]))
+                and sent is not None and _day(r.get("held_at")) is not None and sent >= _day(r["held_at"])]
         if len(hits) == 1:
             matches[hits[0]["id"]] = (row, entry)
-        elif hits:
-            ambiguous.add(entry["key"])
-    return matches, ambiguous
+        elif company:
+            held_back.add(entry["key"])
+    return matches, held_back
 
 
-def _gmail_rows(debug_url):
-    from .gmail_tab import GmailTab
+def lookback_days(held, today):
+    """Gmail days to search: back to the oldest held form, at least TRACK_DAYS, at most HISTORY_DAYS."""
+    days = [(today - _day(r.get("held_at"))).days + 1 for r in held if _day(r.get("held_at")) and today]
+    return min(HISTORY_DAYS, max([TRACK_DAYS, *days]))
 
-    return GmailTab(debug_url).history(days=TRACK_DAYS, max_pages=TRACK_PAGES)
+
+def _gmail_rows(debug_url, days):
+    from . import gmail_tab
+
+    return gmail_tab.GmailTab(debug_url).history(days=days, max_pages=MAX_PAGES)
 
 
 def run(root, *, cdp=cdp_module, gmail=None, clock=None):
@@ -186,12 +232,13 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
         report["gmail"] = "Chrome is not reachable; run apply to start it, then track again"
     else:
         try:
-            rows = list(gmail(gmail_url) or [])
-            report["gmail"] = f"checked {len(rows)} rows from the last {TRACK_DAYS} days"
+            days = lookback_days(held, _day(clock()) or datetime.now(timezone.utc).date())
+            rows = list(gmail(gmail_url, days) or [])
+            report["gmail"] = f"checked {len(rows)} rows from the last {days} days"
         except (OSError, ValueError, RuntimeError) as error:
             report["gmail"] = f"Gmail unavailable: {error}"
     seen = {event.get("message_id") for event in store.mail_events() if event.get("account") == ACCOUNT}
-    mails, ambiguous = _mail_matches(held, rows, seen)
+    mails, held_back = _mail_matches(held, rows, seen)
     for record in held:
         endpoint = record.get("debug_url") or by_lane.get(str(record.get("lane", 1)))
         tab = _tab(record, tabs[endpoint]) if endpoint in tabs else None
@@ -220,9 +267,9 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
                 cdp.close_page(endpoint, tab["id"])
             except (OSError, ValueError, RuntimeError):
                 pass
-    used = {entry["key"] for _, entry in mails.values()} | ambiguous
+    used = {entry["key"] for _, entry in mails.values()} | held_back
     leftover = [row for row in rows if parse(row)["key"] not in used]
-    report["ambiguous_emails"] = len(ambiguous)
+    report["held_back_emails"] = len(held_back)
     history = import_confirmations(store, leftover)
     report["history"] = {key: history[key] for key in ("added", "duplicates", "ignored")}
     report["history_entries"] = [
