@@ -155,5 +155,6 @@
   "autoapply_local/adapters/workable.cjs",
   "autoapply_local/workable_driver.py",
   "tests/workable_form.json",
-  "tests/test_workable_driver.py"
+  "tests/test_workable_driver.py",
+  "tests/test_workable_engine_path.py"
 ]

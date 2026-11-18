@@ -7,6 +7,7 @@ fields need the engine. Drivers never click: a script that could click or submit
 is refused before it reaches the browser.
 """
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -80,6 +81,9 @@ class ScriptDriver:
     # Field types that only native engine interaction can set; the planned
     # confirmed value travels with the field to the engine.
     widget_types = WIDGET_TYPES
+    # True when production (the engine's MCP client) runs this driver first and
+    # hands the engine only the fields the script could not set.
+    runs_before_engine = False
 
     def known(self, field, profile, job):
         """ATS-specific fact for a field, or None to use the generic resolver."""
@@ -136,23 +140,45 @@ class ScriptDriver:
                 answers[field["id"]] = value
         return {"answers": answers, "unknown": unknown, "resume": resume}
 
+    def _held(self, scanned):
+        blocked = scanned.get("blocked") if isinstance(scanned, dict) else None
+        return {
+            "driver": self.name,
+            "filled": [],
+            "blocked": list(blocked or [{"id": None, "reason": "form_not_readable"}]),
+            "uploads": [],
+            "upload_receipt": None,
+            "unknown": [],
+            "resume_field": None,
+            "status": "needs_manual",
+        }
+
     def run(self, client, tab_id, profile, job, pdf=None):
-        """Scan, plan and fill one held tab; never clicks and never closes it."""
+        """Scan, plan and fill one held tab; never clicks and never closes it.
+
+        With ``upload_before_fill`` and a selected PDF, the resume is uploaded
+        first and the tab scanned again, so the fill plans from what the ATS
+        parsed; the upload must show in the browser's own File readback.
+        """
         scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
         if not isinstance(scanned, dict) or "fields" not in scanned:
             # Sign-in, account creation, CAPTCHA or an unreadable page: hold the
             # tab for the user before any fill or upload.
-            blocked = scanned.get("blocked") if isinstance(scanned, dict) else None
-            return {
-                "driver": self.name,
-                "filled": [],
-                "blocked": list(blocked or [{"id": None, "reason": "form_not_readable"}]),
-                "uploads": [],
-                "unknown": [],
-                "resume_field": None,
-                "status": "needs_manual",
-            }
-        fields = scanned["fields"]
+            return self._held(scanned)
+        fields, uploaded, receipt = scanned["fields"], [], None
+        resume = next((item["id"] for item in fields if item.get("id") and self.is_resume(item)), None)
+        if self.upload_before_fill and pdf is not None and resume is not None:
+            status = client.upload_file(tab_id, str(pdf))
+            if isinstance(status, dict) and status.get("status") == "needs_manual":
+                return self._held({"blocked": [{"id": resume, "reason": "upload_needs_manual"}]})
+            scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
+            if not isinstance(scanned, dict) or "fields" not in scanned:
+                return self._held(scanned)
+            fields = scanned["fields"]
+            receipt = observed_receipt(fields, resume, pdf)
+            if receipt is None:
+                return self._held({"blocked": [{"id": resume, "reason": "upload_not_observed"}]})
+            uploaded, pdf = [{"id": resume, "path": str(pdf)}], None
         plan = self.plan(fields, profile, job, pdf=pdf)
         # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
         confirmed = {key: {"value": value, "status": "confirmed"} for key, value in plan["answers"].items()}
@@ -188,7 +214,8 @@ class ScriptDriver:
             "driver": self.name,
             "filled": list(result.get("filled", [])),
             "blocked": list(result.get("blocked", [])),
-            "uploads": list(result.get("uploads", [])),
+            "uploads": uploaded + list(result.get("uploads", [])),
+            "upload_receipt": receipt,
             "unknown": unknown,
             "resume_field": plan["resume"],
             "status": "needs_manual"
@@ -197,6 +224,18 @@ class ScriptDriver:
             if any(item["required"] for item in unknown)
             else "filled",
         }
+
+
+def observed_receipt(fields, resume, pdf):
+    """The browser's File readback of the resume field when it is exactly the selected PDF."""
+    data = Path(pdf).read_bytes()
+    expected = {"name": Path(pdf).name, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+    for field in fields:
+        if field.get("id") == resume:
+            for file in field.get("files") or []:
+                if isinstance(file, dict) and all(file.get(key) == value for key, value in expected.items()):
+                    return expected
+    return None
 
 
 def driver_for(ats):

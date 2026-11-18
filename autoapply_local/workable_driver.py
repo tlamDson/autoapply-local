@@ -36,6 +36,7 @@ def _entries(records, identity, extra):
 class WorkableDriver(ScriptDriver):
     name = "workable"
     upload_before_fill = True
+    runs_before_engine = True
     widget_types = WIDGET_TYPES | {"radiogroup", "group"}
 
     def is_resume(self, field):

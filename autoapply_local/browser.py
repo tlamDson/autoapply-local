@@ -426,21 +426,15 @@ class BrowserBridge:
         self.tabs.setdefault(str(tab_id), {"url": job["url"]}).update(job=copy.deepcopy(job))
         self._native(tab_id)
         if isinstance(self.client, EngineMCPClient):
+            from .script_driver import driver_for
+
+            driver = driver_for(job.get("ats", "greenhouse"))
+            if driver is not None and driver.runs_before_engine:
+                return self._script_then_engine(driver, tab_id, profile, job, pdf)
             # One engine-assisted fill operation owns scan, native interactions
             # and persisted Review readback; no duplicate pre-fill LLM pass.
             result = self.client.interact(tab_id, profile, job, [], pdf=pdf)
-            if result.get("status") == "filled" and pdf is not None:
-                path = Path(pdf)
-                receipt = result.get("upload_receipt")
-                expected = {
-                    "name": path.name,
-                    "size": path.stat().st_size,
-                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                }
-                if not isinstance(receipt, dict) or any(receipt.get(key) != val for key, val in expected.items()):
-                    raise ValueError("Observed Resume upload receipt is missing or differs from selected PDF")
-                self.uploads[str(tab_id)] = copy.deepcopy(receipt)
-                self.observed_uploads[str(tab_id)] = copy.deepcopy(receipt)
+            self._prove_engine_upload(tab_id, result, pdf)
             return result
         # A script driver fills every field a confirmed fact covers and reports
         # the rest as unknown; only those need the engine.
@@ -467,6 +461,43 @@ class BrowserBridge:
             tab_id, self._script("fill", job.get("ats", "greenhouse"), answers), operation="fill"
         )
         return result
+
+    def _prove_engine_upload(self, tab_id, result, pdf):
+        if result.get("status") == "filled" and pdf is not None:
+            path = Path(pdf)
+            receipt = result.get("upload_receipt")
+            expected = {
+                "name": path.name,
+                "size": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            if not isinstance(receipt, dict) or any(receipt.get(key) != val for key, val in expected.items()):
+                raise ValueError("Observed Resume upload receipt is missing or differs from selected PDF")
+            self.uploads[str(tab_id)] = copy.deepcopy(receipt)
+            self.observed_uploads[str(tab_id)] = copy.deepcopy(receipt)
+
+    def _script_then_engine(self, driver, tab_id, profile, job, pdf):
+        """Script driver first; the engine gets only what the script could not set."""
+        report = driver.run(self.client, tab_id, profile, job, pdf=pdf)
+        if report["status"] == "needs_manual":
+            return report
+        receipt = report.get("upload_receipt")
+        if receipt:
+            # The driver proved the upload from the browser's File readback.
+            self.uploads[str(tab_id)] = copy.deepcopy(receipt)
+            self.observed_uploads[str(tab_id)] = copy.deepcopy(receipt)
+        engine_pdf = None if receipt else pdf
+        # Optional fields with no confirmed fact stay empty; the engine has
+        # nothing to put there either.
+        pending = [item for item in report["unknown"] if item["required"] or item["reason"] != "no_confirmed_fact"]
+        if not pending and engine_pdf is None:
+            return report
+        result = self.client.interact(tab_id, profile, job, pending, pdf=engine_pdf)
+        self._prove_engine_upload(tab_id, result, engine_pdf)
+        merged = {**report, **result, "driver": driver.name, "unknown": pending}
+        merged["filled"] = list(report["filled"]) + [key for key in result.get("filled", []) if key not in report["filled"]]
+        merged["upload_receipt"] = copy.deepcopy(receipt or result.get("upload_receipt"))
+        return merged
 
     def upload_file(self, tab_id, path):
         path = Path(path).resolve()
