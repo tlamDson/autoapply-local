@@ -3,11 +3,12 @@
 Offline: synthetic PDFs in temporary folders, resume text injected, no tool or network call.
 """
 
+import io
 import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from test_support import ReleaseCase
+from test_support import ReleaseCase, candidate, job
 
 
 class Base(ReleaseCase):
@@ -251,3 +252,71 @@ class RuntimeIntegration(Base):
         line = runtime.describe_choice(choice)
         self.assertIn(str(self.paths["backend"]), line)
         self.assertIn("role tag backend", line)
+
+
+class ApplyPreflight(Base):
+    """apply asks once for roles no tag matches, prints each choice, and never starts a browser job on a refusal."""
+
+    def setUp(self):
+        super().setUp()
+        self.runtime = self.module("runtime")
+        self.module("intake").setup(self.root)
+        self.write_json("profile.json", candidate("authorized"))
+        config = json.loads((self.root / "config.json").read_text(encoding="utf-8"))
+        config["runtime"].update(apply_engine="codex")
+        config["resumes"] = self.config(alternatives=[self.alt("backend", "backend")])["resumes"]
+        self.write_json("config.json", config)
+        store = self.module("storage").Store(self.root)
+        store.enqueue(job("q-1", role="Quant Research Intern"))
+        store.enqueue(job("q-2", role="Quant Research Intern - Summer 2031"))
+        self.store = store
+
+    def run_apply(self, **kwargs):
+        engines, browser = self.module("engines"), self.module("browser")
+        bridge = Mock(spec=["open", "fill", "upload_file", "snapshot", "submit", "close"])
+        bridge.open.return_value = "tab-1"
+        bridge.fill.return_value = {"status": "filled"}
+        stderr = io.StringIO()
+        with (
+            patch.object(engines, "Engine", return_value=self.fake_engine()),
+            patch.object(browser, "BrowserBridge", return_value=bridge),
+            patch.object(browser, "available_memory_mb", return_value=16384),
+            patch.object(browser, "launch_chrome", return_value=[{"lane": 1, "profile_dir": str(self.root / "b"),
+                                                                   "debug_url": "http://127.0.0.1:9222", "pid": 1}]),
+            patch("sys.stderr", stderr),
+        ):
+            try:
+                self.runtime.apply(root=self.root, selection=["q-1", "q-2"], **kwargs)
+            except Exception as error:  # the browser part of apply is mocked; the preflight is what is tested
+                return stderr.getvalue(), error
+        return stderr.getvalue(), None
+
+    def test_unmatched_role_is_asked_once_for_the_whole_run_and_remembered(self):
+        ask = Mock(return_value="backend")
+        output, _ = self.run_apply(resume_ask=ask)
+        ask.assert_called_once()
+        self.assertIn(f"{self.paths['backend']} (your answer)", output)
+        self.assertEqual(output.count("(your answer)") + output.count("(your earlier answer)"), 2)
+        saved = json.loads((self.root / "user/resume-choices.json").read_text(encoding="utf-8"))
+        self.assertEqual(list(saved["choices"]), ["quant research intern"])
+
+    def test_refused_question_stops_before_any_browser_work(self):
+        output, error = self.run_apply(resume_ask=lambda role, options: None)
+        self.assertIsInstance(error, self.module("resume_choice").ResumeChoiceNeeded)
+        self.assertEqual(self.store.get("q-1")["state"], "pending")
+        self.assertEqual(self.store.get("q-2")["state"], "pending")
+        self.assertNotIn("Apply preflight", output)
+
+    def test_non_interactive_apply_without_an_answer_does_not_guess(self):
+        with patch("sys.stdin", io.StringIO("")):
+            _, error = self.run_apply()
+        self.assertIsInstance(error, self.module("resume_choice").ResumeChoiceNeeded)
+        self.assertEqual(self.store.get("q-1")["state"], "pending")
+
+    def test_terminal_prompt_maps_a_number_to_the_resume_and_blank_to_none(self):
+        options = [{"id": "main", "path": "a.pdf", "tags": []}, {"id": "backend", "path": "b.pdf", "tags": []}]
+        for typed, expected in (("2", "backend"), ("", None), ("9", None), ("x", None)):
+            with self.subTest(typed=typed), patch("builtins.input", return_value=typed), patch("sys.stderr", io.StringIO()):
+                self.assertEqual(self.runtime.terminal_ask("Quant Intern", options), expected)
+        with patch("builtins.input", side_effect=EOFError), patch("sys.stderr", io.StringIO()):
+            self.assertIsNone(self.runtime.terminal_ask("Quant Intern", options))

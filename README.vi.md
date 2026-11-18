@@ -177,6 +177,14 @@ mục làm việc của lệnh gọi. Xem preview `profile update`, kiểm fact 
 rõ bằng `--confirm`. Quick apply với PDF có sẵn không cần LaTeX; tài liệu bổ sung
 không tự upload.
 
+Cách chọn resume cho mỗi job: gán role tag cho từng PDF (`main_tags` cho PDF
+chính, `tags` trong từng mục của `alternatives`). Resume có tag trùng nguyên từ
+với tiêu đề job là resume khớp. Nhiều resume khớp: resume nêu nhiều từ khóa công
+nghệ của mô tả job nhất thắng (không dùng model; hòa thì giữ thứ tự cấu hình).
+Không khớp và có hơn một resume: `apply` hỏi một lần cho mỗi role trong terminal
+và nhớ đáp án ở `user/resume-choices.json`; không có terminal thì dừng thay vì
+đoán. `apply` in từng lựa chọn và lý do trước khi điền.
+
 ## Bắt đầu: setup, cấu hình nguồn, fetch và review
 
 Sau các bước cài đặt/setup trên, chạy từ chính thư mục runtime vừa tạo.

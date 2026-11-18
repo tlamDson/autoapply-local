@@ -186,6 +186,15 @@ from the caller's working directory. Preview `profile update` and explicitly
 confirm after checking the facts. Quick apply with an existing PDF does not
 require LaTeX; additional documents are not uploaded automatically.
 
+Which resume a job gets: give each PDF role tags (`main_tags` for the main PDF,
+`tags` on each entry of `alternatives`). A resume whose tag is a whole word of
+the job title is a match. Several matches: the one naming the most of the job
+description's technology keywords wins (no model; ties keep configuration
+order). No match and more than one resume: `apply` asks once per role in a
+terminal and remembers the answer in `user/resume-choices.json`; without a
+terminal it stops instead of guessing. `apply` prints each choice and its
+reason before filling.
+
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.
