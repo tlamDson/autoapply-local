@@ -19,8 +19,15 @@ _LOOPBACK = ("127.0.0.1", "localhost", "::1")
 _GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
+PAGE_CHANGED = "autoapply-local: the tab left the checked page"
+
+
 class CDPError(RuntimeError):
     """Chrome refused the connection or the evaluated script threw."""
+
+
+class PageChangedError(CDPError):
+    """The tab shows another document than the one the caller is bound to; nothing was run or set."""
 
 
 def _loopback(url, schemes):
@@ -147,28 +154,110 @@ def _handshake(stream, parsed):
         raise CDPError("Chrome refused the DevTools WebSocket: " + head[0])
 
 
-def evaluate(ws_url, expression, timeout=60, connect=socket.create_connection):
-    """Evaluate ``expression`` in the tab, await a promise, and return its JSON value."""
-    parsed = _loopback(ws_url, ("ws",))
-    sock = connect((parsed.hostname, parsed.port), timeout=timeout)
-    try:
-        sock.settimeout(timeout)
-        stream = _Socket(sock)
-        _handshake(stream, parsed)
+class _Session:
+    """One DevTools WebSocket to one tab; ``call`` sends a command and returns its result."""
+
+    def __init__(self, ws_url, timeout, connect):
+        parsed = _loopback(ws_url, ("ws",))
+        self.sock, self.next_id = connect((parsed.hostname, parsed.port), timeout=timeout), 0
+        try:
+            self.sock.settimeout(timeout)
+            self.stream = _Socket(self.sock)
+            _handshake(self.stream, parsed)
+        except OSError as error:
+            self.sock.close()
+            raise CDPError(f"Chrome DevTools connection failed: {error}") from error
+        except BaseException:
+            self.sock.close()
+            raise
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.sock.close()
+
+    def call(self, method, params):
+        self.next_id += 1
+        try:
+            self.stream.send(0x1, json.dumps({"id": self.next_id, "method": method, "params": params}).encode("utf-8"))
+            while True:
+                reply = json.loads(self.stream.message())
+                if reply.get("id") == self.next_id:
+                    break
+        except OSError as error:
+            raise CDPError(f"Chrome DevTools connection failed: {error}") from error
+        if "error" in reply:
+            raise CDPError(str(reply["error"].get("message", reply["error"])))
+        result = reply.get("result", {})
+        if "exceptionDetails" in result:
+            details = result["exceptionDetails"]
+            raise CDPError(details.get("exception", {}).get("description") or details.get("text") or "Script failed")
+        return result
+
+
+def _accepted(page, href):
+    if not isinstance(href, str) or not page(href):
+        raise PageChangedError("The tab shows another page than the bound one")
+    return href
+
+
+def evaluate(ws_url, expression, timeout=60, connect=socket.create_connection, page=None):
+    """Evaluate ``expression`` in the tab, await a promise, and return its JSON value.
+
+    With ``page`` (a predicate on the document URL) the expression runs only in
+    a document whose URL ``page`` accepted: the URL is read first, and the
+    expression itself starts by checking the document is still at exactly that
+    URL, so a navigation in between runs nothing.
+    """
+    with _Session(ws_url, timeout, connect) as session:
+        if page is not None:
+            read = session.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True})
+            href = _accepted(page, read.get("result", {}).get("value"))
+            expression = (
+                f"(() => {{ if (location.href !== {json.dumps(href)}) throw new Error({json.dumps(PAGE_CHANGED)}); "
+                f"return {expression}; }})()"
+            )
         params = {"expression": expression, "awaitPromise": True, "returnByValue": True}
-        stream.send(0x1, json.dumps({"id": 1, "method": "Runtime.evaluate", "params": params}).encode("utf-8"))
-        while True:
-            reply = json.loads(stream.message())
-            if reply.get("id") == 1:
-                break
-    except OSError as error:
-        raise CDPError(f"Chrome DevTools connection failed: {error}") from error
-    finally:
-        sock.close()
-    if "error" in reply:
-        raise CDPError(str(reply["error"].get("message", reply["error"])))
-    result = reply.get("result", {})
-    if "exceptionDetails" in result:
-        details = result["exceptionDetails"]
-        raise CDPError(details.get("exception", {}).get("description") or details.get("text") or "Script failed")
-    return result.get("result", {}).get("value")
+        try:
+            return session.call("Runtime.evaluate", params).get("result", {}).get("value")
+        except CDPError as error:
+            if page is not None and PAGE_CHANGED in str(error):
+                raise PageChangedError("The tab shows another page than the bound one") from error
+            raise
+
+
+# URL of the top-level document an element lives in; null once that document was navigated away.
+_OWN_PAGE = (
+    "function () { const view = this.ownerDocument && this.ownerDocument.defaultView; "
+    "return view && view === view.top && this.isConnected ? view.location.href : null; }"
+)
+
+
+def set_file_input(ws_url, selector, path, timeout=60, connect=socket.create_connection, page=None):
+    """Select ``path`` in the one file input ``selector`` names, as a user's file choice would.
+
+    DOM.setFileInputFiles is Chrome's native file selection (it fires the
+    input's own change events); no attachment is faked in JavaScript. No
+    single matching file input means the user picks the file. With ``page``
+    (a predicate on the document URL) the file is set only on an input whose
+    own live top-level document is at a URL ``page`` accepts; the check and
+    the selection address the same element, so a navigation cannot move the
+    file to another page.
+    """
+    expression = (
+        f"(() => {{ const found = document.querySelectorAll({json.dumps(selector)}); "
+        "return found.length === 1 && found[0].type === 'file' ? found[0] : null; })()"
+    )
+    with _Session(ws_url, timeout, connect) as session:
+        handle = session.call("Runtime.evaluate", {"expression": expression, "returnByValue": False}).get("result", {})
+        if handle.get("subtype") == "null" or not handle.get("objectId"):
+            return {"status": "needs_manual"}
+        if page is not None:
+            own = session.call(
+                "Runtime.callFunctionOn",
+                {"objectId": handle["objectId"], "functionDeclaration": _OWN_PAGE, "returnByValue": True},
+            )
+            _accepted(page, own.get("result", {}).get("value"))
+        session.call("DOM.setFileInputFiles", {"files": [str(path)], "objectId": handle["objectId"]})
+    return {"status": "uploaded"}

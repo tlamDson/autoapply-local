@@ -831,6 +831,135 @@ test('lever: audit counts the location only once a suggestion is chosen and read
   assert.ok(!audit.fields.some(field => /captcha/.test(field.id)));
 });
 
+/* Workable script driver: tests/workable_form.json holds the synthetic DOM
+ * (form), the adapter's recorded scan of it that the Python driver plans from
+ * (scan) and the answers the driver plans (answers). Workable wraps each
+ * question in a [data-ui=<form-API id>] box; the adapter binds to that id.
+ */
+const WORKABLE = JSON.parse(require('node:fs').readFileSync(path.resolve(__dirname, 'workable_form.json'), 'utf8'));
+
+function workableForm() {
+  const result = makeDocument();
+  result.submit.setAttribute('data-ui', 'apply-button');
+  result.controls = [];
+  result.boxes = {};
+  const banner = result.document.appendChild(new Element('div', { 'data-ui': 'cookie-consent' }));
+  banner.appendChild(new Element('button', { 'data-ui': 'cookie-consent-decline' }, 'Decline'));
+  for (const box of WORKABLE.form) {
+    const parent = box.ui === null ? result.form : result.form.appendChild(new Element('div', { 'data-ui': box.ui }));
+    if (box.ui !== null) result.boxes[box.ui] = parent;
+    if (box.label !== null) parent.appendChild(new Element('label', {}, box.label));
+    for (const text of box.radios || [])
+      parent.appendChild(new Element('div', { role: 'radio', 'aria-checked': 'false' }, text));
+    if (box.add) {
+      for (const card of box.cards) parent.appendChild(new Element('div', { 'data-ui': 'group' }, card));
+      parent.appendChild(new Element('button', { 'data-ui': 'add-section' }, 'Add'));
+    }
+    for (const spec of box.controls || []) {
+      const el =
+        spec.tag === 'select'
+          ? new Select(spec.attrs, spec.options)
+          : spec.tag === 'textarea'
+            ? new TextArea(spec.attrs)
+            : new Input(spec.attrs, spec.attrs.value || '');
+      if (spec.text) {
+        const label = parent.appendChild(new Element('label', {}, spec.text));
+        label.appendChild(el);
+        el.labels = [label];
+      } else parent.appendChild(el);
+      result.controls.push(el);
+    }
+  }
+  result.box = ui => result.boxes[ui];
+  result.control = ui => result.controls.filter(el => el.closest(`[data-ui="${ui}"]`));
+  return result;
+}
+
+test('workable: scan of the DOM fixture matches the recorded scan the Python driver plans from', () => {
+  const adapter = load('workable');
+  const { document } = workableForm();
+  assert.deepEqual(adapter.scan(document).fields, WORKABLE.scan);
+  // A second scan reuses the same box bindings.
+  assert.deepEqual(adapter.scan(document).fields, WORKABLE.scan);
+});
+
+test('workable: fill sets every planned field, holds widgets for the engine and never clicks', async () => {
+  const adapter = load('workable');
+  const { document, control, box, submit } = workableForm();
+  const planned = WORKABLE.answers;
+  const result = await adapter.fill(document, {
+    ...planned,
+    QA_100: 'Yes',
+    QA_102: 'LinkedIn',
+    QA_103: 'Remote',
+    education: 'Springfield State University',
+  });
+  assert.deepEqual([...result.filled].sort(), Object.keys(planned).sort());
+  for (const id of Object.keys(planned)) assert.equal(control(id)[0].value, planned[id], id);
+  assert.deepEqual(
+    [...result.blocked].sort((a, b) => a.id.localeCompare(b.id)),
+    [
+      { id: 'education', reason: 'agent_interaction_required' },
+      { id: 'QA_100', reason: 'agent_interaction_required' },
+      { id: 'QA_102', reason: 'agent_interaction_required' },
+      { id: 'QA_103', reason: 'agent_interaction_required' },
+    ],
+  );
+  assert.equal(control('QA_102')[0].nativeWrites, 0);
+  assert.ok(control('QA_103').every(el => !el.checked));
+  assert.ok(box('QA_100').children.every(el => el.getAttribute('aria-checked') !== 'true'));
+  assert.equal(submit.clicks, 0);
+  assert.ok(allElements(document).every(el => el.clicks === 0));
+});
+
+test('workable: the Submit control, cookie banner and captcha response can never be targeted by a fill', async () => {
+  const adapter = load('workable');
+  const { document, controls, submit } = workableForm();
+  const result = await adapter.fill(document, {
+    'apply-button': 'Submit',
+    'cookie-consent-decline': true,
+    'h-captcha-response': 'token',
+  });
+  assert.deepEqual(result.filled, []);
+  assert.deepEqual(
+    [...result.blocked].sort((a, b) => a.id.localeCompare(b.id)),
+    [
+      { id: 'apply-button', reason: 'field_not_found' },
+      { id: 'cookie-consent-decline', reason: 'field_not_found' },
+      { id: 'h-captcha-response', reason: 'field_not_found' },
+    ],
+  );
+  assert.equal(controls.find(el => el.name === 'h-captcha-response').nativeWrites, 0);
+  assert.equal(submit.clicks, 0);
+});
+
+test('workable: audit reads chosen Yes/No buttons, saved entries and checkbox groups', () => {
+  const adapter = load('workable');
+  const { document, box, control } = workableForm();
+  let audit = adapter.audit(document);
+  for (const id of ['resume', 'firstname', 'QA_100', 'QA_101', 'QA_104', 'gdpr'])
+    assert.ok(audit.required_unknown.includes(id), id);
+  assert.ok(!audit.required_unknown.includes('headline'));
+  box('QA_100').children.find(el => el.innerText.trim() === 'No').setAttribute('aria-checked', 'true');
+  const card = new Element('div', { 'data-ui': 'group' });
+  card.appendChild(new Element('dd', { 'data-ui': 'school' }, 'Springfield State University'));
+  box('education').children.splice(1, 0, card);
+  card.parentElement = box('education');
+  control('QA_103')[1].checked = true;
+  control('QA_102')[0]._value = 'LinkedIn';
+  control('gdpr')[0].checked = true;
+  audit = adapter.audit(document);
+  const byId = Object.fromEntries(audit.fields.map(item => [item.id, item]));
+  assert.equal(byId.QA_100.value, 'No');
+  assert.deepEqual(byId.education.value, ['Springfield State University']);
+  assert.deepEqual(byId.QA_103.value, ['Boston']);
+  assert.equal(byId.QA_102.value, 'LinkedIn');
+  assert.ok(!audit.required_unknown.includes('QA_100'));
+  assert.ok(!audit.required_unknown.includes('gdpr'));
+  assert.ok(audit.required_unknown.includes('QA_101'));
+  assert.ok(!audit.fields.some(item => /captcha|cookie/.test(item.id)));
+});
+
 require('./ashby.test.cjs');
 require('./workday.test.cjs');
 

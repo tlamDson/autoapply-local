@@ -334,6 +334,7 @@ class ReleaseCompleteTests(ReleaseCase):
             "adapters/greenhouse.cjs",
             "adapters/lever.cjs",
             "adapters/rippling.cjs",
+            "adapters/workable.cjs",
             "adapters/workday.cjs",
             "adapters/ashby.cjs",
         ):
