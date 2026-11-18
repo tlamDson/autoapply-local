@@ -104,7 +104,8 @@ python autoapply-local.py setup --terminal
    mức quota 5 giờ và quota tuần đã dùng. Chưa đăng nhập: in cách đăng nhập rồi chờ
    bạn thử lại hoặc thoát.
 3. Phần trăm quota để dừng (mặc định 90): mức dùng quota 5 giờ hoặc quota tuần của
-   engine mà một lượt chạy phải dừng. Giá trị lưu trong `config.json`.
+   engine mà tại đó `apply` dừng (xem [Dùng hằng ngày](#dùng-hằng-ngày-apply)).
+   Giá trị lưu trong `config.json`.
 4. Resume PDF: thêm một hoặc nhiều file và gắn tag role cho từng file (SWE, Data,
    ML hoặc chữ tùy ý). File được chép vào `resumes/` của runtime root và thành
    `main_pdf`/`main_tags` và `alternatives` trong `config.json`.
@@ -226,7 +227,13 @@ Không có N thì điền đúng số job mỗi lượt đã chọn trong setup.
    được mở: chúng vào danh sách tự nộp kèm link và resume gợi ý. CAPTCHA, đăng nhập
    hoặc control chưa hỗ trợ giữ tab; xử lý ngay trong tab đó rồi chạy `apply ID`
    cho job đó.
-9. Cuối lượt, stderr in một bảng, mỗi job một dòng (công ty, role, resume, tab,
+9. Bộ chặn quota: trước mỗi job, một lệnh nhỏ đọc mức dùng 5 giờ và tuần của
+   engine (cứ ba job một lần, hoặc mỗi job khi cách ngưỡng dưới 10 điểm). Khi một
+   trong hai đạt phần trăm dừng đã chọn ở setup, hoặc engine báo hết hạn mức, lượt
+   chạy dừng: tab đang giữ vẫn mở, job chưa bắt đầu giữ trạng thái chờ cho lượt
+   sau, cuối bảng ghi lý do và số job còn lại (`quota` và `left` trong JSON). Không
+   biết mức dùng thì không bao giờ dừng.
+10. Cuối lượt, stderr in một bảng, mỗi job một dòng (công ty, role, resume, tab,
    field cần kiểm), rồi mail xác nhận tìm thấy trong Gmail, job bị bỏ kèm lý do,
    danh sách tự nộp và các câu hỏi chưa có đáp án. Stdout cuối vẫn là JSON.
 

@@ -394,11 +394,18 @@ def _rows(records, pdfs):
     ]
 
 
+def quota_probe(engine, cwd=None):
+    """One small engine call reading 5-hour and weekly usage (the quota guard's source)."""
+    from .quota import probe
+
+    return probe(engine, cwd=cwd)
+
+
 def apply(*, root, selection=None, engine=None, approve_browser_tools=False, resume_ask=None):
     """apply N (plan 3.4): track, fetch, filter, resume, drivers, questions, end table; never submits."""
     if type(approve_browser_tools) is not bool:
         raise ValueError("approve_browser_tools must be a bool")
-    from . import apply_run, browser
+    from . import apply_run, browser, quota_guard
     from .storage import lock
     from .workflow import Workflow
 
@@ -410,6 +417,8 @@ def apply(*, root, selection=None, engine=None, approve_browser_tools=False, res
     selected = selected_engine(config, engine)
     base = Workflow(root, browser=None, engines={}, default_engine=selected)
     count, explicit = _run_size(config, selection)
+    guard = quota_guard.Guard(selected, quota_guard.stop_percent(config),
+                              probe=lambda name: quota_probe(name, cwd=root))
     resources = config.get("resources", {})
     lane_count = resources.get("lanes", 1)
     if type(lane_count) is not int or lane_count not in (1, 2, 3):
@@ -450,6 +459,11 @@ def apply(*, root, selection=None, engine=None, approve_browser_tools=False, res
     print(_apply_summary(profile, records, choices), file=sys.stderr, flush=True)
     runners, cursor, results, done = {}, 0, [], []
     for job_id in ids:
+        # Quota stop (plan 3.4 step 9): held tabs stay, unstarted jobs stay pending.
+        stop = guard.check()
+        if stop:
+            reason = stop
+            break
         # The lock covers admission and creation of the held-tab record, so
         # another command cannot admit the same capacity while a job is filling.
         with lock(Path(root) / ".admission.lock", timeout=300):
@@ -480,6 +494,9 @@ def apply(*, root, selection=None, engine=None, approve_browser_tools=False, res
                 runners[key] = _workflow(root, engine, lane=owner, **options)[0]
             results.append(runners[key].apply([job_id], pdf=pdfs[job_id], engine=selected))
             done.append(job_id)
+        guard.after(results[-1])
+    if guard.reason:
+        reason = guard.reason
     finished = [base.store.get(job_id) for job_id in done]
     from .unanswered import Questions
 
@@ -495,6 +512,8 @@ def apply(*, root, selection=None, engine=None, approve_browser_tools=False, res
         "unanswered": apply_run.questions(finished),
         "by_hand": plan["by_hand"],
         "skipped": plan["skipped"],
+        "left": [job_id for job_id in ids if job_id not in done],
+        **({"quota": guard.report()} if guard.checks else {}),
         **({"reason": reason} if reason else {}),
         **base.status(),
     }

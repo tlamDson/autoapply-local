@@ -106,7 +106,8 @@ python autoapply-local.py setup --terminal
    shows the 5-hour and weekly quota used. Not signed in: it prints how to sign in
    and waits for you to retry or quit.
 3. Quota stop percent (default 90): the share of the engine's 5-hour or weekly
-   quota at which a run should stop. It is saved in `config.json`.
+   quota at which `apply` stops (see [Daily use](#daily-use-apply)). It is saved
+   in `config.json`.
 4. Resume PDFs: add one or more and tag each with roles (SWE, Data, ML or any
    text). They are copied into `resumes/` of the runtime root and become
    `main_pdf`/`main_tags` and `alternatives` in `config.json`.
@@ -231,7 +232,13 @@ Without N it fills the jobs-per-run number from setup. One run, in order:
    opened: they go to a submit-by-hand list with link and suggested resume. A
    CAPTCHA, sign-in or unsupported control holds the tab; solve it there and run
    `apply ID` for that job.
-9. The end of the run prints a table on stderr, one row per job (company, role,
+9. Quota guard: before each job one small probe call reads the engine's 5-hour
+   and weekly usage (every third job, or every job within 10 points of the stop).
+   When either reaches the quota stop percent from setup, or the engine reports
+   its usage limit, the run stops: held tabs stay open, unstarted jobs stay
+   pending for the next run, and the table ends with the reason and how many jobs
+   are left (`quota` and `left` in the JSON). Unknown usage never stops a run.
+10. The end of the run prints a table on stderr, one row per job (company, role,
    resume, tab, fields to check), then the confirmations found in Gmail, skipped
    jobs with reasons, the submit-by-hand list and the questions still unanswered.
    Final stdout stays JSON.

@@ -12,8 +12,10 @@ Arguments: `apply [ENGINE] [N|ID,ID]` (no N = the configured jobs per run;
 fetches and filters new jobs, reopens held tabs Chrome lost, picks one PDF per
 job, fills with the script driver, and ends with a table on stderr: job rows,
 fields to check, confirmations, skipped jobs, the submit-by-hand list (ATS with
-no driver: never opened) and required questions still unanswered. Quick apply
-uses existing PDFs; it never submits.
+no driver: never opened) and required questions still unanswered. When engine
+usage reaches the quota stop percent the run stops with `reason`, `quota` and
+`left`: held tabs stay, the next `apply` continues. Quick apply uses existing
+PDFs; it never submits.
 This tool never clicks Submit; the user submits held forms by hand. Preserve any held form tab and return manual-interaction states to the user.
 Use confirmed facts/exact scoped answers and normal MCP approvals. Never use
 private parent-workspace data, browser Gmail scraping or mail write actions.
