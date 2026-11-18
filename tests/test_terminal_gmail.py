@@ -66,6 +66,16 @@ class GmailStep(Base):
         self.assertEqual(result["gmail"], "signed_in")
         self.assertEqual(self.launches, [("claude", self.runtime_root)])
 
+    def test_opening_the_profile_warns_to_sign_in_on_the_web_only_without_chrome_sync(self):
+        # T24: Chrome sync in the tool's profile installed the user's own extensions and opened their tabs.
+        self.setup_run([""], FakeGmail(signed=(True,)))
+        shown = self.out.getvalue()
+        self.assertTrue("web page only" in shown, "setup output lacks the web-only sign-in hint")
+        self.assertTrue("do NOT turn on Chrome sync" in shown, "setup output lacks the Chrome sync warning")
+        vi = self.ts.MESSAGES["vi"]["gmail_opened"]
+        self.assertIn("trang web", vi)
+        self.assertIn("KHÔNG bật đồng bộ Chrome", vi)
+
     def test_already_signed_in_does_not_wait(self):
         gmail = FakeGmail(signed=(True,))
         self.setup_run([""], gmail)
