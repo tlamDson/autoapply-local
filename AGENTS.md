@@ -35,6 +35,8 @@ filters derived only from explicit answers for Confirm/Edit. An unknown
 sponsorship answer never produces a sponsorship filter.
 When changed answers reopen the filter review, a filter the user edited is
 shown and kept as edited; only unedited filters follow the answers.
+A saved filter that is still empty when a session starts was never derived
+and takes the derived value.
 
 If setup becomes stale, use the native Reload latest confirmed profile / Keep
 current draft popup. Run `setup --restart --ui UI` only after explicit Reload;

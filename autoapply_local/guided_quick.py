@@ -197,10 +197,14 @@ def refresh(state, question):
     derived = job_filters.derive(groups)
     draft = job_filters.intake_values(derived)
     question["_derived"] = {field: copy.deepcopy(draft[field]) for field in SYNCED}
-    reference = (state.get("quick_filters") or {}).get("derived") or state.get("quick_baseline") or {}
+    record = (state.get("quick_filters") or {}).get("derived")
+    reference = record or state.get("quick_baseline") or {}
     for field in SYNCED:
         current = job_filters.raw(_value(groups, field))
-        if field in reference and isinstance(current, list) and current != reference[field]:
+        # Before this session's first review an empty filter was never derived
+        # (legacy or advanced-only intake), so it is not an edit; after it, a
+        # cleared filter is one.
+        if field in reference and isinstance(current, list) and current != reference[field] and (record or current):
             draft[field] = copy.deepcopy(current)
             derived[field.split(".")[1]] = list(current)
     question["_draft"] = draft
