@@ -332,6 +332,7 @@ class ReleaseCompleteTests(ReleaseCase):
             "data/bootstrap/skill.md",
             "adapters/common.cjs",
             "adapters/greenhouse.cjs",
+            "adapters/lever.cjs",
             "adapters/rippling.cjs",
             "adapters/workday.cjs",
             "adapters/ashby.cjs",

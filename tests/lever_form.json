@@ -1,0 +1,64 @@
+{
+  "note": "Synthetic Lever application form (jobs.lever.co/<company>/<posting>/apply). form builds the DOM in adapters.test.cjs: each question is an application-question block with an application-label and its controls; a null label puts the controls straight in the form. scan is the adapter's recorded scan of it (asserted there) that test_lever_driver.py plans from; answers is what the driver plans and the adapter fills. Invented employer and candidate.",
+  "form": [
+    {"label": "Resume/CV ✱", "controls": [{"tag": "input", "attrs": {"type": "file", "name": "resume", "id": "resume-upload-input"}}]},
+    {"label": "Full name ✱", "controls": [{"tag": "input", "attrs": {"type": "text", "name": "name"}}]},
+    {"label": "Email ✱", "controls": [{"tag": "input", "attrs": {"type": "email", "name": "email"}}]},
+    {"label": "Phone", "controls": [{"tag": "input", "attrs": {"type": "text", "name": "phone"}}]},
+    {"label": "Current location ✱", "controls": [
+      {"tag": "input", "attrs": {"type": "text", "name": "location", "id": "location-input", "class": "location-input"}},
+      {"tag": "input", "attrs": {"type": "hidden", "name": "selectedLocation"}}
+    ]},
+    {"label": "Current company", "controls": [{"tag": "input", "attrs": {"type": "text", "name": "org"}}]},
+    {"label": "LinkedIn URL", "controls": [{"tag": "input", "attrs": {"type": "text", "name": "urls[LinkedIn]"}}]},
+    {"label": "GitHub URL", "controls": [{"tag": "input", "attrs": {"type": "text", "name": "urls[GitHub]"}}]},
+    {"label": "Portfolio URL", "controls": [{"tag": "input", "attrs": {"type": "text", "name": "urls[Portfolio]"}}]},
+    {"label": "Are you legally authorized to work in the United States? ✱", "controls": [
+      {"tag": "input", "attrs": {"type": "radio", "name": "cards[a1b2][field0]", "value": "Yes"}, "text": "Yes"},
+      {"tag": "input", "attrs": {"type": "radio", "name": "cards[a1b2][field0]", "value": "No"}, "text": "No"}
+    ]},
+    {"label": "Will you now or in the future require sponsorship for employment visa status? ✱", "controls": [
+      {"tag": "input", "attrs": {"type": "radio", "name": "cards[a1b2][field1]", "value": "Yes"}, "text": "Yes"},
+      {"tag": "input", "attrs": {"type": "radio", "name": "cards[a1b2][field1]", "value": "No"}, "text": "No"}
+    ]},
+    {"label": "Which teams interest you?", "controls": [
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "cards[a1b2][field2]", "value": "Platform"}, "text": "Platform"},
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "cards[a1b2][field2]", "value": "Data"}, "text": "Data"},
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "cards[a1b2][field2]", "value": "Mobile"}, "text": "Mobile"}
+    ]},
+    {"label": "Why do you want to join Example Co? ✱", "controls": [{"tag": "textarea", "attrs": {"name": "cards[a1b2][field3]"}}]},
+    {"label": "Gender", "controls": [{"tag": "select", "attrs": {"name": "eeo[gender]"}, "options": [["", "Select ..."], ["Male", "Male"], ["Female", "Female"], ["Decline to self-identify", "Decline to self-identify"]]}]},
+    {"label": "Additional information", "controls": [{"tag": "textarea", "attrs": {"name": "comments"}}]},
+    {"label": null, "controls": [
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "consent[store]"}, "text": "I agree to the privacy notice"},
+      {"tag": "textarea", "attrs": {"name": "h-captcha-response"}}
+    ]}
+  ],
+  "scan": [
+    {"id": "resume", "label": "Resume/CV", "type": "file", "required": true, "value": "", "options": []},
+    {"id": "name", "label": "Full name", "type": "text", "required": true, "value": "", "options": []},
+    {"id": "email", "label": "Email", "type": "email", "required": true, "value": "", "options": []},
+    {"id": "phone", "label": "Phone", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "location", "label": "Current location", "type": "combobox", "required": true, "value": "", "options": []},
+    {"id": "org", "label": "Current company", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "urls[LinkedIn]", "label": "LinkedIn URL", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "urls[GitHub]", "label": "GitHub URL", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "urls[Portfolio]", "label": "Portfolio URL", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "cards[a1b2][field0]", "label": "Are you legally authorized to work in the United States?", "type": "radio", "required": true, "value": null, "options": [{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}]},
+    {"id": "cards[a1b2][field1]", "label": "Will you now or in the future require sponsorship for employment visa status?", "type": "radio", "required": true, "value": null, "options": [{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}]},
+    {"id": "cards[a1b2][field2]", "label": "Which teams interest you?", "type": "checkbox-group", "required": false, "value": [], "options": [{"value": "Platform", "label": "Platform"}, {"value": "Data", "label": "Data"}, {"value": "Mobile", "label": "Mobile"}]},
+    {"id": "cards[a1b2][field3]", "label": "Why do you want to join Example Co?", "type": "textarea", "required": true, "value": "", "options": []},
+    {"id": "eeo[gender]", "label": "Gender", "type": "select", "required": false, "value": "", "options": [{"value": "", "label": "Select ..."}, {"value": "Male", "label": "Male"}, {"value": "Female", "label": "Female"}, {"value": "Decline to self-identify", "label": "Decline to self-identify"}]},
+    {"id": "comments", "label": "Additional information", "type": "textarea", "required": false, "value": "", "options": []},
+    {"id": "consent[store]", "label": "I agree to the privacy notice", "type": "checkbox", "required": false, "value": false, "options": []}
+  ],
+  "answers": {
+    "name": "Alex Rivera",
+    "email": "alex.rivera@example.com",
+    "phone": "+1 555 0100",
+    "urls[LinkedIn]": "https://www.linkedin.com/in/alex-rivera-example",
+    "urls[Portfolio]": "https://alex-rivera.example",
+    "cards[a1b2][field0]": "Yes",
+    "eeo[gender]": "Decline to self-identify"
+  }
+}

@@ -112,7 +112,11 @@ class RemovedCommandTests(unittest.TestCase):
 
     def test_allowlist_lists_no_removed_file(self):
         allowlist = json.loads((RELEASE / "export-allowlist.json").read_text(encoding="utf-8"))
-        pattern = re.compile(r"(?:^|/)(?:command-)?(?:submit|tailor|mail-check|gmail|ola|tailor-prompt)[._]|test_(?:tailor|gmail)")
+        # The mail-check module (gmail.py) stays removed; the read-only Gmail tab
+        # files of the terminal setup (gmail_tab.py, adapters/gmail.cjs) are shipped.
+        pattern = re.compile(
+            r"(?:^|/)(?:command-)?(?:submit|tailor|mail-check|ola|tailor-prompt)[._]|(?:^|/)gmail\.py$|test_(?:tailor|gmail\.py)"
+        )
         self.assertEqual([item for item in allowlist if pattern.search(item)], [])
 
     def test_docs_do_not_mention_removed_commands(self):
