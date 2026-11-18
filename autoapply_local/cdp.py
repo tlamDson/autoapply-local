@@ -124,28 +124,69 @@ def _handshake(stream, parsed):
         raise CDPError("Chrome refused the DevTools WebSocket: " + head[0])
 
 
+class _Session:
+    """One DevTools WebSocket to one tab; ``call`` sends a command and returns its result."""
+
+    def __init__(self, ws_url, timeout, connect):
+        parsed = _loopback(ws_url, ("ws",))
+        self.sock, self.next_id = connect((parsed.hostname, parsed.port), timeout=timeout), 0
+        try:
+            self.sock.settimeout(timeout)
+            self.stream = _Socket(self.sock)
+            _handshake(self.stream, parsed)
+        except OSError as error:
+            self.sock.close()
+            raise CDPError(f"Chrome DevTools connection failed: {error}") from error
+        except BaseException:
+            self.sock.close()
+            raise
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.sock.close()
+
+    def call(self, method, params):
+        self.next_id += 1
+        try:
+            self.stream.send(0x1, json.dumps({"id": self.next_id, "method": method, "params": params}).encode("utf-8"))
+            while True:
+                reply = json.loads(self.stream.message())
+                if reply.get("id") == self.next_id:
+                    break
+        except OSError as error:
+            raise CDPError(f"Chrome DevTools connection failed: {error}") from error
+        if "error" in reply:
+            raise CDPError(str(reply["error"].get("message", reply["error"])))
+        result = reply.get("result", {})
+        if "exceptionDetails" in result:
+            details = result["exceptionDetails"]
+            raise CDPError(details.get("exception", {}).get("description") or details.get("text") or "Script failed")
+        return result
+
+
 def evaluate(ws_url, expression, timeout=60, connect=socket.create_connection):
     """Evaluate ``expression`` in the tab, await a promise, and return its JSON value."""
-    parsed = _loopback(ws_url, ("ws",))
-    sock = connect((parsed.hostname, parsed.port), timeout=timeout)
-    try:
-        sock.settimeout(timeout)
-        stream = _Socket(sock)
-        _handshake(stream, parsed)
+    with _Session(ws_url, timeout, connect) as session:
         params = {"expression": expression, "awaitPromise": True, "returnByValue": True}
-        stream.send(0x1, json.dumps({"id": 1, "method": "Runtime.evaluate", "params": params}).encode("utf-8"))
-        while True:
-            reply = json.loads(stream.message())
-            if reply.get("id") == 1:
-                break
-    except OSError as error:
-        raise CDPError(f"Chrome DevTools connection failed: {error}") from error
-    finally:
-        sock.close()
-    if "error" in reply:
-        raise CDPError(str(reply["error"].get("message", reply["error"])))
-    result = reply.get("result", {})
-    if "exceptionDetails" in result:
-        details = result["exceptionDetails"]
-        raise CDPError(details.get("exception", {}).get("description") or details.get("text") or "Script failed")
-    return result.get("result", {}).get("value")
+        return session.call("Runtime.evaluate", params).get("result", {}).get("value")
+
+
+def set_file_input(ws_url, selector, path, timeout=60, connect=socket.create_connection):
+    """Select ``path`` in the one file input ``selector`` names, as a user's file choice would.
+
+    DOM.setFileInputFiles is Chrome's native file selection (it fires the
+    input's own change events); no attachment is faked in JavaScript. No
+    single matching file input means the user picks the file.
+    """
+    expression = (
+        f"(() => {{ const found = document.querySelectorAll({json.dumps(selector)}); "
+        "return found.length === 1 && found[0].type === 'file' ? found[0] : null; })()"
+    )
+    with _Session(ws_url, timeout, connect) as session:
+        handle = session.call("Runtime.evaluate", {"expression": expression, "returnByValue": False}).get("result", {})
+        if handle.get("subtype") == "null" or not handle.get("objectId"):
+            return {"status": "needs_manual"}
+        session.call("DOM.setFileInputFiles", {"files": [str(path)], "objectId": handle["objectId"]})
+    return {"status": "uploaded"}

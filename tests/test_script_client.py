@@ -25,6 +25,7 @@ from autoapply_local import cdp  # noqa: E402
 from autoapply_local.script_client import CDPScriptClient  # noqa: E402
 
 WS = "ws://127.0.0.1:9333/devtools/page/T1"
+PDF_PATH = str(Path("resumes") / "Alex_Rivera.pdf")
 GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
@@ -83,19 +84,19 @@ def found_input(method, params):
 class SetFileInputTests(unittest.TestCase):
     def test_sets_the_pdf_on_the_one_input_the_selector_names(self):
         chrome = FakeChrome(found_input)
-        status = cdp.set_file_input(WS, '[data-ui="resume"] input[type="file"]', "C:/r/Alex.pdf", connect=chrome)
+        status = cdp.set_file_input(WS, '[data-ui="resume"] input[type="file"]', PDF_PATH, connect=chrome)
         self.assertEqual(status, {"status": "uploaded"})
         self.assertEqual([item["method"] for item in chrome.sent], ["Runtime.evaluate", "DOM.setFileInputFiles"])
         lookup = chrome.sent[0]["params"]
         self.assertIs(lookup["returnByValue"], False)
         self.assertIn(json.dumps('[data-ui="resume"] input[type="file"]'), lookup["expression"])
         self.assertIn("length === 1", lookup["expression"])
-        self.assertEqual(chrome.sent[1]["params"], {"files": ["C:/r/Alex.pdf"], "objectId": "obj-7"})
+        self.assertEqual(chrome.sent[1]["params"], {"files": [PDF_PATH], "objectId": "obj-7"})
         self.assertTrue(chrome.closed)
 
     def test_no_single_file_input_needs_the_user_and_sets_nothing(self):
         chrome = FakeChrome(lambda method, params: {"result": {"result": {"type": "object", "subtype": "null"}}})
-        status = cdp.set_file_input(WS, 'input[type="file"]', "C:/r/Alex.pdf", connect=chrome)
+        status = cdp.set_file_input(WS, 'input[type="file"]', PDF_PATH, connect=chrome)
         self.assertEqual(status, {"status": "needs_manual"})
         self.assertEqual([item["method"] for item in chrome.sent], ["Runtime.evaluate"])
 
@@ -106,11 +107,11 @@ class SetFileInputTests(unittest.TestCase):
             return found_input(method, params)
 
         with self.assertRaisesRegex(cdp.CDPError, "Not allowed"):
-            cdp.set_file_input(WS, 'input[type="file"]', "C:/r/Alex.pdf", connect=FakeChrome(handler))
+            cdp.set_file_input(WS, 'input[type="file"]', PDF_PATH, connect=FakeChrome(handler))
 
     def test_only_a_loopback_tab_is_accepted(self):
         with self.assertRaises(ValueError):
-            cdp.set_file_input("ws://192.0.2.4:9333/devtools/page/T1", "input", "C:/r/Alex.pdf", connect=FakeChrome(found_input))
+            cdp.set_file_input("ws://192.0.2.4:9333/devtools/page/T1", "input", PDF_PATH, connect=FakeChrome(found_input))
 
     def test_evaluate_still_returns_the_script_value(self):
         chrome = FakeChrome(lambda method, params: {"result": {"result": {"type": "object", "value": {"ok": 1}}}})

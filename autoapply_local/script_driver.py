@@ -84,6 +84,8 @@ class ScriptDriver:
     # True when production (the engine's MCP client) runs this driver first and
     # hands the engine only the fields the script could not set.
     runs_before_engine = False
+    # CSS selector of the resume file input for the DevTools upload; None = the page's only one.
+    resume_input = None
 
     def known(self, field, profile, job):
         """ATS-specific fact for a field, or None to use the generic resolver."""

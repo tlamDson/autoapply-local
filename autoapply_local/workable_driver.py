@@ -37,6 +37,7 @@ class WorkableDriver(ScriptDriver):
     name = "workable"
     upload_before_fill = True
     runs_before_engine = True
+    resume_input = '[data-ui="resume"] input[type="file"]'
     widget_types = WIDGET_TYPES | {"radiogroup", "group"}
 
     def is_resume(self, field):

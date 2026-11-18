@@ -1,7 +1,7 @@
 """Script driver first, then a field-scoped engine request (plan aa-16).
 
 For drivers with ``runs_before_engine`` the script driver scans, uploads and
-fills the held tab. The engine then gets only the fields that need a native
+fills the held tab over Chrome DevTools (``script_client``), with no model call. The engine then gets only the fields that need a native
 click and already carry a confirmed value: no profile, no PDF, no upload and
 no whole-form instructions. Required questions without a confirmed fact never
 reach the engine; they hold the tab for the user.
@@ -37,7 +37,8 @@ def field_request(fields):
 
 def script_then_engine(bridge, driver, tab_id, profile, job, pdf):
     """Run the script driver, then hand the engine only its confirmed native-click fields."""
-    report = driver.run(bridge.client, tab_id, profile, job, pdf=pdf)
+    # Known fields are pure script: they run over DevTools, never as a model turn.
+    report = driver.run(bridge.scripts_for(driver.name), tab_id, profile, job, pdf=pdf)
     if report["status"] == "needs_manual":
         return report
     receipt = report.get("upload_receipt")

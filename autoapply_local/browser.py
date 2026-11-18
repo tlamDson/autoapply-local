@@ -405,10 +405,25 @@ class BrowserBridge:
         self.tabs, self.uploads = {}, {}
         self.observed_uploads = {}
         self.restore_errors = {}
+        # Injected DevTools client for script-first drivers; built per driver when None.
+        self.script_client = None
 
     @property
     def native_uploads(self):
         return isinstance(self.client, EngineMCPClient)
+
+    def scripts_for(self, ats):
+        """The client that runs this ATS's driver scripts: DevTools for script-first drivers, else ``client``."""
+        from .script_driver import driver_for
+
+        driver = driver_for(ats)
+        if not isinstance(self.client, EngineMCPClient) or driver is None or not driver.runs_before_engine:
+            return self.client
+        if self.script_client is not None:
+            return self.script_client
+        from . import script_client
+
+        return script_client.CDPScriptClient(self.client.debug_url, resume_input=driver.resume_input)
 
     def _native(self, tab_id):
         pages = self.client.list_pages()
@@ -510,9 +525,8 @@ class BrowserBridge:
             raise ValueError("Restore the held job binding before reading browser proof")
         if _url_identity(native["url"]) != _url_identity(binding["url"]):
             raise ValueError("Native current URL belongs to another application")
-        live = self.client.evaluate_script(
-            tab_id, self._script("audit", binding.get("job", {}).get("ats", "greenhouse")), operation="audit"
-        )
+        ats = binding.get("job", {}).get("ats", "greenhouse")
+        live = self.scripts_for(ats).evaluate_script(tab_id, self._script("audit", ats), operation="audit")
         if not isinstance(live, dict) or not isinstance(live.get("fields"), list):
             raise ValueError("Live form readback unavailable")
         if _url_identity(self._native(tab_id)["url"]) != _url_identity(native["url"]):
