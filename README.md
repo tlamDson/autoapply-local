@@ -349,6 +349,9 @@ or analysis tools. No command clicks Submit, and no engine task may request a
 Submit capability; you review each held tab and submit it yourself.
 
 - `setup`: bootstrap local state safely and show the guided next step.
+- `setup --terminal [--no-launch]`: terminal questions (language, engine login and
+  quota check, quota stop percent, resume PDFs with role tags, jobs per run) saved
+  to `config.json`, then the selected engine opens with `/setup`.
 - `setup --guided [--edit QUESTION_ID] --ui UI`: start/resume native questions or
   edit a catalog/issued record question; output is a host tool packet, not a popup.
 - `setup --answer PATH --ui UI`: validate a private, batch-bound response and

@@ -306,6 +306,9 @@ nào bấm Submit, và không task engine nào được xin quyền Submit; bạ
 tab đang giữ rồi tự nộp.
 
 - `setup`: khởi tạo intake và state trống, không ghi đè file cũ.
+- `setup --terminal [--no-launch]`: hỏi trên terminal (ngôn ngữ, engine kèm kiểm
+  đăng nhập và quota, phần trăm quota để dừng, resume PDF gắn tag vị trí, số job mỗi
+  lượt), lưu vào `config.json`, rồi mở engine đã chọn với `/setup`.
 - `boards list`: xem nguồn khám phá job đã cấu hình.
 - `boards import PATH [--confirm]`: kiểm, chuẩn hóa và bỏ trùng JSON list nguồn;
   xem preview nguồn thêm/đổi rồi xác nhận để gộp.
