@@ -157,5 +157,13 @@
   "autoapply_local/workable_driver.py",
   "tests/workable_form.json",
   "tests/test_workable_driver.py",
-  "tests/test_workable_engine_path.py"
+  "tests/test_workable_engine_path.py",
+  "tests/workday.test.cjs",
+  "tests/workday_flow.json",
+  "tests/test_workday_driver.py",
+  "tests/test_workday_account.py",
+  "autoapply_local/adapters/workday_steps.cjs",
+  "autoapply_local/workday_steps.py",
+  "autoapply_local/workday_account.py",
+  "autoapply_local/workday_driver.py"
 ]

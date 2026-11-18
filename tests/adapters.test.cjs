@@ -10,7 +10,7 @@ const path = require('node:path');
  * uploads}, không click Submit. Key answer là id của field. Scan trả {fields,
  * page}; field có {id,label,type,required,value,options,record?}. audit trả thêm
  * required_unknown và errors. Upload trả yêu cầu {id,path} cho MCP bên ngoài.
- * Workday bổ sung navigate(document, 'next'|'back') và
+ * Workday steps (workday_steps.cjs) bổ sung navigate(document, 'next'|'back') và
  * syncRecords(document, 'education'|'experience', records); custom widget trả
  * blocked [{id,reason:'agent_interaction_required'}], không tự chọn giá trị.
  * DOM dưới đây hoàn toàn tổng hợp, không đọc fixture, network hay browser thật.
@@ -147,7 +147,7 @@ for (const ats of ['greenhouse', 'rippling', 'workday', 'ashby']) {
 }
 
 test('workday: page navigation advances/backtracks without clicking Submit', async () => {
-  const adapter = load('workday');
+  const adapter = load('workday_steps');
   const { document, form, submit } = makeDocument();
   const next = form.appendChild(
     new Element(
@@ -173,7 +173,7 @@ test('workday: page navigation advances/backtracks without clicking Submit', asy
 
 for (const kind of ['education', 'experience']) {
   test(`workday: synchronizes ${kind} record count by clicking Add and Remove`, async () => {
-    const adapter = load('workday');
+    const adapter = load('workday_steps');
     const { document, form, submit } = makeDocument();
     const section = form.appendChild(new Element('section', { 'data-record-kind': kind, 'data-automation-id': kind }));
     const add = section.appendChild(
@@ -408,7 +408,7 @@ for (const [id, automationId, tag] of [
 }
 
 test('workday: current step text and pageFooter navigation wait for asynchronous transition', async () => {
-  const adapter = load('workday');
+  const adapter = load('workday_steps');
   const { document, form, main, submit } = observedWorkday();
   const next = form.appendChild(
     new Element(
@@ -451,7 +451,7 @@ test('workday: current step text and pageFooter navigation wait for asynchronous
 });
 
 test('workday: navigation validation errors cannot count as a step transition', async () => {
-  const adapter = load('workday');
+  const adapter = load('workday_steps');
   const { document, form, submit } = observedWorkday();
   const next = form.appendChild(
     new Element(
@@ -485,7 +485,7 @@ test('workday: selectedItem chips prove multi-select state with empty search inp
 });
 
 test('workday: unverified Add/Remove markup requires native agent inspection without clicking', async () => {
-  const adapter = load('workday');
+  const adapter = load('workday_steps');
   const { document, form, submit } = observedWorkday();
   const section = form.appendChild(new Element('div', { 'data-automation-id': 'workExperienceSection' }));
   const unverified = section.appendChild(new Element('button', { type: 'button' }, 'Add'));
@@ -961,3 +961,4 @@ test('workable: audit reads chosen Yes/No buttons, saved entries and checkbox gr
 });
 
 require('./ashby.test.cjs');
+require('./workday.test.cjs');

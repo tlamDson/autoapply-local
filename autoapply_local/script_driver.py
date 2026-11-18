@@ -153,8 +153,15 @@ class ScriptDriver:
             "status": "needs_manual",
         }
 
+    def _held_page(self, scanned):
+        return self._held(scanned), {}, []
+
     def run(self, client, tab_id, profile, job, pdf=None):
-        """Scan, plan and fill one held tab; never clicks and never closes it.
+        """Scan, plan and fill one held tab; never clicks and never closes it."""
+        return self.fill_page(client, tab_id, profile, job, pdf=pdf)[0]
+
+    def fill_page(self, client, tab_id, profile, job, pdf=None):
+        """``run`` for the current page: the report, the planned answers and the scanned fields.
 
         With ``upload_before_fill`` and a selected PDF, the resume is uploaded
         first and the tab scanned again, so the fill plans from what the ATS
@@ -164,23 +171,23 @@ class ScriptDriver:
         if not isinstance(scanned, dict) or "fields" not in scanned:
             # Sign-in, account creation, CAPTCHA or an unreadable page: hold the
             # tab for the user before any fill or upload.
-            return self._held(scanned)
+            return self._held_page(scanned)
         fields, uploaded, receipt = scanned["fields"], [], None
         resume = next((item["id"] for item in fields if item.get("id") and self.is_resume(item)), None)
         if self.upload_before_fill and pdf is not None and resume is None:
             # The fill would plan from an unparsed form and nobody could prove the upload.
-            return self._held({"blocked": [{"id": None, "reason": "resume_field_not_found"}]})
+            return self._held_page({"blocked": [{"id": None, "reason": "resume_field_not_found"}]})
         if self.upload_before_fill and pdf is not None:
             status = client.upload_file(tab_id, str(pdf))
             if isinstance(status, dict) and status.get("status") == "needs_manual":
-                return self._held({"blocked": [{"id": resume, "reason": "upload_needs_manual"}]})
+                return self._held_page({"blocked": [{"id": resume, "reason": "upload_needs_manual"}]})
             scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
             if not isinstance(scanned, dict) or "fields" not in scanned:
-                return self._held(scanned)
+                return self._held_page(scanned)
             fields = scanned["fields"]
             receipt = observed_receipt(fields, resume, pdf)
             if receipt is None:
-                return self._held({"blocked": [{"id": resume, "reason": "upload_not_observed"}]})
+                return self._held_page({"blocked": [{"id": resume, "reason": "upload_not_observed"}]})
             uploaded, pdf = [{"id": resume, "path": str(pdf)}], None
         plan = self.plan(fields, profile, job, pdf=pdf)
         # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
@@ -213,7 +220,7 @@ class ScriptDriver:
                 entry["option"] = item["option"]
             unknown.append(entry)
             listed.add(item.get("id"))
-        return {
+        report = {
             "driver": self.name,
             "filled": list(result.get("filled", [])),
             "blocked": list(result.get("blocked", [])),
@@ -227,6 +234,7 @@ class ScriptDriver:
             if any(item["required"] for item in unknown)
             else "filled",
         }
+        return report, plan["answers"], fields
 
 
 def observed_receipt(fields, resume, pdf):
@@ -247,11 +255,13 @@ def driver_for(ats):
     from .greenhouse_driver import GreenhouseDriver
     from .lever_driver import LeverDriver
     from .workable_driver import WorkableDriver
+    from .workday_driver import WorkdayDriver
 
     drivers = {
         "ashby": AshbyDriver,
         "greenhouse": GreenhouseDriver,
         "lever": LeverDriver,
         "workable": WorkableDriver,
+        "workday": WorkdayDriver,
     }
     return drivers.get(ats, lambda: None)()
