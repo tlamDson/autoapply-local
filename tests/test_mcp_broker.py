@@ -155,8 +155,8 @@ class McpBrokerTests(ReleaseCase):
         for flag in ("--yolo", "--full-auto", "--dangerously-bypass-approvals-and-sandbox", "--model", "-m"):
             self.assertNotIn(flag, exec_argv)
 
-    def test_analysis_tailor_and_empty_tool_tasks_keep_broker_off(self):
-        for kind in ("apply_analysis", "tailor", "browser_list", "mail_discovery", "mail_search", "mail_read"):
+    def test_analysis_and_empty_tool_tasks_keep_broker_off(self):
+        for kind in ("apply_analysis", "browser_list", "mail_discovery", "mail_search", "mail_read"):
             with self.subTest(kind=kind):
                 self.probes.clear()
                 self.dispatches.clear()
@@ -226,7 +226,8 @@ class McpBrokerTests(ReleaseCase):
             ("browser_list", "mcp__unrelated__list_pages", PermissionError),
             ("mail_read", "mcp__gmail__send_email", PermissionError),
             ("apply_analysis", TOOL, ValueError),
-            ("tailor", TOOL, ValueError),
+            ("submit", TOOL, ValueError),
+            ("browser_list", "mcp__" + SERVER + "__submit_form", ValueError),
         )
         for kind, tool, error in cases:
             with self.subTest(kind=kind, tool=tool):

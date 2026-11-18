@@ -142,14 +142,13 @@ class DocumentFolderTests(ReleaseCase):
         with (
             patch("subprocess.run", side_effect=AssertionError("Setup must not start external tools")),
             patch("socket.create_connection", side_effect=AssertionError("Setup must stay offline")),
-            patch("autoapply_local.tailor.extract_source") as extract,
+            patch("autoapply_local.extraction.extract_source") as extract,
             patch("autoapply_local.intake.apply_import") as confirm,
             patch("autoapply_local.intake.update_profile") as update,
-            patch("autoapply_local.tailor.Tailor") as tailor,
             patch("autoapply_local.browser.launch_chrome") as chrome,
         ):
             runtime.setup(root=root)
-        for boundary in (extract, confirm, update, tailor, chrome):
+        for boundary in (extract, confirm, update, chrome):
             boundary.assert_not_called()
         for name, payload in before.items():
             self.assertEqual((root / name).read_bytes(), payload, name)

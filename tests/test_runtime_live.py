@@ -587,28 +587,6 @@ class RuntimeLiveTests(ReleaseCase):
         self.assertEqual(len(self.inference_calls), 1)
         self.assertLessEqual(self.inference_calls[0][1]["timeout"], 300)
 
-    def test_cli_timeout_returns_runtime_exit_three_without_traceback_using_default_services(self):
-        self.write_json("config.json", {"runtime": {"tailor_engine": "codex"}})
-        self.write_json("profile.json", {})
-        self.failure = subprocess.TimeoutExpired(["synthetic-engine"], 300)
-
-        # Keep CLI/default runtime dispatch real; isolate only document generation.
-        def run_tailor(instance, jd, profile, engine, config):
-            return instance.engines[engine].run(task("tailor"))
-
-        output, errors = io.StringIO(), io.StringIO()
-        with patch("autoapply_local.tailor.Tailor.run", autospec=True, side_effect=run_tailor):
-            try:
-                code = self.module("cli").main(
-                    ["--user-dir", str(self.root), "tailor", "synthetic-jd.txt"], stdout=output, stderr=errors
-                )
-            except subprocess.TimeoutExpired:
-                self.fail("Default CLI dispatch leaked TimeoutExpired instead of returning runtime exit 3")
-        self.assertEqual(code, 3)
-        self.assertIn("timeout", errors.getvalue())
-        self.assertNotIn("Traceback", errors.getvalue())
-        self.assertEqual(len(self.inference_calls), 1)
-
     def test_engine_override_precedes_purpose_default_without_cross_engine_fallback(self):
         runtime = self.module("runtime")
         config = {"runtime": {"apply_engine": "codex", "tailor_engine": "claude"}}

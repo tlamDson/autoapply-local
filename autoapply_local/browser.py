@@ -143,7 +143,7 @@ def _launch_chrome(
     if memory < 2048 + lanes * 1024:
         raise ValueError("Insufficient available memory for new browser work; held tabs are preserved")
     if held_tab_cap < 1 or len(held_tabs) >= held_tab_cap:
-        raise ValueError("Held-tab cap reached; review or submit held tabs before starting new work")
+        raise ValueError("Held-tab cap reached; submit held forms by hand and record them with submitted ID before starting new work")
     if executable is None:
         executable = discover_chrome()
     root = Path(root).resolve()
@@ -274,9 +274,9 @@ class EngineMCPClient:
             }
         return self.engine.run(
             {
-                "kind": "submit" if operation == "submit" else "browser_" + operation,
+                "kind": "browser_" + operation,
                 "prompt": "Use only the approved autoapply-local-browser MCP. Return the actual tool result as JSON. "
-                "Never invent observations, open duplicate forms, or submit except the explicit submit operation. "
+                "Never invent observations, open duplicate forms, or click any Submit control. "
                 + json.dumps({"operation": operation, **payload}, ensure_ascii=False),
                 "allowed_tools": ["mcp__autoapply-local-browser__" + tool for tool in tools],
                 "schema": {
@@ -373,26 +373,8 @@ class EngineMCPClient:
             ],
         )
 
-    def submit(self, tab_id, job_id):
-        return self._run(
-            "submit",
-            {
-                "tab_id": tab_id,
-                "job_id": job_id,
-                "instructions": "Explicit submit authorization applies only to this reviewed tab/job. Click Submit once, wait for and read confirmation. Return unknown if no definite matched receipt; do not retry.",
-            },
-            {
-                "status": {"type": "string", "enum": ["confirmed", "unknown"]},
-                "job_id": {"type": "string"},
-                "url": {"type": "string"},
-                "text": {"type": "string"},
-            },
-            ["status", "job_id", "url", "text"],
-            ["list_pages", "select_page", "take_snapshot", "click", "wait_for"],
-        )
-
     def close_page(self, tab_id):
-        raise ValueError("Filled tabs are preserved; close only after verified submission")
+        raise ValueError("Filled tabs are preserved for the user to review and submit by hand")
 
 
 class BrowserBridge:
@@ -594,29 +576,8 @@ return result;"""
         self.restore_errors.pop(tab_id, None)
         return {"restored": True, "pdf_ok": True}
 
-    def submit(self, tab_id, job_id):
-        if str(tab_id) in self.restore_errors:
-            raise ValueError("Selected PDF missing/unreadable")
-        native = self._native(tab_id)
-        binding = self.tabs.get(str(tab_id))
-        if not binding or _url_identity(native["url"]) != _url_identity(binding["url"]):
-            raise ValueError("Live job changed before explicit Submit")
-        if not isinstance(self.client, EngineMCPClient):
-            raise ValueError("Explicit submit needs an approved runtime browser connector")
-        evidence = self.client.submit(tab_id, job_id)
-        if evidence.get("status") == "confirmed":
-            receipt = self._native(tab_id)
-            if (
-                evidence.get("job_id") != job_id
-                or not evidence.get("text")
-                or _url_identity(evidence.get("url", "")) != _url_identity(receipt["url"])
-                or urlsplit(receipt["url"]).netloc != urlsplit(binding["url"]).netloc
-            ):
-                raise ValueError("Submit receipt lacks native matching job/page evidence")
-        return evidence
-
     def close(self, tab_id):
-        raise ValueError("Filled application tabs are preserved until confirmed submission")
+        raise ValueError("Filled application tabs are preserved for the user to review and submit by hand")
 
 
 def mcp_config(engine, debug_url, existing=None):

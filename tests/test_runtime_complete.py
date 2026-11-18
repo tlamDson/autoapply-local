@@ -118,13 +118,6 @@ class EngineRuntimeTests(ReleaseCase):
                     engine.run(task)
                 self.runner.assert_not_called()
 
-    def test_tailor_task_cannot_request_browser_tools(self):
-        engine = self.engine()
-        task = {**analysis_task(), "kind": "tailor", "allowed_tools": ["mcp__chrome-devtools__new_page"]}
-        with self.assertRaises(ValueError):
-            engine.run(task)
-        self.runner.assert_not_called()
-
     def test_apply_and_review_cannot_request_submit_capability(self):
         for kind in ("apply", "review"):
             with self.subTest(kind=kind):

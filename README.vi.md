@@ -1,7 +1,8 @@
 # AutoApply Local 0.1.0a1 — bản thử nghiệm
 
 Công cụ tìm và điền đơn cục bộ, setup qua popup native, fact được xác nhận,
-resume PDF theo role, và luồng điền → kiểm → yêu cầu nộp rõ ràng.
+resume PDF theo role, và luồng điền → giữ tab → kiểm. Công cụ không bao giờ bấm
+Submit: bạn tự nộp từng form đang giữ.
 [Hướng dẫn tiếng Anh](README.md).
 
 Fact phụ thuộc thay đổi thì câu trả lời cần xác nhận lại; lỗi phân tích trước thao tác browser trả job vừa claim về `pending` để thử lại thủ công, còn tab đang giữ vẫn mở.
@@ -10,15 +11,10 @@ Các kiểm tra offline, DOM tổng hợp và package cài đặt được tự 
 minh ATS thật, Gmail thật, toàn bộ luồng trên cả hai engine, phần cứng macOS hoặc
 máy 8 GB. Những trường chưa hỗ trợ hoặc bước đăng nhập cần người dùng sẽ giữ tab.
 
-Gmail tự động cần ép đúng account ở từng lời gọi. Hiện chỉ Claude hỗ trợ search/read
-với account tường minh; Codex giữ `manual_required` tới khi transport ép được account.
-Quick apply vẫn chạy; dùng Codex thì xử lý mail tay. Fill browser native còn rủi ro
+Fill browser native còn rủi ro
 với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
 
-Automated Gmail requires account binding enforced on every call. Currently only
-Claude supports search/read with an explicit account; Codex search/read remains
-`manual_required` until a transport can enforce that binding. Quick apply remains
-available; handle mail manually with Codex. Native browser fill still carries
+Native browser fill still carries
 real-engine risks and needs a live ATS gate before it can be considered stable.
 
 Kết quả smoke test runtime Part2 trên Windows là kết quả lịch sử, trên revision
@@ -68,7 +64,8 @@ Package đã cài chạy setup từ thư mục bất kỳ, không cần checkout
 Khi ở ngoài source, chọn runtime tường minh, ví dụ
 `python -m autoapply_local --user-dir ./autoapply-user setup`, rồi mở thư mục đó.
 Dependency được ghim phiên bản.
-Tailor cần thêm pdflatex và Poppler; apply với PDF có sẵn không cần TeX.
+Apply dùng PDF có sẵn nên không cần TeX; `source extract` với PDF cần `pdftotext`
+của Poppler.
 Browser MCP ghim chrome-devtools-mcp 0.14.0; npm có thể tải phiên bản đó ở lần
 đầu bạn phê duyệt connector. Không dùng profile Chrome cá nhân thường ngày.
 
@@ -241,13 +238,13 @@ truyền endpoint của lane. Nếu config kế thừa đã có `autoapply-local
 cần bỏ entry trùng trước khi dùng transport riêng để tránh kế thừa env ngoài ý
 muốn. Không thay cấu hình global. Mỗi task dùng một engine, CLI override có
 ưu tiên, không pin model hoặc fallback sang engine khác; không bypass approvals.
-Analysis/tailor tắt công cụ ngoài; browser chỉ dùng connector của lane đã chọn
+Analysis tắt công cụ ngoài; browser chỉ dùng connector của lane đã chọn
 và công cụ của thao tác đó. Các quyền runtime bình thường vẫn được giữ.
 
 Task có công cụ ngoài trên Claude cần CLI từ 2.1.295 để hook chặn lỗi hoạt động.
 Runtime probe đúng executable đã chọn trước khi dispatch. Bản cũ hoặc version
 không đọc được trả `unsupported_version`; cập nhật thủ công theo hướng dẫn cài
-đặt chính thức của CLI. Analysis/tailor không có công cụ ngoài không gắn hook
+đặt chính thức của CLI. Analysis không có công cụ ngoài không gắn hook
 này. Chỉ tên nội bộ chính xác `StructuredOutput` được phép định dạng JSON;
 runtime chỉ nhận success envelope và structured output đúng schema.
 Native `permission_denials` có phần tử sẽ trả `permission_required` trước khi
@@ -268,7 +265,7 @@ Override TOML trong từng lần gọi tắt connector kế thừa, shell, brows
 native, thực thi code và multi-agent; browser chỉ mở thao tác MCP được chọn.
 Giữ model/provider, kho đăng nhập và approval policy hiện có. Codex chỉ bật
 `features.code_mode_host` và `features.workspace_dependencies` khi task yêu cầu
-rõ công cụ MCP/connector native. Đây là hạ tầng broker; analysis/tailor và danh
+rõ công cụ MCP/connector native. Đây là hạ tầng broker; analysis và danh
 sách tool rỗng giữ cả hai tắt, còn `features.code_mode` và các capability bị hạn
 chế khác vẫn tắt. Trước inference,
 probe `mcp list --json` lấy inventory MCP hiệu lực qua cùng CLI đã resolve,
@@ -284,7 +281,7 @@ hình toàn cục.
 Lỗi được phân biệt `login_required`, `quota_exhausted`, `timeout`, `configuration`,
 `permission_required`, `unsupported_version`, `invalid_response`, `engine_failure`, không in output
 nhạy cảm từ CLI. Probe tối đa 10 giây, task tối đa 300 giây. Lỗi runtime trả exit
-3; JSON/schema không hợp lệ trả exit 2. Không tự fallback engine hay retry Submit.
+3; JSON/schema không hợp lệ trả exit 2. Không tự fallback engine.
 `doctor` báo riêng executable có tồn tại, argv đã resolve và dependency;
 login/connector/capability vẫn là `not_verified`. Test offline chưa chứng minh
 CLI thật, handshake MCP, ATS hay Gmail đã chạy được.
@@ -293,12 +290,12 @@ Từ runtime root, chạy `python autoapply-local.py LỆNH`; slash command và 
 Codex cục bộ cũng dùng launcher chọn đúng root này. Nếu gọi thẳng module hoặc
 entrypoint đã cài, đặt `--user-dir PATH` trước tên lệnh.
 
-Với `apply`, `review` và `submit`, `--approve-browser-tools` là opt-in tường minh
+Với `apply` và `review`, `--approve-browser-tools` là opt-in tường minh
 chỉ cho lệnh hiện tại. Cờ chỉ duyệt các tool MCP browser cục bộ mà từng task yêu
 cầu và không được lưu lại. Policy hiện có, gồm managed policy, permission denials
-và review gate, vẫn áp dụng. Cờ không duyệt tool Gmail, analysis hay tailor.
-`apply --quick` và `review` không bao giờ tự nộp; vẫn cần lệnh `submit` tường minh
-sau khi đã review.
+và review gate, vẫn áp dụng. Cờ không duyệt tool Gmail hay analysis. Không lệnh
+nào bấm Submit, và không task engine nào được xin quyền Submit; bạn tự kiểm từng
+tab đang giữ rồi tự nộp.
 
 - `setup`: khởi tạo intake và state trống, không ghi đè file cũ.
 - `boards list`: xem nguồn khám phá job đã cấu hình.
@@ -313,25 +310,21 @@ sau khi đã review.
 - `fetch [ENGINE] [--url URL]`: lấy board Greenhouse/Workday/Rippling đã cấu hình
   hoặc URL hỗ trợ nhập tay; sửa nguồn qua `boards import` hoặc `resources.boards`
   trong intake, mẫu ở examples/boards.json.
-- `apply [ENGINE] --quick N|ID,ID`: chọn PDF theo role, điền và giữ tab; không nộp
-  hay tailor. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng tuyển
+- `apply [ENGINE] --quick N|ID,ID`: chọn PDF theo role, điền và giữ tab; không nộp. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng tuyển
   dụng và PDF của từng job đã chọn; stdout cuối vẫn là JSON.
-- `tailor [ENGINE] JD_FILE_OR_URL`: tạo run TEX/PDF/changes mới theo chính sách,
-  tối đa một lần sửa; không mở form, chưa kiểm hình ảnh thì `needs_review`.
 - `review ID,ID|all`: đọc lại form đang giữ, kiểm job/tab/field/fact/PDF còn mới.
-- `submit ID,ID|all-reviewed`: yêu cầu nộp rõ ràng các job đã review; ghi intent
-  bền vững trước click, chỉ ghi tracker sau confirmation khớp. Không rõ kết quả
-  thì cần đối soát thủ công, không tự click lại.
-- `mail-check [ENGINE]`: opt-in connector Gmail native, chỉ đọc/tìm đúng account.
+- `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng
+  tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
+  mở tới khi bạn tự đóng.
 - `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
 
 Mặc định một lane Chrome sạch và bền giữa các lệnh. Hai/ba lane cần opt-in.
-Kiểm RAM và giới hạn tab là heuristic, chưa phải benchmark máy 8 GB. Khi cần tạo
+Kiểm RAM và giới hạn tab là heuristic, chưa phải benchmark máy 8 GB. Khi chạm trần,
+hãy tự nộp các form đang giữ và ghi lại bằng `submitted ID,ID` trước khi mở thêm. Khi cần tạo
 tài khoản, đăng nhập, CAPTCHA/MFA hoặc sửa control chưa hỗ trợ, thao tác trong tab
 đang giữ rồi tiếp tục. Không đóng form chưa nộp. Package không thu/lưu mật khẩu.
 Chạy lại `apply [ENGINE] --quick ID` với đúng ID để tiếp tục cùng tab sau khi xử lý
-blocker. Nếu login/CAPTCHA/thiếu dữ liệu còn vướng, giữ trạng thái manual. Intent
-đã nộp hoặc kết quả chưa rõ cần đối soát, không đi đường tiếp tục này.
+blocker. Nếu login/CAPTCHA/thiếu dữ liệu còn vướng, giữ trạng thái manual.
 
 Job mới luân phiên lane trong giới hạn opt-in; mỗi job lưu lane/debug endpoint để
 restore đúng browser. Kiểm RAM và trần tab trước từng job, giữ kết quả từng phần
@@ -340,13 +333,7 @@ Luồng nhiều trang truyền PDF đã chọn vào thao tác native, upload t�
 trước Next. Review kiểm text/value mới và attachment khớp receipt upload được
 browser quan sát; hash dự kiến của file cục bộ không tự chứng minh đã upload.
 
-Gmail cần opt-in read/search và account đã xác minh. Quyền lấy mã job hiện tại là
-mục riêng; mã không ghi bền vững. Không gửi/draft/archive/label, không scrape Gmail
-trên browser và không tạo OAuth riêng. Thiếu connector thì chuyển sang thủ công.
-Mail mơ hồ hoặc không có mail không chứng minh đơn thất bại.
-Chỉ sau opt-in mới được tìm connector/metadata tài khoản; chỉ đọc mail sau khi
-xác minh đúng account và công cụ read/search. Thiếu metadata hoặc connector chỉ
-đọc thực sự thì trả manual fallback và vẫn giữ khả năng apply.
+Bản này không có lệnh Gmail; không scrape Gmail trên browser và không tạo OAuth riêng.
 
 Tracker XLSX cục bộ là nguồn chuẩn; khôi phục ledger phải đối chiếu mọi trạng thái
 lịch sử. Nhập lịch sử CSV/XLSX cần preview và confirm; trạng thái không biết phải
