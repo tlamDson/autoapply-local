@@ -58,7 +58,7 @@ claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks
 - Fixture ZIP đặt ZipInfo.filename trực tiếp để giữ nguyên dấu backslash trên Windows; zipfile tự chuẩn hóa tên khi nhận chuỗi nên ca traversal trước đó không chứa member mà assertion cần kiểm. Không đổi assertion.
 
 - Installer (aa-04): install.ps1/install.sh only locate Python 3.11+ and git, then hand off to scripts/install.py; a missing dependency prints its winget/brew command and exits 3, a failed pip install exits 4; system software is never installed.
-- Rippling driver (aa-13): `rippling_driver.RipplingDriver` uploads the resume first, waits for Rippling's own parse, then writes confirmed facts into the Formsy model (`adapters/rippling.cjs`), so they win over the parse; location is typed and only the single matching Places suggestion is picked; anything unknown, ambiguous or still required-empty is reported and the tab is held. No adapter action clicks a button.
+- Rippling driver (aa-13): `rippling_driver.RipplingDriver` uploads the resume first, waits for Rippling's own parse, then writes confirmed facts into the Formsy model (`adapters/rippling.cjs`), so they win over the parse; every written fact is read back (`modelCheck`), a fact a late parse changed is rewritten at most twice and then reported `value_overwritten`; location is typed, the old place id is cleared first, and only the single matching Places suggestion is picked (mousedown first, click only if needed, never inside a button, link, label or other activating control), succeeding only with a fresh place id and matching location text; anything unknown, ambiguous or still required-empty is reported and the tab is held. No adapter action clicks a button.
 
 ## Câu hỏi của người thực thi
 

@@ -323,7 +323,7 @@ test('rippling: location blocks on no, ambiguous or unsafe suggestions', async (
     const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 2, waitMs: 1 });
     assertShape('fill', result);
     assert.equal(reasonOf(result), reason);
-    assert.equal(state.model.externalPlaceId, undefined);
+    assert.ok(!state.model.externalPlaceId, 'no place id');
   }
   const state = formsyForm();
   const trap = new Node('button', { role: 'option', type: 'submit' }, 'Example City, CA, USA');
@@ -421,7 +421,7 @@ test('rippling: location never clicks a suggestion inside a control that activat
     const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 2, waitMs: 1 });
     assert.equal(reasonOf(result), 'unsafe_control', tag);
     assert.deepEqual(trap.events, [], tag);
-    assert.equal(state.model.externalPlaceId, undefined, tag);
+    assert.ok(!state.model.externalPlaceId, tag);
   }
   const state = formsyForm();
   const listbox = new Node('ul', { role: 'listbox' });

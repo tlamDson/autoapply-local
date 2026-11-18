@@ -3,6 +3,8 @@
 Rippling parses the uploaded resume and writes what it read (name, links) into
 the form. The driver therefore uploads first, waits for that parse, and only
 then writes confirmed facts, so the user's own facts win over the parse. A
+parse that lands late is caught by reading every written fact back: a changed
+fact is written again a bounded number of times, then reported. A
 question with no confirmed, exactly scoped answer is left as it is and reported.
 The driver never clicks a button; the user reviews and submits the held tab.
 """
@@ -31,7 +33,7 @@ CONTACT = {
 }
 # Adapter calls the driver may make, with the MCP readback each one fits
 # (browser.EVALUATE_SCHEMAS); none of them clicks a control.
-ACTIONS = {"modelReady": "fill", "modelScan": "audit", "modelFill": "fill", "location": "fill"}
+ACTIONS = {"modelReady": "fill", "modelScan": "audit", "modelFill": "fill", "modelCheck": "fill", "location": "fill"}
 APPLY_PATH = re.compile(r"(?:/[A-Za-z]{2}-[A-Za-z]{2})?/[^/]+/jobs/[^/]+(?:/apply)?/?")
 
 
@@ -113,8 +115,8 @@ def _receipt(path):
 class RipplingDriver:
     """Fill one held Rippling tab through an MCP client with evaluate_script and upload_file."""
 
-    def __init__(self, client, *, sleep=time.sleep, parse_wait_s=15, poll_s=0.5):
-        self.client, self.sleep = client, sleep
+    def __init__(self, client, *, sleep=time.sleep, parse_wait_s=15, poll_s=0.5, rewrites=2):
+        self.client, self.sleep, self.rewrites = client, sleep, rewrites
         self.polls = max(1, math.ceil(parse_wait_s / poll_s)) if poll_s > 0 else 1
         self.poll_s = poll_s
 
@@ -124,9 +126,9 @@ class RipplingDriver:
             raise ValueError("Rippling adapter readback is not an object")
         return result
 
-    def wait_parsed(self, tab_id):
+    def wait_parsed(self, tab_id, name):
         for attempt in range(self.polls):
-            if "resume" in self.call(tab_id, "modelReady").get("filled", []):
+            if "resume" in self.call(tab_id, "modelReady", {"name": name}).get("filled", []):
                 return True
             if attempt + 1 < self.polls:
                 self.sleep(self.poll_s)
@@ -140,7 +142,7 @@ class RipplingDriver:
                 raise ValueError("Upload requires an existing PDF")
             receipt = _receipt(path)
             self.client.upload_file(tab_id, str(path))
-            if not self.wait_parsed(tab_id):
+            if not self.wait_parsed(tab_id, receipt["name"]):
                 return self._held([{"id": "resume", "reason": "resume_parse_timeout"}], [], [], receipt)
         scanned = self.call(tab_id, "modelScan")
         if not scanned.get("page", {}).get("formsy"):
@@ -148,9 +150,13 @@ class RipplingDriver:
         steps = plan(profile, scanned["fields"], job)
         result = self.call(tab_id, "modelFill", steps["answers"]) if steps["answers"] else {}
         blocked = list(result.get("blocked", []))
+        filled = list(result.get("filled", []))
         if steps["location"]:
             placed = self.call(tab_id, "location", {"query": steps["location"]})
             blocked.extend(placed.get("blocked", []))
+        overwritten = self.settle(tab_id, {name: steps["answers"][name] for name in filled if name in steps["answers"]})
+        blocked.extend({"id": name, "reason": "value_overwritten"} for name in overwritten)
+        filled = [name for name in filled if name not in overwritten]
         after = self.call(tab_id, "modelScan")
         for field in after.get("fields", []):
             if field["id"] == "resume" and receipt and receipt["name"] not in (field.get("value") or []):
@@ -159,7 +165,26 @@ class RipplingDriver:
                 if not any(item["id"] == field["id"] for item in blocked):
                     blocked.append({"id": field["id"], "reason": "required_empty"})
         valid = after.get("page", {}).get("valid")
-        return self._held(blocked, result.get("filled", []), steps["unknown"], receipt, valid)
+        return self._held(blocked, filled, steps["unknown"], receipt, valid)
+
+    def settle(self, tab_id, written):
+        """Names whose confirmed value a late parse still overwrites after the bounded rewrites."""
+        changed = []
+        for attempt in range(self.rewrites + 1):
+            if not written:
+                return []
+            self.sleep(self.poll_s)
+            check = self.call(tab_id, "modelCheck", written)
+            changed = [
+                item["id"]
+                for item in check.get("blocked", [])
+                if item.get("reason") == "value_changed" and item.get("id") in written
+            ]
+            if not changed:
+                return []
+            if attempt < self.rewrites:
+                self.call(tab_id, "modelFill", {name: written[name] for name in changed})
+        return changed
 
     @staticmethod
     def _held(blocked, filled, unknown, receipt, valid=False):
