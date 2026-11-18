@@ -241,6 +241,62 @@ class GuidedQuickReviewTests(ReleaseCase):
         self.edit_answer("authorization.sponsorship_now", False)
         self.assertEqual(self.document()["filters"]["jd_exclude"], ["itar"])
 
+    def test_reconfirming_the_reopened_review_keeps_edited_filters(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True, "targets.job_types": ["internship"]})
+        self.edit_answer("filters.jd_exclude", ["itar"])
+        packet = self.edit_answer("authorization.sponsorship_now", False)
+        review = packet["questions"][0]
+        self.assertEqual(review["id"], "setup.quick.filters")
+        self.assertIn("ITAR", review["prompt"]["en"], "The review shows the filters Confirm will write")
+        self.assertNotIn("security clearance", review["prompt"]["en"])
+        self.reply(packet, [self.entry(review, "confirm")])
+        filters = self.document()["filters"]
+        self.assertEqual(filters["jd_exclude"], ["itar"])
+        self.assertEqual(filters["title_include"], ["intern"])
+        # The edit stays an edit: a later answer change still does not replace it.
+        packet = self.edit_answer("authorization.sponsorship_now", True)
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ["itar"])
+        self.reply(packet, [self.entry(packet["questions"][0], "confirm")])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ["itar"])
+
+    def test_reopened_review_still_follows_answers_for_unedited_filters(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True, "targets.job_types": ["internship"]})
+        self.edit_answer("filters.jd_exclude", ["itar"])
+        packet = self.edit_answer("targets.job_types", ["newgrad"])
+        self.assertNotIn("title must include: intern", packet["questions"][0]["prompt"]["en"])
+        self.reply(packet, [self.entry(packet["questions"][0], "confirm")])
+        filters = self.document()["filters"]
+        self.assertEqual((filters["jd_exclude"], filters["title_include"]), (["itar"], []))
+
+    def test_editing_the_reopened_review_starts_from_the_edited_filters(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True})
+        self.edit_answer("filters.jd_exclude", ["itar"])
+        packet = self.edit_answer("authorization.sponsorship_now", False)
+        packet = self.reply(packet, [self.entry(packet["questions"][0], "edit")])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ["itar"])
+        question = next(q for q in packet["questions"] if q["id"] == "filters.jd_exclude")
+        self.assertIn("Suggested: itar;", question["prompt"]["en"])
+
+    def test_new_session_review_keeps_filters_edited_in_the_loaded_profile(self):
+        quick = self.module("guided_quick")
+        groups = self.module("intake").blank_intake()["groups"]
+        groups["authorization"]["sponsorship_now"] = True
+        groups["targets"]["job_types"] = ["internship"]
+        groups["filters"].update(jd_exclude=["itar"], title_include=["intern"])
+        state = {"document": {"groups": groups}, "quick_baseline": quick.baseline(groups)}
+        groups["targets"]["job_types"] = ["newgrad"]
+        review = {"quick_step": "filters"}
+        quick.refresh(state, review)
+        self.assertEqual(review["_draft"]["filters.jd_exclude"], ["itar"], "An edited filter is kept")
+        self.assertEqual(review["_draft"]["filters.title_include"], [], "An unedited filter follows the answers")
+        self.assertNotIn("security clearance", review["prompt"]["en"])
+
+    def test_new_sessions_record_the_loaded_filter_baseline(self):
+        self.prepared()
+        self.run_guided()
+        self.assertEqual(self.progress()["quick_baseline"],
+                         {"filters.jd_exclude": [], "filters.title_include": [], "filters.title_exclude": []})
+
     def test_unrelated_edit_does_not_requeue_filters(self):
         self.confirmed_filters({"authorization.sponsorship_now": True})
         packet = self.edit_answer("contact.city", "Springfield")
