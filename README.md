@@ -449,6 +449,12 @@ Submit capability; you review each held tab and submit it yourself.
   tab, fields to check), the confirmations found, skipped jobs with reasons, the
   submit-by-hand list and the count of required questions still unanswered
   (`questions`, see above; each field is listed under `unanswered`).
+  Before each job a quota guard reads the engine's 5-hour and weekly usage with
+  one small probe call (every third job, or every job within 10 points of the
+  stop); when either reaches the quota stop percent from setup, or the engine
+  reports its usage limit, the run stops: held tabs stay open, unstarted jobs stay
+  pending for the next run, and the table ends with the reason and how many jobs
+  are left (`quota` and `left` in the JSON). Unknown usage never stops a run.
   Final stdout stays JSON. Named job IDs are not deduplicated. This command never
   submits.
 - `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
