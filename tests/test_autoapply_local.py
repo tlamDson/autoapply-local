@@ -21,10 +21,8 @@ COMMANDS = (
     "doctor",
     "fetch",
     "apply",
-    "tailor",
     "review",
-    "submit",
-    "mail_check",
+    "submitted",
     "status",
 )
 
@@ -68,10 +66,8 @@ class CliTests(ReleaseCase):
             "doctor",
             "fetch",
             "apply",
-            "tailor",
             "review",
-            "submit",
-            "mail-check",
+            "submitted",
             "status",
         ):
             with self.subTest(command=command):
@@ -118,33 +114,10 @@ class CliTests(ReleaseCase):
                 self.assertEqual(kwargs["selection"], expected)
                 self.assertEqual(kwargs["engine"], "codex")
 
-    def test_tailor_accepts_file_or_url_and_dispatches_only_tailor(self):
-        path = self.root / "jd.txt"
-        path.write_text("Example Labs backend internship", encoding="utf-8")
-        for source in (str(path), "https://jobs.example.invalid/synthetic-1"):
-            with self.subTest(source=source):
-                self.assertEqual(self.invoke("tailor", "codex", source), 0)
-                self.assert_only_dispatched("tailor")
-                self.assertEqual(str(self.services["tailor"].call_args.kwargs["jd"]), source)
-
     def test_review_all_executes_review_without_submit(self):
         self.assertEqual(self.invoke("review", "all"), 0)
         self.assert_only_dispatched("review")
         self.assertEqual(self.services["review"].call_args.kwargs["selection"], "all")
-
-    def test_submit_requires_explicit_ids_or_all_reviewed(self):
-        for selection, expected in (
-            ("synthetic-1,synthetic-2", ["synthetic-1", "synthetic-2"]),
-            ("all-reviewed", "all-reviewed"),
-        ):
-            with self.subTest(selection=selection):
-                self.assertEqual(self.invoke("submit", selection), 0)
-                self.assert_only_dispatched("submit")
-                self.assertEqual(self.services["submit"].call_args.kwargs["selection"], expected)
-
-    def test_mail_check_executes_mail_service_only(self):
-        self.assertEqual(self.invoke("mail-check"), 0)
-        self.assert_only_dispatched("mail_check")
 
     def test_invalid_commands_do_not_dispatch_any_service(self):
         for arguments in (

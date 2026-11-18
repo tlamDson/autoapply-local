@@ -31,11 +31,10 @@ preview profile updates and import only after explicit confirmation. Unknown
 authorization, sponsorship, consent and EEO answers must remain unknown.
 
 Apply fills existing role-selected PDFs and holds forms. Review rereads fresh
-evidence. Only an explicit submit request for reviewed IDs or all-reviewed permits
-the durable submission workflow. Keep unsubmitted tabs open for sign-in, account
-creation, CAPTCHA, missing answers and errors. Reconcile uncertain submission
-outcomes manually without retrying a click.
+evidence. Nothing ever clicks Submit; the user submits each held form by hand
+and records it with `submitted ID,ID`, which frees its held-tab slot.
+Keep unsubmitted tabs open for sign-in, account creation, CAPTCHA, missing
+answers and errors.
 
-Gmail requires separate opt-in, a verified selected account and native search/read
-tools. Never send, draft, archive, label, scrape browser Gmail, persist codes or
-access another workspace's private data. Report held tabs and unresolved work.
+There is no Gmail command. Never send, draft, archive, label, scrape browser
+Gmail, persist codes or access another workspace's private data. Report held tabs and unresolved work.

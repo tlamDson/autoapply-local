@@ -23,22 +23,30 @@ def selected_engine(config, override=None, purpose="apply"):
     return selected
 
 
-def select_resume(profile, config, job):
-    settings = config.get("resumes", {})
-    role = str(job.get("role", "")).casefold()
-    selected = settings.get("main_pdf")
-    alternatives = settings.get("alternatives", [])
-    by_id = {item.get("id"): item.get("path", item.get("pdf")) for item in alternatives if isinstance(item, dict)}
-    for token, choice in settings.get("role_mapping", {}).items():
-        if str(token).casefold() in role:
-            selected = by_id.get(choice, choice)
-            break
-    if not selected:
-        raise ValueError("Select a main PDF or a role-mapped alternative in the intake")
-    path = Path(selected).expanduser().resolve()
+def choose_resume(profile, config, job, *, memory=None, ask=None):
+    """Role-tag resume choice (resume_choice.choose); the chosen file must be a real PDF."""
+    from . import resume_choice
+
+    choice = resume_choice.choose(config, job, memory=memory, ask=ask)
+    path = choice.path
     if not path.is_file() or not path.read_bytes().startswith(b"%PDF-"):
         raise ValueError("The selected resume must be an existing PDF")
-    return path
+    return choice
+
+
+def describe_choice(choice):
+    why = {
+        "role_tag": f"role tag {choice.tag}",
+        "keyword_score": f"role tag {choice.tag}, best JD keyword score {choice.score}",
+        "only_resume": "only resume",
+        "remembered": "your earlier answer",
+        "asked": "your answer",
+    }[choice.reason]
+    return f"{choice.path} ({why})"
+
+
+def select_resume(profile, config, job, *, memory=None, ask=None):
+    return choose_resume(profile, config, job, memory=memory, ask=ask).path
 
 
 def setup(*, root, guided=False, answer=None, finish=False, confirm=False, restart=False, edit=None, ui="none"):
@@ -110,7 +118,7 @@ def boards_import(*, root, path, confirm=False):
 
 def source_extract(*, root, path):
     import uuid
-    from .tailor import extract_source
+    from .extraction import extract_source
 
     draft = extract_source(path)
     destination = Path(root) / "user/drafts" / (uuid.uuid4().hex + ".json")
@@ -250,6 +258,21 @@ def _workflow(root, override=None, launch=False, lane=None, approve_browser_tool
     )
 
 
+def terminal_ask(role, options):
+    """Ask which resume fits a role no tag matches; None when the answer is blank or not a number."""
+    print(f"No resume tag matches '{role}'. Which resume should be used?", file=sys.stderr)
+    for number, item in enumerate(options, 1):
+        print(f"  {number}. {item['id']}: {item['path']}", file=sys.stderr)
+    print("Number (blank to stop): ", end="", file=sys.stderr, flush=True)
+    try:
+        answer = input().strip()
+    except EOFError:
+        return None
+    if answer.isdigit() and 1 <= int(answer) <= len(options):
+        return options[int(answer) - 1]["id"]
+    return None
+
+
 def _apply_summary(profile, records, pdfs):
     targets, logistics = profile.get("targets", {}), profile.get("logistics", {})
     season = logistics.get("season") or targets.get("season") or "unspecified"
@@ -260,12 +283,12 @@ def _apply_summary(profile, records, pdfs):
             "Apply preflight",
             "Target roles: " + ", ".join(targets.get("roles", [])),
             f"Recruiting season: {season} {year}; window: {window}",
-            *(f"{record['id']} | {record['role']} -> {pdfs[record['id']]}" for record in records),
+            *(f"{record['id']} | {record['role']} -> {describe_choice(pdfs[record['id']])}" for record in records),
         ]
     )
 
 
-def apply(*, root, selection, engine=None, approve_browser_tools=False):
+def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_ask=None):
     if type(approve_browser_tools) is not bool:
         raise ValueError("approve_browser_tools must be a bool")
     from . import browser
@@ -283,8 +306,13 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False):
         if record["state"] != "pending" and not record.get("tab_id"):
             raise ValueError("Manual continuation requires the original held tab")
     profile = base._profile()
-    pdfs = {record["id"]: select_resume(profile, config, record) for record in records}
-    print(_apply_summary(profile, records, pdfs), file=sys.stderr, flush=True)
+    from .resume_choice import Memory
+
+    memory = Memory(Path(root) / "user/resume-choices.json")
+    ask = resume_ask or (terminal_ask if sys.stdin is not None and sys.stdin.isatty() else None)
+    choices = {record["id"]: choose_resume(profile, config, record, memory=memory, ask=ask) for record in records}
+    pdfs = {job_id: choice.path for job_id, choice in choices.items()}
+    print(_apply_summary(profile, records, choices), file=sys.stderr, flush=True)
     resources = config.get("resources", {})
     lane_count = resources.get("lanes", 1)
     if type(lane_count) is not int or lane_count not in (1, 2, 3):
@@ -303,7 +331,7 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False):
             if record["state"] == "pending":
                 held = [item for item in base.store.jobs() if item.get("tab_id") and item["state"] != "submitted"]
                 if len(held) >= resources.get("held_tab_cap", 5):
-                    reason = "Held-tab cap reached; finish held forms before opening another job"
+                    reason = "Held-tab cap reached; submit held forms by hand and record them with submitted ID before opening another job"
                     break
                 if browser.available_memory_mb() < 2048 + lane_count * 1024:
                     reason = "Insufficient available memory for new browser work; held tabs are preserved"
@@ -364,175 +392,17 @@ def review(*, root, selection, approve_browser_tools=False):
     return {"reviews": reviews, **base.status()}
 
 
-def submit(*, root, selection, approve_browser_tools=False):
-    if type(approve_browser_tools) is not bool:
-        raise ValueError("approve_browser_tools must be a bool")
-    from .workflow import Workflow
+def submitted(*, root, selection):
+    """Record held forms the user submitted by hand, freeing their held-tab slots."""
+    from . import manual_submission
 
-    base = Workflow(root, browser=None, engines={})
-    ids = base._selection(selection, "submit")
-    lane_path = Path(root) / "browser/active-lanes.json"
-    lanes = read_json(lane_path) if lane_path.exists() else []
-    runners, jobs = {}, []
+    store = Store(root)
+    ids = list(dict.fromkeys(selection))
+    if not ids or any(not isinstance(item, str) or not item for item in ids):
+        raise ValueError("Choose explicit job IDs")
     for job_id in ids:
-        record = base.store.get(job_id)
-        owner = next(
-            (item for item in lanes if str(item.get("lane", 1)) == str(record.get("lane", 1))),
-            {"lane": record.get("lane", 1), "debug_url": "http://127.0.0.1:9222"},
-        )
-        owner = {**owner, "debug_url": record.get("debug_url", owner["debug_url"])}
-        key = (str(owner.get("lane", 1)), owner["debug_url"])
-        if key not in runners:
-            options = {"approve_browser_tools": True} if approve_browser_tools else {}
-            runners[key] = _workflow(root, lane=owner, **options)[0]
-        jobs.extend(runners[key].submit([job_id])["jobs"])
-    return {"jobs": jobs, **base.status()}
-
-
-def tailor(*, root, jd, engine=None):
-    from .engines import Engine
-    from .tailor import Tailor
-
-    config = configuration(root)
-    selected = selected_engine(config, engine, "tailor")
-    profile = read_json(Path(root) / "profile.json")
-    return Tailor(root, engines={selected: Engine(selected, cwd=root)}).run(
-        jd, profile, engine=selected, config=config.get("tailor", {})
-    )
-
-
-class NativeMailRuntime:
-    """Use selected-runtime native connectors; no browser or custom OAuth fallback."""
-
-    def __init__(self, engine):
-        self.engine = engine
-        self.capabilities = None
-
-    def _run(self, kind, prompt, schema, tools):
-        return self.engine.run({"kind": kind, "prompt": prompt, "schema": schema, "allowed_tools": tools})
-
-    def discover_capabilities(self):
-        schema = {
-            "type": "object",
-            "required": ["gmail"],
-            "additionalProperties": False,
-            "properties": {
-                "gmail": {
-                    "type": "object",
-                    "required": ["accounts", "permissions", "search_tool", "read_tool"],
-                    "additionalProperties": False,
-                    "properties": {
-                        "accounts": {"type": "array", "items": {"type": "string"}},
-                        "permissions": {"type": "array", "items": {"type": "string", "enum": ["search", "read"]}},
-                        "search_tool": {"type": "string"},
-                        "read_tool": {"type": "string"},
-                    },
-                }
-            },
-        }
-        response = self._run(
-            "mail_discovery",
-            "Discover native Gmail connector tools and explicitly available accounts. "
-            "Use tool discovery scoped to Gmail, then read-only Gmail account/profile metadata to verify accounts. "
-            "Do not search or read any messages, use a browser, configure OAuth, or infer an account. "
-            "Return the exact discovered callable search/read tool names, never resource-listing names. "
-            "If metadata or a callable read-only connector is unavailable return empty arrays and tool names.",
-            schema,
-            [
-                "ToolSearch" if self.engine.name == "claude" else "search_tool_bm25",
-                "mcp__gmail__get_profile",
-                "mcp__gmail__list_accounts",
-            ],
-        )
-        from .tool_gate import mail_tool_action
-
-        capabilities = response["gmail"]
-        if (
-            mail_tool_action(capabilities.get("read_tool")) != "read"
-            or mail_tool_action(capabilities.get("search_tool")) != "search"
-        ):
-            self.capabilities = None
-            raise PermissionError("Native Gmail tools/account metadata unavailable")
-        self.capabilities = capabilities
-        return response
-
-    def search_mail(self, account, query, lookback_days):
-        from .tool_gate import mail_tool_action
-
-        capabilities = self.capabilities or self.discover_capabilities()["gmail"]
-        tool = capabilities.get("search_tool")
-        if (
-            mail_tool_action(tool) != "search"
-            or account not in capabilities["accounts"]
-            or "search" not in capabilities.get("permissions", [])
-        ):
-            raise PermissionError("Native Gmail search/account unavailable")
-        schema = {
-            "type": "object",
-            "required": ["messages"],
-            "additionalProperties": False,
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "required": ["id", "account"],
-                        "additionalProperties": False,
-                        "properties": {"id": {"type": "string"}, "account": {"type": "string"}},
-                    },
-                }
-            },
-        }
-        return self._run(
-            "mail_search",
-            json.dumps(
-                {
-                    "action": "search only",
-                    "account": account,
-                    "query": query,
-                    "lookback_days": lookback_days,
-                    "no_write_actions": True,
-                }
-            ),
-            schema,
-            [tool],
-        )["messages"]
-
-    def read_mail(self, account, message_id):
-        from .tool_gate import mail_tool_action
-
-        capabilities = self.capabilities or self.discover_capabilities()["gmail"]
-        tool = capabilities.get("read_tool")
-        if (
-            mail_tool_action(tool) != "read"
-            or account not in capabilities["accounts"]
-            or "read" not in capabilities.get("permissions", [])
-        ):
-            raise PermissionError("Native Gmail read/account unavailable")
-        schema = {
-            "type": "object",
-            "required": ["id", "account", "subject", "body"],
-            "additionalProperties": False,
-            "properties": {key: {"type": "string"} for key in ("id", "account", "subject", "body", "received_at")},
-        }
-        return self._run(
-            "mail_read",
-            json.dumps({"action": "read only", "account": account, "message_id": message_id, "no_write_actions": True}),
-            schema,
-            [tool],
-        )
-
-
-def mail_check(*, root, engine=None):
-    from .engines import Engine
-    from .gmail import MailChecker
-
-    config = configuration(root)
-    resources = config.get("resources", {})
-    if not resources.get("gmail_opt_in"):
-        return {"status": "disabled", "reason": "Gmail is opt-in"}
-    selected = selected_engine(config, engine)
-    return MailChecker(root, runtime=NativeMailRuntime(Engine(selected, cwd=root))).check(resources)
+        manual_submission.check(store.get(job_id))
+    return {"jobs": [manual_submission.record(store, job_id) for job_id in ids], **status(root=root)}
 
 
 def status(*, root):
@@ -565,10 +435,8 @@ def services():
             "doctor",
             "fetch",
             "apply",
-            "tailor",
             "review",
-            "submit",
-            "mail_check",
+            "submitted",
             "status",
         )
     }

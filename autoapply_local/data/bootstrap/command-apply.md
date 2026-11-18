@@ -9,8 +9,8 @@ AUTOAPPLY_LOCAL_HOME conflicts. Route related CLI commands through the same laun
 Use the selected engine only; do not launch another engine as fallback.
 Use --quick with a count or explicit IDs. The CLI shows target roles, recruiting
 season/window and the selected PDF mapping on stderr before browser work. Quick
-apply uses existing PDFs; it never tailors or submits.
-This command does not authorize Submit. Preserve any held form tab and return manual-interaction states to the user.
+apply uses existing PDFs; it never submits.
+This tool never clicks Submit; the user submits held forms by hand. Preserve any held form tab and return manual-interaction states to the user.
 Use confirmed facts/exact scoped answers and normal MCP approvals. Never use
 private parent-workspace data, browser Gmail scraping or mail write actions.
 Report the command result and held tabs or unresolved items.

@@ -100,11 +100,10 @@ before explicit --confirm; public examples are in examples/boards.json. Advanced
 intake resources.boards absent/null preserves choices; [] disables them.
 
 Apply fills existing role-selected PDFs and holds tabs. Review rereads live
-evidence; only an explicit submit request for reviewed IDs or all-reviewed permits
-the durable submission workflow. Setup never authorizes Submit. Preserve every
-held form for sign-in, account creation, CAPTCHA, unknown facts and errors.
-Uncertain click outcomes require manual reconciliation without retries.
-Gmail needs separate opt-in, selected-account verification and native search/read
-tools. Setup does not access Gmail. Never send/draft/archive/label mail, scrape
-browser Gmail, persist verification codes or read another workspace's private data.
+evidence. Nothing ever clicks Submit; the user submits each held form by hand
+and records it with `submitted ID,ID`, which frees its held-tab slot.
+Preserve every held form for sign-in, account creation, CAPTCHA, unknown facts
+and errors. Setup does not access Gmail. Never send/draft/archive/label mail,
+scrape browser Gmail, persist verification codes or read another workspace's
+private data.
 Report command results, held tabs and unresolved work.

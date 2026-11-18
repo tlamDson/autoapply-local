@@ -26,5 +26,6 @@ loads current facts into a new session, and requires a new preview before Confir
 Existing records use the numbered native picker and field editor; Cancel keeps
 the original record, and unchanged facts keep their metadata.
 
-Do not submit through raw browser actions: explicit submit must go through the
-durable reviewed workflow. Follow normal engine/MCP approval prompts.
+Never click a Submit control, through any command or raw browser action: the
+user reviews and submits each held form by hand. Follow normal engine/MCP
+approval prompts.

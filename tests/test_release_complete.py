@@ -328,8 +328,8 @@ class ReleaseCompleteTests(ReleaseCase):
         self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
         package = target / "autoapply_local"
         for relative in (
-            "data/ola.tex",
-            "data/tailor-prompt.md",
+            "data/boards.json",
+            "data/bootstrap/skill.md",
             "adapters/common.cjs",
             "adapters/greenhouse.cjs",
             "adapters/rippling.cjs",
