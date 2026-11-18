@@ -57,9 +57,12 @@ def setup(*, root, guided=False, answer=None, finish=False, confirm=False, resta
     root = Path(root)
     if terminal:
         from . import terminal_setup
+        from .gmail_tab import GmailSession
 
         setup(root=root)
-        return terminal_setup.run(root, launch=terminal_setup.launch_engine if launch else None)
+        return terminal_setup.run(
+            root, launch=terminal_setup.launch_engine if launch else None, gmail=GmailSession(root)
+        )
     if restart:
         from .guided import run
 
