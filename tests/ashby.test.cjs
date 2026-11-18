@@ -183,6 +183,28 @@ test('ashby: an uppercase SUBMIT option is refused, not handed to a native click
   assert.equal(sponsor[0].clicks + submit.clicks, 0);
 });
 
+test('ashby: a padded or form-less button still counts as submit-capable', () => {
+  const adapter = load('ashby');
+  const { form } = ashbyForm();
+  // Browsers do not trim the type attribute: " button " is invalid, so it submits.
+  for (const type of [' button ', 'button	', ' button', 'reset '])
+    assert.equal(adapter.isSubmitControl(form.appendChild(new Element('button', { type }, 'Yes'))), true, `type="${type}"`);
+  // A button outside any <form> can still submit one through its form attribute
+  // or after React moves it, so only an explicit type="button" or "reset" is safe.
+  assert.equal(adapter.isSubmitControl(new Element('button', {}, 'Yes')), true);
+  assert.equal(adapter.isSubmitControl(new Element('button', { form: 'application' }, 'Yes')), true);
+  assert.equal(adapter.isSubmitControl(new Element('button', { type: 'button', form: 'application' }, 'Yes')), false);
+});
+
+test('ashby: a Yes/No option with a padded type is refused, not handed to a native click', async () => {
+  const adapter = load('ashby');
+  const { document, sponsor, submit } = ashbyForm({ sponsor: { type: ' button' } });
+  const id = byLabel(adapter.scan(document).fields, SPONSOR).id;
+  const result = await adapter.fill(document, { [id]: confirmed('Yes') });
+  assert.deepEqual(result.blocked, [{ id, reason: 'submit_control' }]);
+  assert.equal(sponsor[0].clicks + submit.clicks, 0);
+});
+
 test('ashby: an answer keyed to the Submit button is refused', async () => {
   const adapter = load('ashby');
   const { document, submit } = ashbyForm();

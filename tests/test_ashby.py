@@ -204,10 +204,31 @@ class Driver(unittest.TestCase):
         self.assertEqual(result["resume_field"], "_systemfield_resume")
         unknown = {item["id"]: item for item in result["unknown"]}
         self.assertEqual(unknown["yesno:1"]["reason"], "native_click_required")
+        self.assertEqual(unknown["yesno:1"]["option"], "Yes")
         self.assertEqual(unknown["yesno:2"]["reason"], "no_confirmed_fact")
         self.assertFalse(unknown["yesno:2"]["required"])
         self.assertEqual(result["status"], "needs_engine")
 
+
+    def test_run_never_hands_a_submit_control_to_the_engine(self):
+        from unittest.mock import Mock
+
+        from autoapply_local.ashby_driver import AshbyDriver
+
+        question = "Will you now or in the future require visa sponsorship?"
+        client = Mock(spec=["evaluate_script"])
+        client.evaluate_script.side_effect = [
+            copy.deepcopy(self.SCAN),
+            {
+                "filled": ["_systemfield_name", "_systemfield_email"],
+                "blocked": [{"id": "yesno:1", "reason": "submit_control"}],
+                "uploads": [],
+            },
+        ]
+        result = AshbyDriver().run(client, "tab-1", profile(scoped(question, True)), JOB, pdf="resume.pdf")
+        self.assertNotIn("yesno:1", {item["id"] for item in result["unknown"]})
+        self.assertIn({"id": "yesno:1", "reason": "submit_control"}, result["blocked"])
+        self.assertEqual(result["status"], "needs_manual")
 
 if __name__ == "__main__":
     unittest.main()
