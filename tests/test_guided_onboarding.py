@@ -787,6 +787,89 @@ class GuidedOnboardingTests(ReleaseCase):
         self.assertIs(native["arguments"]["questions"][index]["multiSelect"], True)
         self.assertEqual(q["kind"], "multi_choice")
 
+    def page_options(self, packet, field):
+        q = next(q for q in packet["questions"] if q["field"] == field)
+        bound = next(b for b in packet["ui"]["bindings"] if b["question_id"] == q["id"])
+        return q, [c for c in q["choices"] if c["id"] in bound["option_ids"]]
+
+    def pick(self, q, options, values):
+        ids = [next(c["id"] for c in options if c["value"] == v) for v in values]
+        return {"question_id": q["id"], "status": "answered", "option_ids": ids}
+
+    def test_claude_paged_picks_accumulate_until_done(self):
+        # T24: picking a role on page 1 ended the question.
+        self.prepared()
+        packet = self.edit("targets.roles", ui="claude")
+        chosen = {"backend", "frontend", "security"}
+        remaining = set(chosen)
+        for _ in range(100):
+            q, options = self.page_options(packet, "targets.roles")
+            values = [c["value"] for c in options]
+            matches = [v for v in values if v in remaining]
+            if matches:
+                remaining.difference_update(matches)
+                entry = self.pick(q, options, matches)
+            elif not remaining:
+                self.answer(packet, [self.pick(q, options, ["done"])])
+                break
+            else:
+                entry = self.pick(q, options, ["more"])
+            self.answer(packet, [entry])
+            packet = self.start(ui="claude")
+            self.assertIn("targets.roles", [q["field"] for q in packet["questions"]],
+                          "A pick before Done must keep the question open")
+        else:
+            self.fail("Paged choices never reached Done")
+        self.assertEqual(set(self.document(self.finish())["groups"]["targets"]["roles"]), chosen)
+
+    def test_claude_multiselect_with_more_keeps_page_one_picks(self):
+        # T24: On-site on page 2 dropped Remote and Hybrid from page 1.
+        self.prepared()
+        packet = self.edit("logistics.work_modes", ui="claude")
+        q, options = self.page_options(packet, "logistics.work_modes")
+        self.assertEqual({"remote", "hybrid"} & {c["value"] for c in options}, {"remote", "hybrid"})
+        self.answer(packet, [self.pick(q, options, ["remote", "hybrid", "more"])])
+        packet = self.start(ui="claude")
+        q, options = self.page_options(packet, "logistics.work_modes")
+        prompt = q["prompt"]["en"]
+        self.assertIn("Remote", prompt, "The popup says what is already selected")
+        self.assertIn("Hybrid", prompt)
+        self.assertIn("onsite", [c["value"] for c in options])
+        self.answer(packet, [self.pick(q, options, ["onsite", "done"])])
+        groups = self.document(self.finish())["groups"]
+        self.assertEqual(raw(groups["logistics"]["work_modes"]), ["remote", "hybrid", "onsite"])
+
+    def test_codex_paged_picks_accumulate_until_done(self):
+        self.prepared()
+        packet = self.edit("logistics.work_modes", ui="codex")
+        wanted = ["remote", "onsite"]
+        for _ in range(20):
+            q, options = self.page_options(packet, "logistics.work_modes")
+            values = [c["value"] for c in options]
+            match = next((v for v in values if v in wanted), None)
+            if match:
+                wanted.remove(match)
+                selected = match
+            elif not wanted:
+                self.answer(packet, [self.pick(q, options, ["done"])])
+                break
+            else:
+                selected = "more"
+            self.answer(packet, [self.pick(q, options, [selected])])
+            packet = self.start(ui="codex")
+        else:
+            self.fail("Paged choices never reached Done")
+        groups = self.document(self.finish())["groups"]
+        self.assertEqual(raw(groups["logistics"]["work_modes"]), ["remote", "onsite"])
+
+    def test_paged_multiselect_rejects_two_navigation_choices(self):
+        self.prepared()
+        packet = self.edit("logistics.work_modes", ui="claude")
+        q, options = self.page_options(packet, "logistics.work_modes")
+        before = self.progress()
+        self.answer(packet, [self.pick(q, options, ["remote", "more", "done"])], expected=2)
+        self.assertEqual(self.progress(), before)
+
     def test_text_names_and_paths_are_popup_prompts_without_upload_instructions(self):
         self.prepared()
         for field in ("contact.first_name", "contact.last_name", "resumes.main_pdf"):
