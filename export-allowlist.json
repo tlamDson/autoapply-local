@@ -62,6 +62,7 @@
   "autoapply_local/resume_choice.py",
   "autoapply_local/runtime.py",
   "autoapply_local/script_driver.py",
+  "autoapply_local/script_handoff.py",
   "autoapply_local/storage.py",
   "autoapply_local/tool_gate.py",
   "autoapply_local/wd_cred.py",

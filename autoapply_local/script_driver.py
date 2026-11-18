@@ -167,7 +167,10 @@ class ScriptDriver:
             return self._held(scanned)
         fields, uploaded, receipt = scanned["fields"], [], None
         resume = next((item["id"] for item in fields if item.get("id") and self.is_resume(item)), None)
-        if self.upload_before_fill and pdf is not None and resume is not None:
+        if self.upload_before_fill and pdf is not None and resume is None:
+            # The fill would plan from an unparsed form and nobody could prove the upload.
+            return self._held({"blocked": [{"id": None, "reason": "resume_field_not_found"}]})
+        if self.upload_before_fill and pdf is not None:
             status = client.upload_file(tab_id, str(pdf))
             if isinstance(status, dict) and status.get("status") == "needs_manual":
                 return self._held({"blocked": [{"id": resume, "reason": "upload_needs_manual"}]})

@@ -54,7 +54,7 @@ class Recorder:
         self.calls.append(("interact", [item["id"] for item in blocked], pdf))
         return dict(self.engine_result)
 
-    def interact_fields(self, tab, job, fields):
+    def interact_fields(self, tab, fields):
         self.calls.append(("interact_fields", [dict(item) for item in fields]))
         return dict(self.engine_result)
 
@@ -242,7 +242,7 @@ class ScopedEngineRequestTests(unittest.TestCase):
                 "value": "Yes",
             }
         ]
-        result = client.interact_fields("tab-1", JOB, fields)
+        result = client.interact_fields("tab-1", fields)
         return result, engine.run.call_args.args[0]
 
     def test_request_carries_only_the_listed_fields_and_their_values(self):
