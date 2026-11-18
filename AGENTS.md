@@ -8,7 +8,9 @@ infer work authorization, sponsorship or consent from student status or filters.
 The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
 engine opens: language, engine with one small login/quota probe call, quota stop
 percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
-saved to `config.json`. It then hands the terminal to the selected engine with
+saved to `config.json`; then it opens the tool's clean Chrome profile
+(`chrome/lane-1`) on Gmail for the user to sign in and scans 183 days of
+confirmation emails into the tracker (deduplicated). It then hands the terminal to the selected engine with
 `/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
 interview subprocess. Inside an engine, never run `setup --terminal`.
 
@@ -23,7 +25,8 @@ permits `setup --confirm` for the saved preview. No native tool or forbidden mod
 means `--ui none` / `ui_required`, preserving progress. Never ask setup questions
 as chat prose, launch an engine subprocess for the interview, change mode/engine
 or infer an answer from timeout/preselection. The advanced intake remains an
-optional editor/export. This setup flow never permits Submit or Gmail access.
+optional editor/export. This native setup flow never permits Submit or Gmail
+access; only the terminal Gmail step reads the Gmail tab.
 
 If setup becomes stale, use the native Reload latest confirmed profile / Keep
 current draft popup. Run `setup --restart --ui UI` only after explicit Reload;
@@ -38,8 +41,11 @@ clicks a Submit control: no command, workflow, browser call or engine task may
 request one, and the user submits each held form by hand, then records it with
 `submitted ID,ID`, which frees its held-tab slot. Preserve held forms for
 sign-in, account creation, CAPTCHA, unknown questions, errors and manual
-inspection. There is no Gmail command in this release; never send, draft,
-archive, label, scrape browser Gmail, or persist verification codes.
+inspection. There is no Gmail command or OAuth. Gmail is read only in the Gmail
+tab of the tool's own Chrome profile, signed in by the user, through the
+read-only `adapters/gmail.cjs` (search and result rows); never open, send,
+draft, archive or label a message, store a verification email, or persist
+verification codes. Tests use synthetic Gmail DOM and rows only.
 
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,
@@ -59,6 +65,8 @@ claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks
 
 - Installer (aa-04): install.ps1/install.sh only locate Python 3.11+ and git, then hand off to scripts/install.py; a missing dependency prints its winget/brew command and exits 3, a failed pip install exits 4; system software is never installed.
 - Rippling driver (aa-13): `rippling_driver.RipplingDriver` uploads the resume first, waits for Rippling's own parse, then writes confirmed facts into the Formsy model (`adapters/rippling.cjs`), so they win over the parse; every written fact is read back (`modelCheck`), a fact a late parse changed is rewritten at most twice and then reported `value_overwritten`; location is typed, the old place id is cleared first, and only the single matching Places suggestion is picked (mousedown first, click only if needed, never inside a button, link, label or other activating control), succeeding only with a fresh place id and matching location text; anything unknown, ambiguous or still required-empty is reported and the tab is held. No adapter action clicks a button.
+
+- Update (aa-21): `update` works only from a source checkout; it backs up user/ (skipping backups/, browser/, chrome/) before any change, pulls with `git pull --ff-only` or extracts the latest release zip (never into user/, .venv/ or .git/), reinstalls, then runs migrations recorded in user/migrations.json. `apply`'s release lookup is skipped when AUTOAPPLY_LOCAL_NO_UPDATE_CHECK is set; the offline suite sets it.
 
 ## Câu hỏi của người thực thi
 

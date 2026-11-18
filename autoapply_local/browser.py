@@ -149,7 +149,7 @@ def _launch_chrome(
     root = Path(root).resolve()
     result = []
     for index in range(lanes):
-        profile = root / "browser" / f"lane-{index + 1}"
+        profile = root / "chrome" / f"lane-{index + 1}"
         profile.mkdir(parents=True, exist_ok=True)
         ownership = profile / "autoapply-owner.json"
         owner = read_json(ownership) if ownership.exists() else {}
