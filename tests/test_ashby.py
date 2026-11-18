@@ -147,7 +147,10 @@ class BrowserScript(unittest.TestCase):
         script = bridge._script("fill", "ashby", {"_systemfield_name": {"value": "Alex Rivera", "status": "confirmed"}})
         self.assertLess(script.index("root.AutoApplyDOM = api"), script.index("root.AutoApplyAshby = api"))
         self.assertIn("globalThis.AutoApplyAshby.fill(document,", script)
-        self.assertIn("globalThis.AutoApplyAshby.audit(document)", bridge._script("audit", "ashby"))
+        audit = bridge._script("audit", "ashby")
+        self.assertIn("globalThis.AutoApplyAshby.audit(document)", audit)
+        # Readback binds each field through the adapter, so Yes/No groups count as observed.
+        self.assertIn("globalThis.AutoApplyAshby.resolve(document, field.id)", audit)
 
 
 if __name__ == "__main__":

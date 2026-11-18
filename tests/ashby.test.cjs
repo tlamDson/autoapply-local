@@ -197,3 +197,11 @@ test('ashby: audit lists required headings that are still empty', () => {
   assert.ok(audited.required_unknown.includes(ids['How did you hear about us?']));
   assert.equal(audited.required_unknown.includes(ids[RELOCATE]), false);
 });
+
+test('ashby: resolve binds a Yes/No field to its own toggle group', () => {
+  const adapter = load('ashby');
+  const { document, sponsor } = ashbyForm();
+  const id = byLabel(adapter.scan(document).fields, SPONSOR).id;
+  assert.equal(adapter.resolve(document, id), sponsor[0].parentElement);
+  assert.equal(adapter.resolve(document, '_systemfield_name').id, '_systemfield_name');
+});
