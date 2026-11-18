@@ -1,0 +1,14 @@
+{
+  "title": "AutoApply Local demo form",
+  "intro": "Practice page made by AutoApply Local. It belongs to no employer, sends nothing and has no Submit button.",
+  "fields": [
+    {"tag": "input", "attrs": {"id": "first_name", "type": "text", "aria-required": "true"}, "label": "First Name*"},
+    {"tag": "input", "attrs": {"id": "last_name", "type": "text", "aria-required": "true"}, "label": "Last Name*"},
+    {"tag": "input", "attrs": {"id": "email", "type": "email", "aria-required": "true"}, "label": "Email*"},
+    {"tag": "input", "attrs": {"id": "phone", "type": "tel"}, "label": "Phone"},
+    {"tag": "input", "attrs": {"id": "resume", "type": "file", "accept": ".pdf"}, "label": "Resume/CV*"},
+    {"tag": "input", "attrs": {"id": "question_1", "type": "text"}, "label": "LinkedIn Profile"},
+    {"tag": "input", "attrs": {"id": "question_2", "type": "text"}, "label": "Website"},
+    {"tag": "textarea", "attrs": {"id": "question_3"}, "label": "Anything else you would like us to know?"}
+  ]
+}

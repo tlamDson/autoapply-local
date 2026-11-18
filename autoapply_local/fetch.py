@@ -9,6 +9,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
+from .posting_dates import posted_on
+
 
 class Transport:
     def _json(self, url, timeout, data=None):
@@ -48,10 +50,11 @@ def _rippling_parts(path):
 
 
 class Fetcher:
-    def __init__(self, transport=None, timeout=10, retries=2):
+    def __init__(self, transport=None, timeout=10, retries=2, today=None):
         if not 0 < timeout <= 60 or not 0 <= retries <= 5:
             raise ValueError("Bound timeout to 60 seconds and retries to five")
         self.transport, self.timeout, self.retries = transport or Transport(), timeout, retries
+        self.today = today or date.today()
 
     def _request(self, method, url, **kwargs):
         for attempt in range(self.retries + 1):
@@ -151,6 +154,7 @@ class Fetcher:
                 else "newgrad"
                 if re.search(r"new grad|graduate", role, re.I)
                 else None,
+                "posted_at": posted_on(ats, item, self.today),
             }
         return list(result.values())
 

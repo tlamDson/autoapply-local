@@ -169,5 +169,13 @@
   "autoapply_local/adapters/workday_steps.cjs",
   "autoapply_local/workday_steps.py",
   "autoapply_local/workday_account.py",
-  "autoapply_local/workday_driver.py"
+  "autoapply_local/workday_driver.py",
+  "autoapply_local/demo_form.py",
+  "autoapply_local/fetch_screen.py",
+  "autoapply_local/posting_dates.py",
+  "autoapply_local/data/demo_form.json",
+  "tests/test_board_seeds.py",
+  "tests/test_fetch_screen.py",
+  "tests/test_demo_form.py",
+  "tests/board_payloads.json"
 ]
