@@ -18,6 +18,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import urlopen
 
+from .process_alive import pid_alive
 from .script_handoff import FIELD_FILL_SCHEMA, FIELD_FILL_TOOLS, field_request, script_then_engine
 from .storage import atomic_write_json, lock, read_json
 
@@ -188,7 +189,8 @@ def _launch_chrome(
                 if not owner.get("pid"):
                     raise ValueError("Browser debugging port is owned by another process")
                 try:
-                    os.kill(int(owner["pid"]), 0)
+                    if not pid_alive(owner["pid"]):
+                        raise ValueError("Owned browser process is not running")
                     with urlopen(f"http://127.0.0.1:{port}/json/version", timeout=2) as response:
                         version = json.load(response)
                     if not str(version.get("Browser", "")).startswith(("Chrome/", "Chromium/")):
