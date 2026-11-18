@@ -23,22 +23,30 @@ def selected_engine(config, override=None, purpose="apply"):
     return selected
 
 
-def select_resume(profile, config, job):
-    settings = config.get("resumes", {})
-    role = str(job.get("role", "")).casefold()
-    selected = settings.get("main_pdf")
-    alternatives = settings.get("alternatives", [])
-    by_id = {item.get("id"): item.get("path", item.get("pdf")) for item in alternatives if isinstance(item, dict)}
-    for token, choice in settings.get("role_mapping", {}).items():
-        if str(token).casefold() in role:
-            selected = by_id.get(choice, choice)
-            break
-    if not selected:
-        raise ValueError("Select a main PDF or a role-mapped alternative in the intake")
-    path = Path(selected).expanduser().resolve()
+def choose_resume(profile, config, job, *, memory=None, ask=None):
+    """Role-tag resume choice (resume_choice.choose); the chosen file must be a real PDF."""
+    from . import resume_choice
+
+    choice = resume_choice.choose(config, job, memory=memory, ask=ask)
+    path = choice.path
     if not path.is_file() or not path.read_bytes().startswith(b"%PDF-"):
         raise ValueError("The selected resume must be an existing PDF")
-    return path
+    return choice
+
+
+def describe_choice(choice):
+    why = {
+        "role_tag": f"role tag {choice.tag}",
+        "keyword_score": f"role tag {choice.tag}, best JD keyword score {choice.score}",
+        "only_resume": "only resume",
+        "remembered": "your earlier answer",
+        "asked": "your answer",
+    }[choice.reason]
+    return f"{choice.path} ({why})"
+
+
+def select_resume(profile, config, job, *, memory=None, ask=None):
+    return choose_resume(profile, config, job, memory=memory, ask=ask).path
 
 
 def setup(*, root, guided=False, answer=None, finish=False, confirm=False, restart=False, edit=None, ui="none"):
@@ -250,6 +258,21 @@ def _workflow(root, override=None, launch=False, lane=None, approve_browser_tool
     )
 
 
+def terminal_ask(role, options):
+    """Ask which resume fits a role no tag matches; None when the answer is blank or not a number."""
+    print(f"No resume tag matches '{role}'. Which resume should be used?", file=sys.stderr)
+    for number, item in enumerate(options, 1):
+        print(f"  {number}. {item['id']}: {item['path']}", file=sys.stderr)
+    print("Number (blank to stop): ", end="", file=sys.stderr, flush=True)
+    try:
+        answer = input().strip()
+    except EOFError:
+        return None
+    if answer.isdigit() and 1 <= int(answer) <= len(options):
+        return options[int(answer) - 1]["id"]
+    return None
+
+
 def _apply_summary(profile, records, pdfs):
     targets, logistics = profile.get("targets", {}), profile.get("logistics", {})
     season = logistics.get("season") or targets.get("season") or "unspecified"
@@ -260,12 +283,12 @@ def _apply_summary(profile, records, pdfs):
             "Apply preflight",
             "Target roles: " + ", ".join(targets.get("roles", [])),
             f"Recruiting season: {season} {year}; window: {window}",
-            *(f"{record['id']} | {record['role']} -> {pdfs[record['id']]}" for record in records),
+            *(f"{record['id']} | {record['role']} -> {describe_choice(pdfs[record['id']])}" for record in records),
         ]
     )
 
 
-def apply(*, root, selection, engine=None, approve_browser_tools=False):
+def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_ask=None):
     if type(approve_browser_tools) is not bool:
         raise ValueError("approve_browser_tools must be a bool")
     from . import browser
@@ -283,8 +306,13 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False):
         if record["state"] != "pending" and not record.get("tab_id"):
             raise ValueError("Manual continuation requires the original held tab")
     profile = base._profile()
-    pdfs = {record["id"]: select_resume(profile, config, record) for record in records}
-    print(_apply_summary(profile, records, pdfs), file=sys.stderr, flush=True)
+    from .resume_choice import Memory
+
+    memory = Memory(Path(root) / "user/resume-choices.json")
+    ask = resume_ask or (terminal_ask if sys.stdin is not None and sys.stdin.isatty() else None)
+    choices = {record["id"]: choose_resume(profile, config, record, memory=memory, ask=ask) for record in records}
+    pdfs = {job_id: choice.path for job_id, choice in choices.items()}
+    print(_apply_summary(profile, records, choices), file=sys.stderr, flush=True)
     resources = config.get("resources", {})
     lane_count = resources.get("lanes", 1)
     if type(lane_count) is not int or lane_count not in (1, 2, 3):

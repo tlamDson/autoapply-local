@@ -287,6 +287,7 @@ class ApplyPreflightTests(ReleaseCase):
         self.config["runtime"].update(apply_engine="codex", tailor_engine="codex")
         self.config["resumes"] = {
             "main_pdf": str(self.pdf),
+            "main_tags": ["backend"],
             "alternatives": [{"id": "frontend", "path": str(self.alternative)}],
             "role_mapping": {"frontend": "frontend"},
         }
