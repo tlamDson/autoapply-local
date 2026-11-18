@@ -26,6 +26,7 @@ from autoapply_local.script_driver import ScriptDriver  # noqa: E402
 from autoapply_local.workable_driver import WorkableDriver  # noqa: E402
 from test_workable_driver import JOB, answers, field, profile, scan  # noqa: E402
 
+AUTH = "Are you legally authorized to work in the United States?"
 NOT_HANDED = ["headline", "address", "experience", "summary", "cover_letter", "QA_103"]
 
 
@@ -42,6 +43,7 @@ class Recorder:
         self.client.upload_file.side_effect = lambda tab, path: self.calls.append(("upload", path)) or upload
         if engine:
             self.client.interact.side_effect = self.interact
+            self.client.interact_fields = Mock(side_effect=self.interact_fields)
         self.engine_result = {"filled": ["QA_100", "QA_102", "education"], "blocked": [], "status": "filled"}
 
     def evaluate(self, tab, script, *, operation):
@@ -50,6 +52,10 @@ class Recorder:
 
     def interact(self, tab, data, job, blocked, pdf=None):
         self.calls.append(("interact", [item["id"] for item in blocked], pdf))
+        return dict(self.engine_result)
+
+    def interact_fields(self, tab, job, fields):
+        self.calls.append(("interact_fields", [dict(item) for item in fields]))
         return dict(self.engine_result)
 
 
@@ -116,34 +122,75 @@ class WorkableUploadFirstTests(PdfCase):
 
 
 class WorkableEnginePathTests(PdfCase):
+    """After the script pass the engine gets only the listed fields, never the form."""
+
     def bridge(self, recorder):
         bridge = browser.BrowserBridge(recorder.client)
         bridge.tabs["tab-1"] = {"url": JOB["url"]}
         return bridge
 
-    def test_production_runs_the_script_driver_then_hands_only_the_rest_to_the_engine(self):
+    def answered(self, fields):
+        """The fixture form without its required questions that have no confirmed fact."""
+        return [item for item in fields if item["id"] not in ("QA_101", "QA_104", "gdpr")]
+
+    def test_production_hands_the_engine_only_the_native_click_fields_with_their_values(self):
         recorder = Recorder([{"fields": scan()}, self.uploaded_scan()], engine=True)
         bridge = self.bridge(recorder)
         result = bridge.fill("tab-1", profile(), JOB, pdf=str(self.pdf))
-        self.assertEqual([call[0] for call in recorder.calls], ["audit", "upload", "audit", "fill", "interact"])
-        _, handed, engine_pdf = recorder.calls[4]
-        self.assertIsNone(engine_pdf)
-        for key in ("firstname", "lastname", "email", "phone", "resume", *NOT_HANDED):
-            self.assertNotIn(key, handed)
-        self.assertEqual(handed, ["education", "QA_100", "QA_101", "QA_102", "QA_104", "gdpr"])
+        self.assertEqual([call[0] for call in recorder.calls], ["audit", "upload", "audit", "fill", "interact_fields"])
+        recorder.client.interact.assert_not_called()
+        handed = recorder.calls[4][1]
+        self.assertEqual([item["id"] for item in handed], ["education", "QA_100", "QA_102"])
+        self.assertTrue(all("value" in item for item in handed))
+        for key in ("firstname", "lastname", "email", "phone", "resume", "QA_101", "QA_104", "gdpr", *NOT_HANDED):
+            self.assertNotIn(key, [item["id"] for item in handed])
         self.assertEqual(result["driver"], "workable")
-        self.assertEqual(result["status"], "filled")
         self.assertEqual(result["filled"], [*answers(), "QA_100", "QA_102", "education"])
         self.assertEqual(result["upload_receipt"], self.receipt)
         self.assertEqual(bridge.uploads["tab-1"], self.receipt)
         self.assertEqual(bridge.observed_uploads["tab-1"], self.receipt)
 
-    def test_engine_status_and_blocked_reasons_are_kept(self):
+    def test_required_questions_without_a_confirmed_fact_hold_the_tab_instead_of_reaching_the_engine(self):
         recorder = Recorder([{"fields": scan()}, self.uploaded_scan()], engine=True)
-        recorder.engine_result = {"filled": [], "blocked": [{"id": "QA_104", "reason": "unknown"}], "status": "needs_manual"}
         result = self.bridge(recorder).fill("tab-1", profile(), JOB, pdf=str(self.pdf))
         self.assertEqual(result["status"], "needs_manual")
-        self.assertEqual(result["blocked"], [{"id": "QA_104", "reason": "unknown"}])
+        self.assertEqual(
+            [item for item in result["blocked"] if item["reason"] == "no_confirmed_fact"],
+            [{"id": key, "reason": "no_confirmed_fact"} for key in ("QA_101", "QA_104", "gdpr")],
+        )
+        self.assertEqual([item["id"] for item in result["unknown"]], ["QA_101", "QA_104", "gdpr"])
+
+    def test_form_with_every_required_question_answered_is_filled(self):
+        uploaded = self.uploaded_scan()["fields"]
+        recorder = Recorder([{"fields": self.answered(scan())}, {"fields": self.answered(uploaded)}], engine=True)
+        result = self.bridge(recorder).fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        self.assertEqual(result["status"], "filled")
+        self.assertEqual(result["blocked"], [])
+        self.assertEqual(result["unknown"], [])
+
+    def test_engine_status_and_blocked_reasons_are_kept(self):
+        uploaded = self.uploaded_scan()["fields"]
+        recorder = Recorder([{"fields": self.answered(scan())}, {"fields": self.answered(uploaded)}], engine=True)
+        recorder.engine_result = {
+            "filled": [],
+            "blocked": [{"id": "QA_100", "reason": "option_missing"}],
+            "status": "needs_manual",
+        }
+        result = self.bridge(recorder).fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        self.assertEqual(result["status"], "needs_manual")
+        self.assertEqual(result["blocked"], [{"id": "QA_100", "reason": "option_missing"}])
+        self.assertEqual([item["id"] for item in result["unknown"]], ["education", "QA_100", "QA_102"])
+
+    def test_nothing_left_for_the_engine_means_no_engine_call(self):
+        keep = lambda fields: [  # noqa: E731
+            item for item in self.answered(fields) if item["id"] not in ("education", "QA_100", "QA_102")
+        ]
+        recorder = Recorder([{"fields": keep(scan())}, {"fields": keep(self.uploaded_scan()["fields"])}], engine=True)
+        result = self.bridge(recorder).fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        self.assertEqual([call[0] for call in recorder.calls], ["audit", "upload", "audit", "fill"])
+        recorder.client.interact.assert_not_called()
+        self.assertEqual(result["status"], "filled")
+        self.assertEqual(result["upload_receipt"], self.receipt)
 
     def test_a_tab_the_script_holds_never_reaches_the_engine(self):
         recorder = Recorder([{"blocked": [{"id": "page", "reason": "captcha"}]}], engine=True)
@@ -151,28 +198,16 @@ class WorkableEnginePathTests(PdfCase):
         self.assertEqual([call[0] for call in recorder.calls], ["audit"])
         self.assertEqual(result["status"], "needs_manual")
 
-    def test_engine_uploads_and_proves_the_resume_when_the_script_found_no_resume_field(self):
+    def test_no_resume_field_holds_the_tab_and_the_engine_never_uploads(self):
         fields = [item for item in scan() if item["id"] != "resume"]
         recorder = Recorder([{"fields": fields}], engine=True)
-        recorder.engine_result = {"filled": [], "blocked": [], "status": "filled", "upload_receipt": self.receipt}
         bridge = self.bridge(recorder)
         result = bridge.fill("tab-1", profile(), JOB, pdf=str(self.pdf))
-        self.assertEqual([call[0] for call in recorder.calls], ["audit", "fill", "interact"])
-        self.assertEqual(recorder.calls[2][2], str(self.pdf))
-        self.assertEqual(result["upload_receipt"], self.receipt)
-        self.assertEqual(bridge.observed_uploads["tab-1"], self.receipt)
-
-    def test_engine_receipt_for_another_file_is_refused(self):
-        fields = [item for item in scan() if item["id"] != "resume"]
-        recorder = Recorder([{"fields": fields}], engine=True)
-        recorder.engine_result = {
-            "filled": [],
-            "blocked": [],
-            "status": "filled",
-            "upload_receipt": {**self.receipt, "size": 1},
-        }
-        with self.assertRaises(ValueError):
-            self.bridge(recorder).fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        self.assertEqual([call[0] for call in recorder.calls], ["audit"])
+        recorder.client.interact.assert_not_called()
+        self.assertEqual(result["status"], "needs_manual")
+        self.assertEqual(result["blocked"], [{"id": None, "reason": "resume_field_not_found"}])
+        self.assertNotIn("tab-1", bridge.uploads)
 
     def test_other_ats_keep_the_single_engine_fill(self):
         recorder = Recorder([], engine=True)
@@ -185,7 +220,52 @@ class WorkableEnginePathTests(PdfCase):
         for call in recorder.calls:
             if call[0] in ("audit", "fill"):
                 self.assertNotRegex(call[1], r"\.click\s*\(|requestSubmit|\.submit\s*\(")
-        self.assertEqual(json.dumps(recorder.calls[4][1]).count("submit"), 0)
+        self.assertEqual(json.dumps(recorder.calls[4][1]).lower().count("submit"), 0)
+
+
+class ScopedEngineRequestTests(unittest.TestCase):
+    """The scoped engine request names only the listed fields: no profile, PDF or upload."""
+
+    def request(self):
+        engine = Mock()
+        engine.run.return_value = {"filled": ["QA_100"], "blocked": [], "status": "filled"}
+        client = browser.EngineMCPClient(engine, "http://127.0.0.1:9222")
+        client.list_pages = Mock(return_value=[{"id": "tab-1", "url": JOB["url"]}])
+        fields = [
+            {
+                "id": "QA_100",
+                "label": AUTH,
+                "type": "radiogroup",
+                "required": True,
+                "options": ["Yes", "No"],
+                "reason": "agent_interaction_required",
+                "value": "Yes",
+            }
+        ]
+        result = client.interact_fields("tab-1", JOB, fields)
+        return result, engine.run.call_args.args[0]
+
+    def test_request_carries_only_the_listed_fields_and_their_values(self):
+        result, request = self.request()
+        self.assertEqual(result["status"], "filled")
+        payload = json.loads(request["prompt"][request["prompt"].index("{") :])
+        self.assertEqual(payload["operation"], "field_fill")
+        self.assertEqual(
+            payload["fields"],
+            [{"id": "QA_100", "label": AUTH, "type": "radiogroup", "options": ["Yes", "No"], "value": "Yes"}],
+        )
+        for key in ("profile", "pdf", "blocked", "job"):
+            self.assertNotIn(key, payload)
+        self.assertIn("only", payload["instructions"].lower())
+        self.assertNotIn("upload the", payload["instructions"].lower())
+
+    def test_request_cannot_upload_or_run_scripts(self):
+        _, request = self.request()
+        tools = [name.rsplit("__", 1)[1] for name in request["allowed_tools"]]
+        for tool in ("upload_file", "fill_form", "evaluate_script", "new_page"):
+            self.assertNotIn(tool, tools)
+        self.assertIn("click", tools)
+        self.assertNotIn("upload_receipt", request["schema"]["properties"])
 
 
 if __name__ == "__main__":
