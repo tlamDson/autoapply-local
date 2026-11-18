@@ -33,6 +33,11 @@ HEADINGS = {
 }
 OTHER_HEADINGS = {"projects", "personal projects", "leadership", "activities", "awards", "honors",
                   "certifications", "publications", "volunteering", "summary", "objective", "interests"}
+# Research and project sections hold dated entries that name a partner school; they are never education.
+OTHER_WORDS = re.compile(r"\b(research|projects?)\b", re.I)
+HEADING_WORDS = {"research", "project", "projects", "and", "&", "experience", "selected", "academic",
+                 "undergraduate", "personal", "relevant", "technical", "independent", "publications"}
+PARENTHETICAL = re.compile(r"\([^)]*\)")
 
 
 def empty():
@@ -55,14 +60,26 @@ def _columns(line):
     return [part.strip() for part in re.split(r"\s{2,}|\s+\|\s+|\t", line.strip()) if part.strip()]
 
 
+def _heading(line):
+    """Return the section a heading line opens, or None when the line is content."""
+    text = line.strip().rstrip(":").strip()
+    key = text.casefold()
+    if key in HEADINGS:
+        return HEADINGS[key]
+    if key in OTHER_HEADINGS:
+        return "other"
+    words = key.replace(",", " ").split()
+    if OTHER_WORDS.search(text) and len(words) <= 4 and all(word in HEADING_WORDS for word in words):
+        return "other"
+    return None
+
+
 def _sections(lines):
     sections, current = {"header": []}, "header"
     for line in lines:
-        key = line.strip().rstrip(":").casefold()
-        if key in HEADINGS:
-            current = HEADINGS[key]
-        elif key in OTHER_HEADINGS:
-            current = "other"
+        heading = _heading(line)
+        if heading:
+            current = heading
         else:
             sections.setdefault(current, []).append(line)
             continue
@@ -107,7 +124,7 @@ def _education(lines):
         text = line.strip()
         if not text:
             continue
-        if SCHOOL.search(text) and not DEGREE.match(text):
+        if SCHOOL.search(PARENTHETICAL.sub("", text)) and not DEGREE.match(text):
             record = {"school": _columns(RANGE.sub("", text))[0]}
             _range(record, text)
             group["records"].append(record)

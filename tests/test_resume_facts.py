@@ -42,6 +42,41 @@ Skills
 SQL; Go
 """
 
+EDUCATION_PART = """Education
+Maple Ridge College                                           Sep 2024 – May 2028
+B.S., Computer Science and Mathematics
+"""
+
+EXPERIENCE_PART = """Experience
+Example Robotics                                              Jun 2025 – Aug 2025
+Software Intern                                               Remote
+• Built a sensor dashboard
+"""
+
+RESEARCH_PART = """{heading}
+Coral Sonar Detection (with Harbor Tech University)           May 2026 – Aug 2026
+• Trained a detector on synthetic sonar images
+Agent Benchmarks (with Maple Ridge College)                   Jan 2026 – May 2026
+• Wrote an evaluation harness
+"""
+
+
+def research_resume(heading, order):
+    parts = {"education": EDUCATION_PART, "experience": EXPERIENCE_PART,
+             "research": RESEARCH_PART.format(heading=heading)}
+    body = "\n".join(parts[name] for name in order)
+    return f"Jordan Vale\njordan.vale@example.invalid\n\n{body}\nSkills\nPython, PyTorch\n"
+
+
+PARTNER_ONLY = """Jordan Vale
+
+Education
+Maple Ridge College                                           Sep 2024 – May 2028
+B.S., Computer Science and Mathematics
+Coral Sonar Detection (with Harbor Tech University)           May 2026 – Aug 2026
+Agent Benchmarks (with Maple Ridge College)                   Jan 2026 – May 2026
+"""
+
 
 class ResumeFactsTests(ReleaseCase):
     def parse(self, text=RESUME):
@@ -115,6 +150,34 @@ class ResumeFactsTests(ReleaseCase):
         extractor = lambda path: (_ for _ in ()).throw(ValueError("no text"))
         self.assertEqual(self.module("resume_facts").from_config({"resumes": {"main_pdf": str(broken)}},
                                                                  extractor=extractor)["skills"], [])
+
+    def test_research_section_entries_are_not_education(self):
+        orders = (("education", "experience", "research"), ("education", "research", "experience"))
+        for heading in ("Research", "RESEARCH", "Research:", "Research Experience", "Research Projects",
+                        "Projects & Research", "Research and Projects", "Selected Research"):
+            for order in orders:
+                with self.subTest(heading=heading, order=order):
+                    facts = self.parse(research_resume(heading, order))
+                    self.assertEqual(facts["education"]["records"], [{
+                        "school": "Maple Ridge College", "degree": "B.S.",
+                        "major": "Computer Science and Mathematics", "start": "2024-09", "end": "2028-05"}])
+                    self.assertEqual(facts["experience"][0]["employer"], "Example Robotics")
+                    self.assertEqual(facts["experience"][0]["description"], "Built a sensor dashboard")
+                    self.assertEqual([s["name"] for s in facts["skills"]], ["Python", "PyTorch"])
+
+    def test_research_job_title_is_not_a_heading(self):
+        text = ("Experience\nExample Robotics                     Jun 2025 – Aug 2025\n"
+                "Research Assistant                   Remote\n• Labeled sonar data\n")
+        self.assertEqual(self.parse(text)["experience"], [{
+            "employer": "Example Robotics", "title": "Research Assistant", "location": "Remote",
+            "start": "2025-06", "end": "2025-08", "description": "Labeled sonar data"}])
+
+    def test_entry_with_school_only_as_partner_is_not_a_school(self):
+        records = self.parse(PARTNER_ONLY)["education"]["records"]
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["school"], "Maple Ridge College")
+        self.assertEqual(records[0]["degree"], "B.S.")
+        self.assertEqual(records[0]["end"], "2028-05")
 
 
 if __name__ == "__main__":
