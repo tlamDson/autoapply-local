@@ -160,8 +160,17 @@ class MainTests(TempCase):
 
     INTAKE = "```json\n" + json.dumps({"schema_version": 1, "groups": {"contact": {}}}) + "\n```\n"
 
+    probes, probe_code, probe_stdout = None, 0, "available_memory_mb 5120\n"
+
+    def setUp(self):
+        super().setUp()
+        self.probes = []
+
     def fake_runner(self, calls, owner_pid=4242):
         def run(argv, **kwargs):
+            if "-c" in argv:  # the memory report: the installed .venv Python, not a CLI command
+                self.probes.append((argv, kwargs))
+                return subprocess.CompletedProcess(argv, self.probe_code, self.probe_stdout, "openpyxl missing")
             root = Path(argv[argv.index("--user-dir") + 1])
             command = argv[2 + argv.index("--user-dir"):]
             calls.append((command, kwargs, root))
@@ -309,7 +318,36 @@ class MainTests(TempCase):
         self.assertEqual(calls, [])
 
 
+    def test_memory_report_runs_with_the_installed_venv_python_before_the_demo(self):
+        repo = self.installed_repo()
+        calls, out = [], io.StringIO()
+        code = self.smoke.main(["--repo", str(repo), "--work-dir", str(self.tmp / "work")],
+                               run=self.fake_runner(calls), kill=lambda pid: None, out=out)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(self.probes), 1)
+        argv, kwargs = self.probes[0]
+        self.assertEqual(Path(argv[0]), self.smoke.venv_python(repo), "system Python lacks the dependencies")
+        self.assertIn("available_memory_mb", argv[-1])
+        self.assertEqual(Path(kwargs["cwd"]), repo)
+        text = out.getvalue()
+        self.assertIn("available_memory_mb 5120", text)
+        self.assertLess(text.index("available_memory_mb 5120"), text.index("$ autoapply-local.py demo"))
+
+    def test_failed_memory_report_is_printed_and_does_not_fail_the_smoke(self):
+        self.probe_code, self.probe_stdout = 1, ""
+        repo = self.installed_repo()
+        out = io.StringIO()
+        code = self.smoke.main(["--repo", str(repo), "--work-dir", str(self.tmp / "work")],
+                               run=self.fake_runner([]), kill=lambda pid: None, out=out)
+        self.assertEqual(code, 0)
+        self.assertIn("memory report exited 1: openpyxl missing", out.getvalue())
+
+
 class WorkflowTests(unittest.TestCase):
+    def test_install_smoke_job_never_imports_the_package_with_the_system_python(self):
+        job = (RELEASE / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("install-smoke:", 1)[1]
+        self.assertNotIn("autoapply_local", job, "only the installed .venv has openpyxl; ci_smoke.py uses it")
+
     def test_install_smoke_job_runs_both_installers_then_the_smoke(self):
         text = (RELEASE / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("install-smoke:", text)
