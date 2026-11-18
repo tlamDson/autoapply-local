@@ -917,3 +917,115 @@ test('greenhouse: audit reads react-select values and asterisk-only required lab
   assert.ok(audit.required_unknown.includes('phone'));
   assert.ok(!audit.required_unknown.includes('gender'));
 });
+
+/* Lever script driver: tests/lever_form.json holds the synthetic DOM (form),
+ * the adapter's recorded scan of it that the Python driver plans from (scan)
+ * and the answers the driver plans (answers). Lever controls have no stable
+ * IDs, so the adapter binds each one to its form name.
+ */
+const LEVER = JSON.parse(require('node:fs').readFileSync(path.resolve(__dirname, 'lever_form.json'), 'utf8'));
+
+function leverForm() {
+  const result = makeDocument();
+  result.submit.setAttribute('id', 'btn-submit');
+  result.controls = [];
+  for (const question of LEVER.form) {
+    let parent = result.form;
+    if (question.label !== null) {
+      parent = result.form.appendChild(new Element('li', { class: 'application-question' }));
+      parent.appendChild(new Element('div', { class: 'application-label' }, question.label));
+      parent = parent.appendChild(new Element('div', { class: 'application-field' }));
+    }
+    for (const spec of question.controls) {
+      const el =
+        spec.tag === 'select'
+          ? new Select(spec.attrs, spec.options)
+          : spec.tag === 'textarea'
+            ? new TextArea(spec.attrs)
+            : new Input(spec.attrs, spec.attrs.value || '');
+      if (spec.text) {
+        const label = parent.appendChild(new Element('label', {}, spec.text));
+        label.appendChild(el);
+        el.labels = [label];
+      } else parent.appendChild(el);
+      result.controls.push(el);
+    }
+  }
+  result.named = name => result.controls.filter(el => el.name === name);
+  return result;
+}
+
+test('lever: scan of the DOM fixture matches the recorded scan the Python driver plans from', () => {
+  const adapter = load('lever');
+  const { document } = leverForm();
+  assert.deepEqual(adapter.scan(document).fields, LEVER.scan);
+  // A second scan reuses the same name bindings.
+  assert.deepEqual(adapter.scan(document).fields, LEVER.scan);
+});
+
+test('lever: fill sets every planned field, holds widgets for the engine and never clicks', async () => {
+  const adapter = load('lever');
+  const { document, named, submit } = leverForm();
+  const planned = LEVER.answers;
+  const result = await adapter.fill(document, {
+    ...planned,
+    location: 'Springfield',
+    'cards[a1b2][field2]': 'Data',
+  });
+  assert.deepEqual([...result.filled].sort(), Object.keys(planned).sort());
+  for (const id of ['name', 'email', 'phone', 'urls[LinkedIn]', 'urls[Portfolio]', 'eeo[gender]'])
+    assert.equal(named(id)[0].value, planned[id], id);
+  assert.deepEqual(
+    named('cards[a1b2][field0]').map(el => el.checked),
+    [true, false],
+  );
+  assert.deepEqual(
+    [...result.blocked].sort((a, b) => a.id.localeCompare(b.id)),
+    [
+      { id: 'cards[a1b2][field2]', reason: 'agent_interaction_required' },
+      { id: 'location', reason: 'agent_interaction_required' },
+    ],
+  );
+  assert.equal(named('location')[0].nativeWrites, 0);
+  assert.ok(named('cards[a1b2][field2]').every(el => !el.checked));
+  assert.equal(submit.clicks, 0);
+  assert.ok(allElements(document).every(el => el.clicks === 0));
+});
+
+test('lever: the Submit control and the captcha response can never be targeted by a fill', async () => {
+  const adapter = load('lever');
+  const { document, named, submit } = leverForm();
+  const result = await adapter.fill(document, { 'btn-submit': 'Submit', 'h-captcha-response': 'token' });
+  assert.deepEqual(result.filled, []);
+  assert.deepEqual(
+    [...result.blocked].sort((a, b) => a.id.localeCompare(b.id)),
+    [
+      { id: 'btn-submit', reason: 'field_not_found' },
+      { id: 'h-captcha-response', reason: 'field_not_found' },
+    ],
+  );
+  assert.equal(named('h-captcha-response')[0].nativeWrites, 0);
+  assert.equal(submit.clicks, 0);
+});
+
+test('lever: audit counts the location only once a suggestion is chosen and reads checkbox groups', () => {
+  const adapter = load('lever');
+  const { document, named } = leverForm();
+  named('location')[0]._value = 'Springfield';
+  let audit = adapter.audit(document);
+  assert.equal(audit.fields.find(field => field.id === 'location').value, '');
+  assert.ok(audit.required_unknown.includes('location'));
+  named('selectedLocation')[0]._value = '{"name":"Springfield, Illinois, United States"}';
+  named('cards[a1b2][field2]')[1].checked = true;
+  named('cards[a1b2][field0]')[1].checked = true;
+  audit = adapter.audit(document);
+  assert.equal(audit.fields.find(field => field.id === 'location').value, 'Springfield');
+  assert.deepEqual(audit.fields.find(field => field.id === 'cards[a1b2][field2]').value, ['Data']);
+  assert.ok(!audit.required_unknown.includes('location'));
+  assert.ok(!audit.required_unknown.includes('cards[a1b2][field0]'));
+  assert.ok(audit.required_unknown.includes('cards[a1b2][field1]'));
+  assert.ok(audit.required_unknown.includes('cards[a1b2][field3]'));
+  assert.ok(audit.required_unknown.includes('name'));
+  assert.ok(!audit.required_unknown.includes('phone'));
+  assert.ok(!audit.fields.some(field => /captcha/.test(field.id)));
+});
