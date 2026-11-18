@@ -58,15 +58,22 @@ def _review(question_id, step, prompt, draft):
     return question
 
 
-def _text(value):
+def _text(value, language="en"):
+    """Render a draft value completely: Confirm writes exactly what this shows."""
     if isinstance(value, list):
-        return "; ".join(_text(item) for item in value)
+        return " | ".join(_text(item, language) for item in value)
     if isinstance(value, dict):
-        if "name" in value and len(value) == 1:
+        if set(value) == {"name"}:
             return str(value["name"])
-        parts = [str(value.get(k)) for k in ("school", "employer", "degree", "title", "major", "location") if value.get(k)]
-        dates = " to ".join(str(value[k]) for k in ("start", "end") if value.get(k))
-        return ", ".join(parts + ([dates] if dates else []))
+        if set(value) >= {"value", "kind"} and set(value) <= {"value", "precision", "kind"}:
+            return f"{value['value']} ({value['kind']})"
+        parts = []
+        for key, item in value.items():
+            if key == "id" or item in (None, "", [], {}):
+                continue
+            label = guided_catalog.LABELS.get(key, (key, key))[1 if language == "vi" else 0]
+            parts.append(f"{label}: {_text(item, language)}")
+        return ", ".join(parts)
     return str(value)
 
 
@@ -107,7 +114,7 @@ def _resume_question(group, draft, groups):
         if field in shown:
             before = len(groups[field.split(".")[0]].get(field.split(".")[1]) or [])
             shown[field] = shown[field][before:]
-    lines = {lang: "; ".join(f"{_label(f, lang)}: {_text(v)}" for f, v in shown.items()) for lang in ("en", "vi")}
+    lines = {lang: "; ".join(f"{_label(f, lang)}: {_text(v, lang)}" for f, v in shown.items()) for lang in ("en", "vi")}
     en, vi = RESUME_LABELS[group]
     prompt = {"en": f"Your resume shows this {en}: {lines['en']}. Confirm it, or edit it?",
               "vi": f"Resume của bạn có {vi} sau: {lines['vi']}. Xác nhận hay sửa?"}
@@ -122,13 +129,34 @@ def _catalog(field, note=None):
     return question
 
 
-def steps(root, document, extractor=None):
-    """Return the quick-step questions placed before the optional advanced intake."""
-    groups = document["groups"]
+def _config(root):
     try:
         config = read_json(root / "config.json")
     except (OSError, ValueError):
-        config = {}
+        return {}
+    return config if isinstance(config, dict) else {}
+
+
+def prefill(root, document):
+    """Seed blank runtime and resume fields from terminal setup, so the draft shows
+    them and an explicit clear in setup is a real change rather than a blank."""
+    config, groups = _config(root), document["groups"]
+    runtime, resumes = config.get("runtime") or {}, config.get("resumes") or {}
+    for key in ("language", "apply_engine"):
+        if runtime.get(key) and (_blank(groups["runtime"].get(key)) or (key == "language" and groups["runtime"][key] == "en")):
+            groups["runtime"][key] = runtime[key]
+    if resumes.get("main_pdf") and _blank(groups["resumes"].get("main_pdf")):
+        groups["resumes"]["main_pdf"] = resumes["main_pdf"]
+    paths = [item.get("path") if isinstance(item, dict) else item for item in resumes.get("alternatives") or []]
+    paths = [path for path in paths if isinstance(path, str) and path]
+    if paths and _blank(groups["resumes"].get("alternatives")):
+        groups["resumes"]["alternatives"] = paths
+
+
+def steps(root, document, extractor=None):
+    """Return the quick-step questions placed before the optional advanced intake."""
+    groups = document["groups"]
+    config = _config(root)
     facts = resume_facts.from_config(config, extractor=extractor)
     drafts = _resume_draft(groups, facts)
     questions = [_resume_question(group, drafts[group], groups) for group in RESUME_GROUPS if drafts[group]]
@@ -172,6 +200,38 @@ def _put(state, field, value):
     state["document"]["groups"][group][name] = copy.deepcopy(value)
 
 
+# Filter fields derived only from other answers; the posting window and excluded
+# companies also read the filter fields themselves, so they are never re-synced.
+SYNCED = ("filters.jd_exclude", "filters.title_include", "filters.title_exclude")
+
+
+def _synced(groups):
+    values = job_filters.intake_values(job_filters.derive(groups))
+    return {field: values[field] for field in SYNCED}
+
+
+def sync_filters(state):
+    """After answers change, replace derived filters the user has not edited and
+    show the filter review again, so an answer such as Unknown sponsorship never
+    leaves an exclusion that no longer follows from the answers."""
+    record = state.get("quick_filters")
+    if not record:
+        return
+    groups = state["document"]["groups"]
+    derived = _synced(groups)
+    if derived == record["derived"]:
+        return
+    for field, old in record["derived"].items():
+        group, name = field.split(".")
+        if groups[group].get(name) == old:
+            _put(state, field, derived[field])
+    record["derived"] = derived
+    if not any(pending.get("quick_step") == "filters" for pending in state["queue"]):
+        review = copy.deepcopy(state["issued"].get(FILTERS_ID) or _review(FILTERS_ID, "filters", {"en": "", "vi": ""}, {}))
+        review["_alone"] = True
+        state["queue"].insert(0, review)
+
+
 def apply(state, question, status, value):
     """Confirm writes the draft; Edit writes it and asks each field; skip writes nothing."""
     question_id = question["id"]
@@ -181,10 +241,14 @@ def apply(state, question, status, value):
     if status == "answered" and value in ("confirm", "edit"):
         for field, draft in question["_draft"].items():
             _put(state, field, draft)
+        if question["quick_step"] == "filters":
+            state["quick_filters"] = {"derived": {field: copy.deepcopy(question["_draft"][field]) for field in SYNCED}}
         if value == "edit":
             for field, draft in question["_draft"].items():
                 word = ("Suggested", "Gợi ý") if question["quick_step"] == "filters" else ("Resume shows", "Resume ghi")
-                text = _text(draft) if not isinstance(draft, list) or draft else "none"
-                note = {"en": f"{word[0]}: {text}; skip keeps it.", "vi": f"{word[1]}: {text}; bỏ qua để giữ nguyên."}
+                text = {lang: _text(draft, lang) if not isinstance(draft, list) or draft else "none"
+                        for lang in ("en", "vi")}
+                note = {"en": f"{word[0]}: {text['en']}; skip keeps it.",
+                        "vi": f"{word[1]}: {text['vi']}; bỏ qua để giữ nguyên."}
                 replacements.append(_catalog(field, note))
     state["queue"][index:index + 1] = replacements

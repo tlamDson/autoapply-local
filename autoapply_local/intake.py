@@ -472,7 +472,7 @@ def apply_import(root, preview, confirm=False, *, precondition=None):
         result = _save_profile(root, current, updated, data.get("answers"))
         config = _load(root / "config.json")
         for key in ("runtime", "resources", "resumes", "tailor"):
-            config[key] = _merge_section(config.get(key), groups[key])
+            config[key] = _merge_section(config.get(key), groups[key], key)
         boards = config["resources"].pop("boards", None)
         if boards is not None:
             config["boards"] = boards
@@ -481,14 +481,19 @@ def apply_import(root, preview, confirm=False, *, precondition=None):
         return {**result, "applied": True}
 
 
-def _merge_section(current, incoming):
-    """Keep config keys the intake does not hold (terminal setup answers, tags)
-    and existing values the intake leaves blank; other intake values win."""
-    current = copy.deepcopy(current) if isinstance(current, dict) else {}
-    for key, value in incoming.items():
-        if key not in current or value not in (None, [], {}):
-            current[key] = copy.deepcopy(value)
-    return current
+def _merge_section(current, incoming, key=None):
+    """Keep config keys the intake does not hold (terminal setup answers, resume
+    tags); every intake value, including an explicit clear, wins."""
+    merged = copy.deepcopy(current) if isinstance(current, dict) else {}
+    previous = merged.get("alternatives")
+    merged.update(copy.deepcopy(incoming))
+    alternatives = merged.get("alternatives")
+    if key == "resumes" and isinstance(previous, list) and isinstance(alternatives, list):
+        # The intake lists alternative paths; keep each kept path's id and role tags.
+        by_path = {item["path"]: item for item in previous if isinstance(item, dict) and isinstance(item.get("path"), str)}
+        merged["alternatives"] = [copy.deepcopy(by_path.get(item, item)) if isinstance(item, str) else item
+                                  for item in alternatives]
+    return merged
 
 
 def _save_profile(root, old, updated, incoming_answers=None):

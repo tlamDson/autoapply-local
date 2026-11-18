@@ -144,6 +144,7 @@ def _seed(root):
         "issued": {}, "pages": {}, "editors": {}, "preview": None,
     }
     if guided_quick.enabled(root):
+        guided_quick.prefill(root, document)
         quick = guided_quick.steps(root, document)
         state["queue"] = conflicts + quick + [_descriptor(q) for q in top[:3]]
         state["walk_skips"] = guided_quick.walk_skips(quick)
@@ -622,6 +623,7 @@ def _answer(root, state, path):
     # Decode the entire response before changing even the draft in memory.
     for question, status, value, action in decoded:
         _apply_entry(state, question, status, value, action)
+    guided_quick.sync_filters(state)
     state["preview"] = None
     state["revision"] += 1
     _advance(state)
