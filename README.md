@@ -1,31 +1,28 @@
 # AutoApply Local 0.1.0a1 — experimental
 
-Local job-search tools with guided native-popup onboarding, confirmed facts,
-role-selected PDF resumes and a fill → hold → review workflow. The tool never
-clicks Submit: you submit each held form yourself.
+Quick apply for internship and new-grad job seekers, international students first,
+on Windows and macOS. It finds jobs on public ATS boards, fills each application
+with your own resume PDF (the right one for the role), and leaves the filled form
+open in a browser tab. The tool never clicks Submit: you review and submit each
+held form yourself. A local tracker is fed by the forms you submitted and by
+confirmation emails in your Gmail tab.
 English and Vietnamese instructions: [Tiếng Việt](README.vi.md).
 
-Changed dependent facts require fresh confirmation of affected answers; analysis failures before browser actions return newly claimed jobs to `pending` for a manual retry, while held tabs stay open.
+The flow in short: install once, answer the terminal setup, confirm your facts in
+your AI coding engine (Claude Code or Codex), then type `apply` whenever you want
+a batch of applications filled.
+
+## Status and limits
 
 Offline unit, synthetic DOM and installed-package checks are automated. Live ATS,
 Gmail, both-engine end-to-end operation, macOS hardware and an 8 GB machine have
 **not** been validated. This is an experimental release, not a stable automation
 claim. Unsupported controls and account challenges leave the form open for you.
+macOS has not been tested live: on macOS only the offline tests and the CI install
+job run.
 
 Native browser fill still carries
 real-engine risks and needs a live ATS gate before it can be considered stable.
-
-Fill browser native còn rủi ro
-với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
-
-## Repository
-
-Source repository: [tlamDson/autoapply-local](https://github.com/tlamDson/autoapply-local).
-
-```text
-git clone https://github.com/tlamDson/autoapply-local.git
-cd autoapply-local
-```
 
 ## Install
 
@@ -41,14 +38,25 @@ macOS:
 curl -fsSL https://raw.githubusercontent.com/tlamDson/autoapply-local/main/install.sh | bash
 ```
 
+Or clone the [repository](https://github.com/tlamDson/autoapply-local) and run the
+installer from it (`./install.sh` on macOS):
+
+```text
+git clone https://github.com/tlamDson/autoapply-local.git
+cd autoapply-local
+./install.ps1
+```
+
 The script clones the repository into `./autoapply-local` (or uses the checkout it
-runs from; inside a clone run `./install.ps1` or `./install.sh`). It checks
-Python 3.11+, git, Node.js/npm and Google Chrome. When one is missing it prints the
-exact `winget install ...` or `brew install ...` command and exits with code 3; it
-never installs system software itself. With everything present it creates `.venv`
-inside the repository, runs `pip install -e .` and starts setup. Rerunning it is
-safe: the existing `.venv` is reused and setup keeps every file you edited. Pass
-`--no-setup` to install only. All your data stays in `<repo>/user/` (gitignored).
+runs from). It checks Python 3.11+, git, Node.js/npm and Google Chrome. When one is
+missing it prints the exact `winget install ...` or `brew install ...` command and
+exits with code 3; it never installs system software itself. With everything
+present it creates `.venv` inside the repository, runs `pip install -e .` and runs
+`setup` once, which creates the runtime folder `<repo>/user/` with its local
+commands, skill and `autoapply-local.py` launcher. Rerunning the installer is safe:
+the existing `.venv` is reused and setup keeps every file you edited. Pass
+`--no-setup` to install only. Nothing is written outside the repository; all your
+data stays in `<repo>/user/` (gitignored, see [Your data](#your-data)).
 
 Manual install, Windows PowerShell:
 
@@ -70,449 +78,315 @@ python -m autoapply_local --user-dir ./user setup
 cd user
 ```
 
-For a downloaded wheel, replace `python -m pip install .` with
-`python -m pip install path/to/autoapply_local-0.1.0a1-py3-none-any.whl`; the
-installed package can run setup from any directory without the checkout. Outside
-the source tree, choose a runtime explicitly, for example
-`python -m autoapply_local --user-dir ./autoapply-user setup`, then open that folder.
-Dependencies are pinned in pyproject.toml and requirements.txt. Quick application
-uses your existing PDFs and does not need TeX; `source extract` on a PDF needs
-Poppler's `pdftotext`.
+Every command below runs from `<repo>/user/` with the repository's `.venv`
+activated, as `python autoapply-local.py COMMAND`. That generated launcher always
+uses its own folder as the runtime root. The source launcher in the repository
+root (`python autoapply-local.py` there) also defaults to `<repo>/user/`; with no
+arguments it runs `setup`. For an installed module or entry point, put
+`--user-dir PATH` before the command: the runtime root is `--user-dir`, then
+`AUTOAPPLY_LOCAL_HOME`, then the detected source checkout's `user/`, then
+`~/.autoapply-local` outside a source checkout. Existing runtimes are never moved.
 
-The browser connector pins chrome-devtools-mcp 0.14.0. npm may download that
-version when you first approve and start the connector. Do not use a private
-everyday Chrome profile. The product creates persistent clean profiles per lane.
+Quick apply uses your existing PDFs and does not need TeX; `source extract` on a
+PDF needs Poppler's `pdftotext`. Dependencies are pinned in `pyproject.toml` and
+`requirements.txt`. The browser connector pins chrome-devtools-mcp 0.14.0; npm may
+download it when you first approve the connector.
 
-## Setup and your facts
+## Setup, part 1: terminal
 
-In a source checkout or extracted source ZIP, `python autoapply-local.py` with no
-arguments runs setup in `<source>/user`. This source launcher uses its
-own location even when called from another directory. You can also run
-`python -m autoapply_local setup` from the source root or any subdirectory.
-Source detection requires the `autoapply-local` project name in `pyproject.toml`,
-the package and `export-allowlist.json`; Git metadata is not required.
-
-For module commands, runtime precedence is `--user-dir PATH`, then
-`AUTOAPPLY_LOCAL_HOME`, then the detected source's `user`, then
-`~/.autoapply-local` outside source (including wheel installs). Explicit and
-environment roots also override the source launcher's default. Existing runtimes
-(including an older `<source>/.autoapply-local`) are not moved or migrated
-automatically; pass `--user-dir` to keep using one.
-
-Open the exact generated runtime directory in your selected engine, with the
-installed package's virtual environment active. Setup installs local commands,
-skill, support files and a runtime-bound `autoapply-local.py` without replacing
-existing files. That generated launcher always selects its own runtime directory,
-including when `AUTOAPPLY_LOCAL_HOME` points elsewhere. Quote paths containing
-spaces. Setup does not approve browser MCP or change global settings.
-
-In that host, ask for setup: the local command/skill discovers its real native
-question tool, calls `python autoapply-local.py setup --guided --ui UI`, displays
-the returned questions through that tool and waits for your answers. You choose
-runtime/language/engine first, then answer up to three questions at a time.
-No JSON editing is required. Names and existing resume paths are text entries;
-lists and multiple education, authorization and experience records have Add/Done
-editors. Large choice lists paginate. Skip/unknown never becomes No, and optional
-EEO can be declined. You can resume and edit previously issued question IDs.
-Setup is repeatable and preserves existing files.
-
-After terminal setup, guided setup first shows each group of facts read from
-your resumes (contact, education, experience, skills) with Confirm / Edit, then
-asks what a resume lacks (work authorization, sponsorship need, address, EEO,
-recruiting season, target roles), then shows the job filters derived from those
-answers with Confirm / Edit: needing sponsorship drops "no sponsorship", U.S.
-citizen, clearance and ITAR jobs; season and job types shape the title filter
-(for example interns only, no senior or full-time titles); postings within 7
-days; your excluded companies. The complete intake continues after these steps
-and stays optional.
-
-Setup then fills an offline demo form (`demo`: a local page with no Submit
-control, in the tool's own Chrome) to prove the stack works, and runs a first
-`fetch` whose `report.summary` says how many jobs from how many boards passed
-the filters. Job sources are the shipped public boards in two groups, S&P 500
-(`sp500`) and unicorns (`unicorn`): `boards groups` lists them, `boards group
-NAME on|off` turns a group off or on without deleting it, and `boards import
-PATH` adds your own boards, which are always fetched.
-
-Existing education, experience and authorization records also have an Edit an
-existing record option. Choose the numbered native record, change individual
-fields, and use Done or Cancel and keep original record. Similar names have
-distinct labels. Unchanged fields retain their facts and metadata; edits remain
-drafts until the saved preview receives explicit Confirm. Add creates a new record.
-
-If dependencies change while a draft is open, the host offers Reload latest
-confirmed profile / Keep current draft in a native popup. Only your explicit
-Reload choice runs `setup --restart --ui UI`. Restart preserves separate backups
-of the old progress and generated intake, reports their paths, and starts a fresh
-session from current confirmed facts without changing them. Keep, timeout or no
-native tool preserves the draft. Old answers/previews cannot apply to the new
-session; finish and inspect a new preview before Confirm.
-
-The host maps the actual tool-call ID and question index through the packet's
-stable question/option bindings, writes a private response JSON, and passes it to
-`setup --answer PATH --ui UI`. Only your real answer advances the draft; a timeout,
-interruption or preselected default does not. Answers do not change confirmed
-profile/config/answers/reviews. `setup --finish --ui UI` saves the draft and the
-exact import preview. After showing it, the host asks Confirm/Keep draft in a
-native popup. Only your explicit Confirm runs `setup --confirm` using that saved
-preview. Changed dependencies are rejected; inspect a fresh valid preview rather
-than overwriting concurrent edits. A partial draft may retain unknown fields.
-
-`UI` is `codex-async` for discovered `request_user_input_async`, `codex` for
-permitted `request_user_input`, or `claude` for discovered `AskUserQuestion`.
-The flag selects a payload schema; it cannot grant a tool or change engine mode.
-If the host has no permitted native tool, `--ui none` returns `ui_required` and
-keeps progress so you can reopen a supported host/mode. The CLI itself never
-displays a popup. There is no chat-question fallback, subprocess interview,
-automatic switch to Plan/another engine, custom browser form or server install.
-The [official app-server reference](https://learn.chatgpt.com/docs/app-server)
-describes structured `tool/requestUserInput` and MCP elicitation; this package
-uses the tools your existing host exposes and does not install an app server.
-Offline packet tests do not certify native host rendering or end-to-end UI.
-
-For advanced editing/export, `user/profile-intake.md` still exposes all 14 groups
-in one form. Preview it with `python autoapply-local.py profile update PATH`, then
-use that command with `--confirm` only after inspection. This advanced route is
-separate from guided confirmation, which must retain the saved finish preview.
-
-The form covers runtime/language, contact, resume alternatives and role mapping,
-multiple education records, roles and job types, schedule/locations, work
-authorization, CPT/OPT/STEM_OPT mechanisms, eligibility filters, experience and
-skill evidence, compensation/EEO preferences, application history, tailoring
-policy, Gmail and hardware. Blank facts stay unknown. Planned authorization does
-not establish authorization; current and future sponsorship stay separate.
-Exact employer/question/time scopes are required for sensitive answers.
-
-The guided catalog and packaged bilingual questionnaire cover all 14 groups.
-Confirm given/first and family/last names separately; their order is never guessed
-from the legal full name. Put exact answers in the intake's top-level `answers`
-list, with `question`, `value`, `status`, `provenance`, `confirmed_at` and
-`scope` (`country`, `job_type`, `employer`, `question`, `effective_at`). The normal
-`profile update PATH` preview displays these changes; `--confirm` imports them.
-The form explains the allowed states and choices. Blank immigration facts and
-unanswered questions remain unknown.
-
-Source extraction from PDF/TEX/DOCX produces a draft, never confirmed facts.
-With either Codex or Claude selected, use `source extract PATH` to obtain draft
-text, then check each fact against its source before entering it through the
-guided questions. For advanced intake editing, preview `profile update PATH`
-before explicitly confirming it with `--confirm`.
-Never infer authorization, visa status, sponsorship or EEO answers from a resume.
-Generated resumes cannot become new fact sources.
-Profile changes invalidate dependent answers and reviews.
-
-## Document drop folders
-
-Setup creates two folders inside the selected runtime. Its JSON output includes
-`resume_dir` and `additional_document_dir`, both absolute paths to existing folders:
-
-- `user/resume/`: resume PDFs and resume source files such as TEX or DOCX.
-- `user/additional-document/`: transcripts, certificates, cover letters and other
-  supporting documents.
-
-Each folder has a general README created only when absent. Repeating setup
-preserves your documents and edited guides; it does not move, copy, rename or
-delete documents. A file in place of a folder, a directory in place of a guide,
-or a symlink escaping the runtime is rejected before either guide is written.
-Keep runtime `user/` contents out of Git and release artifacts.
-
-Dropping documents here only stores them. It does not select a resume, extract
-or confirm facts, enable tailoring, or upload anything. Select `main_pdf`
-explicitly in the intake's `resumes` group using the PDF's **absolute path**.
-Do not rely on a relative `user/resume/...` PDF path: relative selection resolves
-from the caller's working directory. Preview `profile update` and explicitly
-confirm after checking the facts. Quick apply with an existing PDF does not
-require LaTeX; additional documents are not uploaded automatically.
-
-Which resume a job gets: give each PDF role tags (`main_tags` for the main PDF,
-`tags` on each entry of `alternatives`). A resume whose tag is a whole word of
-the job title is a match. Several matches: the one naming the most of the job
-description's technology keywords wins (no model; ties keep configuration
-order). No match and more than one resume: `apply` asks once per role in a
-terminal and remembers the answer in `user/resume-choices.json`; without a
-terminal it stops instead of guessing. `apply` prints each choice and its
-reason before filling.
-
-Required questions no confirmed fact answers (for example "How did you hear
-about this role?") do not stop the run. `apply` fills everything else, holds
-the tab and collects those questions for the whole run; its result shows
-`questions.pending`. Then `python autoapply-local.py questions --ui UI` returns
-one native popup for all of them (the same question from several jobs is asked
-once). Write the user's actual answers to a private file and run `questions
---answer PATH`: the answers go to the answer bank `user/answer-bank.json` and
-are filled into the held tabs, which are never submitted. The next job that asks
-the same question (same wording, options, country and job type) is filled from
-the bank without asking. Only a question known to be about you alone
-(education, skills, languages, clubs, projects) is reused by another employer.
-Every other question also needs the same employer and start date, and so does
-any required checkbox, yes/no or agree/decline question, question that mentions
-the employer or the role, and question about authorization, sponsorship,
-consent, agreement, contact or data permission, EEO or pay. A refilled question counts only when the tab, read back afresh,
-shows your answer; a wrong or missing value keeps it for `questions --refill`. Skip, timeout or no native
-tool keeps the questions for later; `questions --refill` retries a failed refill.
-The popup is one native call, so it holds as many questions as the host tool
-takes at once (Claude 4, Codex 3); the rest, least shared first, wait for the
-next popup and its `deferred` count says how many. Workday tabs are refilled by
-the engine's native interaction, other tabs by the ATS adapter; a tab that shows
-another application is never written to, and a refill whose fresh readback is
-not clean keeps all its questions for `questions --refill`.
-## Quickstart: setup, sources, fetch and review
-
-After the installation/setup steps above, stay in the generated runtime root.
-Use its generated launcher for every command below to keep that runtime root
-explicit, including when calling it from another working directory.
+Run the terminal part in a plain terminal, before any engine is open (rerun it any
+time; it offers your current answers as defaults):
 
 ```text
-python autoapply-local.py source extract path/to/resume.pdf
+python autoapply-local.py setup --terminal
 ```
 
-Ask for setup in the selected host. It discovers its native question tool and
-runs the guided loop, including runtime/engine choice, existing resume PDF path,
-facts, source choices and a saved preview. The following are the host's CLI
-steps; answer files are created from your actual popup replies, not typed by you:
+1. Language: English or Vietnamese.
+2. Engine: Claude Code or Codex. One small call checks that you are signed in and
+   shows the 5-hour and weekly quota used. Not signed in: it prints how to sign in
+   and waits for you to retry or quit.
+3. Quota stop percent (default 90): the share of the engine's 5-hour or weekly
+   quota at which a run should stop. It is saved in `config.json`.
+4. Resume PDFs: add one or more and tag each with roles (SWE, Data, ML or any
+   text). They are copied into `resumes/` of the runtime root and become
+   `main_pdf`/`main_tags` and `alternatives` in `config.json`.
+5. Jobs per run (default 10). The held-tab cap is computed from free RAM and shown.
+6. Gmail: the tool opens its own clean Chrome profile (`chrome/lane-1`) on Gmail;
+   you sign in there yourself. It then searches the last 183 days for
+   application-confirmation emails and adds each application to the tracker once.
+   You can skip this step.
+7. The selected engine opens in this terminal with `/setup` (Codex:
+   `$autoapply-local setup`) for part 2. `--no-launch` prints that step instead.
+
+Answers are saved to `config.json` as soon as you give them, so a stopped setup
+keeps what you answered. Inside an engine, never run `setup --terminal`.
+
+## Setup, part 2: in your engine
+
+The engine's `/setup` command (Codex: `$autoapply-local setup`) asks the rest
+through the engine's own native question popups, up to three questions at a
+time. No JSON editing is needed.
+
+1. Facts read from your resumes, one group at a time (contact, education,
+   experience, skills), each with Confirm / Edit.
+2. What a resume lacks: work authorization, sponsorship need, address, EEO
+   (declinable), recruiting season and target roles. Skip or unknown never
+   becomes No; authorization, visa, sponsorship and EEO are never guessed from a
+   resume.
+3. Job filters derived from those answers, with Confirm / Edit: needing
+   sponsorship drops "no sponsorship", U.S. citizen, clearance and ITAR jobs;
+   season and job types shape the title filter (for example interns only, no
+   senior or full-time titles); postings within 7 days; your excluded companies.
+   A filter you edited stays edited when answers change later.
+4. A saved preview of everything, then a native Confirm / Keep draft choice. Only
+   your explicit Confirm saves the facts.
+5. An offline demo form (`demo`: a local page with no Submit control, in the
+   tool's own Chrome) proves the stack works.
+6. A first `fetch`, whose `report.summary` says how many jobs from how many boards
+   passed your filters. Setup is done.
+
+Behind the popups the engine runs these commands; the answer file is written from
+your actual popup replies, not typed by you (`claude` is the UI for Claude Code's
+AskUserQuestion; Codex uses `codex` or `codex-async`):
 
 ```text
-python autoapply-local.py setup --guided --ui codex-async
-python autoapply-local.py setup --answer user/setup-response.json --ui codex-async
-python autoapply-local.py setup --finish --ui codex-async
+python autoapply-local.py setup --guided --ui claude
+python autoapply-local.py setup --answer user/setup-response.json --ui claude
+python autoapply-local.py setup --finish --ui claude
 python autoapply-local.py setup --confirm
+python autoapply-local.py demo
+python autoapply-local.py fetch
 ```
 
-The last line runs only after your explicit native Confirm on the saved preview.
-Use the UI identifier for the tool actually discovered; if unavailable, keep the
-draft with `--ui none`. Then continue with sources, fetch and review:
+The engine discovers its real native question tool first. Without a permitted one
+it uses `--ui none`, which returns `ui_required` and keeps your progress so you can
+reopen a supported engine or mode. A timeout, an interruption or a preselected
+default is never an answer, and there is no chat-question fallback.
+`setup --guided --edit QUESTION_ID --ui UI` revisits one question. Existing
+education, experience and authorization records have a numbered Edit an existing
+record picker; Cancel keeps the original record. If your confirmed facts change
+while a draft is open, the engine offers Reload latest confirmed profile / Keep
+current draft; only an explicit Reload runs `setup --restart --ui UI`, which backs
+up the old draft and starts a fresh session (finish and confirm a new preview).
+
+Job sources are the shipped public boards in two groups, S&P 500 (`sp500`) and
+unicorns (`unicorn`). `boards groups` lists them, `boards group NAME on|off` turns
+a group off or on without deleting it, and `boards import PATH` previews your own
+boards, then `--confirm` adds them; your boards are always fetched. These sources
+are no eligibility or sponsorship guarantee.
 
 ```text
-python autoapply-local.py boards list
+python autoapply-local.py boards groups
+python autoapply-local.py boards group unicorn off
 python autoapply-local.py boards import examples/boards.json
 python autoapply-local.py boards import examples/boards.json --confirm
-python autoapply-local.py fetch
-python autoapply-local.py apply 1
-python autoapply-local.py review all
 ```
 
-Setup installs editable discovery seeds for Anthropic (Greenhouse), NVIDIA
-(Workday, search `software`) and SpreeAI (Rippling) only when config has no
-`boards` key. These public sources are not eligibility or sponsorship guarantees.
-Repeated setup preserves your source choices, including an explicit empty list.
-The example import above previews and merges the same seeds; copy/edit that JSON
-list to add or change sources, then preview and confirm your own file. Imports
-match stable ATS identities and retain unrelated settings; changed input/config
-requires a fresh preview. Supported endpoint overrides must use public HTTPS ATS
-endpoints.
+For advanced editing, `user/profile-intake.md` holds every fact group in one form:
+preview it with `profile update PATH`, then add `--confirm`. `source extract PATH`
+turns a PDF/TEX/DOCX into draft text for checking; a draft is never a confirmed
+fact. A profile change invalidates dependent answers and reviews.
 
-You can also edit `resources.boards` in the full intake: absent or `null` preserves
-current sources, while `[]` intentionally disables configured sources. Fetch
-without sources requires `boards list` / `boards import` / `setup` guidance or an
-explicit supported `--url`; it does not silently succeed with zero jobs. A
-configured source can legitimately return no matching jobs. Listing/importing
-boards and fetching do not require unrelated onboarding fields. Apply fills and
-holds the tab, and review inspects it; keep unsubmitted forms open.
+## Daily use: apply
 
-## Runtime and browser approvals
+Nothing runs on a schedule. A run starts only when you type `apply [N]`: `/apply 5`
+in Claude Code, `$autoapply-local apply 5` in Codex, or in a terminal:
 
-The Part2 Windows runtime smoke results are historical, from an earlier engine
-revision before the engine, tool-gate and profile safety changes. Those checks
-passed with Codex 0.165.0-alpha.1.2 and Claude 2.1.312: structured JSON/Unicode
-outside Git and browser MCP on two isolated lanes per engine. The Claude positive
-fixture explicitly approved only the read-only `list_pages` tool; an unapproved
-invocation correctly stopped. These historical results do not validate the full
-current runtime; the current changes have offline test coverage. They do not
-establish live ATS, Gmail, macOS or 8 GB readiness, or stable operation.
+```text
+python autoapply-local.py apply 5
+```
 
-Choose one engine per task in the intake; command-line engine overrides that
-choice. Sign in to the selected engine using its normal sign-in flow. Run
-`python autoapply-local.py doctor` with the configured selected engine
-to inspect executable and optional dependency presence. Executable presence is
-not login or connector readiness.
+Without N it fills the jobs-per-run number from setup. One run, in order:
 
-Setup writes project-local `.mcp.json` and `mcp-codex.json` in your runtime
-directory without replacing existing files. Open/approve the runtime directory
-in the selected engine and approve the local browser MCP normally. Runtime
-tasks pass the actual persistent lane endpoint to the selected CLI; no global
-config or hook is installed, no model is pinned, and there is no fallback engine.
-Do not bypass approvals. The Codex fragment uses `mcp_servers` and is for
-inspection; task invocations configure their own lane endpoint. An inherited
-entry named `autoapply-local-browser` must be removed before using task-local
-transport, since merging it could inherit unrelated environment settings.
+1. Track: held tabs now on their ATS confirmation page and confirmation emails in
+   the Gmail tab become tracker rows (see `track` under [Commands](#commands)).
+   Filled but unsubmitted tabs are listed, kept and counted toward the tab cap. A
+   held form whose tab Chrome lost (for example after a restart) is reopened at the
+   same URL and filled again.
+2. Fetch new jobs from the active boards.
+3. Filter with your confirmed filters and skip jobs already in the tracker or in
+   the Gmail/imported history (same company and role).
+4. Pick the resume: a PDF whose role tag is a whole word of the job title; several
+   match → the one naming the most of the job description's technology keywords
+   (no model; ties keep configuration order); none matches and you have more than
+   one → `apply` asks once per role in the terminal and remembers it in
+   `user/resume-choices.json`. Each choice and its reason are printed before filling.
+5. Fill with the ATS script driver: Greenhouse, Workday, Rippling, Ashby, Lever and
+   Workable. Workday signs in with the account stored for that Workday site in
+   `secrets.json`, creates the account when sign-in fails, and types the
+   verification code read from the Gmail tab. No setup step stores that account
+   yet; without one the Workday tab is held for you to sign in.
+6. Required questions with no confirmed answer do not stop the run: they are
+   collected for the whole run and the result shows `questions.pending`. The engine
+   then asks them in one native popup (the same question from several jobs is asked
+   once), saves your answers to `user/answer-bank.json` and fills them into the
+   held tabs. A banked answer is reused only for the same question wording,
+   options, country and job type; it crosses employers only for a question about
+   you alone (education, skills, languages, clubs, projects). Authorization,
+   sponsorship, consent, EEO, pay and employer-specific questions are never
+   inferred. A refill counts only when a fresh readback of the tab shows your
+   answer; otherwise `questions --refill` retries it.
+7. Never Submit. You review each held tab and submit it yourself.
+8. Jobs on an ATS with no driver (iCIMS, SmartRecruiters, Taleo, ...) are never
+   opened: they go to a submit-by-hand list with link and suggested resume. A
+   CAPTCHA, sign-in or unsupported control holds the tab; solve it there and run
+   `apply ID` for that job.
+9. The end of the run prints a table on stderr, one row per job (company, role,
+   resume, tab, fields to check), then the confirmations found in Gmail, skipped
+   jobs with reasons, the submit-by-hand list and the questions still unanswered.
+   Final stdout stays JSON.
 
-External-tool tasks on Claude require CLI 2.1.295 or newer for the blocking
-command-hook boundary. The runtime probes the resolved selected executable
-before dispatch. Older or unparseable versions return `unsupported_version` and
-need a manual update through the CLI's official installation instructions.
-Tool-free analysis can run without that external-tool hook. Only the
-exact internal `StructuredOutput` tool is admitted for JSON formatting; output
-must be a successful CLI envelope with schema-valid structured output.
-Nonempty native `permission_denials` returns `permission_required` before any
-structured output is accepted. Approve the tool through the CLI's normal project
-approval flow and retry manually; the product never writes approval rules.
+```text
+python autoapply-local.py questions --ui claude
+python autoapply-local.py questions --answer user/question-answers.json
+python autoapply-local.py questions --refill
+python autoapply-local.py status
+python autoapply-local.py review all
+python autoapply-local.py submitted greenhouse:acme:4012345
+python autoapply-local.py track
+python autoapply-local.py apply greenhouse:acme:4012345
+```
 
-Executable arguments, prompts and JSON use UTF-8, including paths with spaces
-and Unicode. Supported Windows npm `.cmd` installations of the two known CLI
-packages resolve their declared JavaScript bin through Node, or their native
-`.exe` bin directly, with `shell=False`. Both global npm prefixes and local
-`node_modules/.bin` layouts are supported. Other shims or incomplete installations
-return `configuration`; complete native postinstall/setup manually. Codex's
-Windows browser MCP uses fixed `cmd /c npx` arguments, system environment and a
-20-second startup timeout, with the pinned MCP version and a validated loopback
-URL. Claude's browser transport remains separate.
+A popup holds as many questions as the engine's tool takes at once (Claude 4,
+Codex 3); the rest wait for the next popup and `deferred` says how many. Skip,
+timeout or no native tool keeps them pending. A tab that shows another
+application is never written to.
 
-Codex works outside Git with `--skip-git-repo-check` and a read-only sandbox.
-Session-only TOML overrides disable inherited connector names, shell, native
-browser/computer tools, code execution and multi-agent capabilities; browser
-tasks expose only their selected MCP operations. Model/provider selection,
-authentication storage and ordinary approvals are preserved.
-Codex enables `features.code_mode_host` and `features.workspace_dependencies`
-only for explicitly requested MCP/native connector tools. These are broker
-infrastructure; analysis and empty tool lists keep both off, while
-`features.code_mode` and the other restricted capabilities remain disabled.
-Before inference,
-`mcp list --json` probes the effective MCP inventory through the same resolved
-CLI, working directory and task policy, including both broker flags, on Windows,
-macOS and Linux.
-Only connector identifiers and enabled flags are retained; transport, environment
-and authentication metadata are discarded. Invalid or unavailable inventory,
-unreadable config, detected unverifiable managed policy and unsupported legacy
-profiles fail closed. Managed requirements are never bypassed; configuration
-refusals require manual attention. Overrides are not a live capability check.
-No global configuration or credential file is copied, and auth files are not read.
+When the held-tab cap is reached, submit held forms by hand and record them with
+`submitted ID,ID` (or let `track` find them) before opening more. Do not close
+unsubmitted forms. Named job IDs are not deduplicated. Analysis failures before
+browser actions return newly claimed jobs to `pending` for a manual retry, while
+held tabs stay open.
 
-Diagnostics distinguish `login_required`, `quota_exhausted`, `timeout`,
-`configuration`, `permission_required`, `unsupported_version`, `invalid_response` and `engine_failure`
-without echoing sensitive CLI output. Probes are bounded to 10 seconds and task
-calls to 300 seconds. CLI runtime failures return exit 3; invalid response/schema
-returns exit 2. There is no automatic engine fallback.
-`doctor` reports executable presence, resolved launch arguments and dependency
-presence separately; login and connector/capability checks remain `not_verified`.
-Offline tests do not establish live CLI, MCP handshake, ATS or Gmail readiness.
+## Update
 
-One lane is the default. Two or three require explicit opt-in in the intake.
-Admission checks available RAM and held tabs; the memory rule is a heuristic,
-not an 8 GB benchmark. When the cap is reached, submit held forms by hand and
-record them with `submitted ID,ID` before opening more. Persistent clean profiles retain sign-in state between commands.
-New jobs rotate through the opted-in lanes. Each job retains its lane and debug
-endpoint, so later commands restore its own browser. Admission rechecks RAM and
-held-tab capacity before every new job and retains partial results on refusal.
-Held forms can still be inspected or resumed when capacity is exhausted.
+```text
+python autoapply-local.py update
+```
+
+`update` copies the runtime folder `<repo>/user/` (except `backups/`, Chrome
+profiles and `secrets.json`) to `<repo>/user/backups/<date-time>/`, then runs
+`git pull --ff-only` (without git it downloads the latest release zip, which never
+writes `user/`, `.venv/` or `.git/`), reinstalls with `pip install -e .`, runs each
+pending data migration once and prints what changed. `apply` prints one line on
+stderr when a newer release exists; set `AUTOAPPLY_LOCAL_NO_UPDATE_CHECK=1` to
+skip that lookup.
+
+## Your data
+
+Everything you add or the tool records stays in the runtime root, `<repo>/user/`
+by default, which Git ignores and release artifacts exclude. Paths below are
+relative to that root:
+
+- `config.json`, `profile.json`, `answers.json`: your settings, confirmed facts and
+  confirmed answers.
+- `resumes/`: the resume PDFs you added in terminal setup.
+- `user/resume/`: a drop folder for resume PDFs and resume sources (TEX, DOCX).
+- `user/additional-document/`: a drop folder for transcripts, certificates, cover
+  letters and other supporting documents.
+- `user/answer-bank.json`, `user/resume-choices.json`: answers you gave to form
+  questions and your resume choice per role.
+- `tracker.xlsx` and `ledger.json`: the tracker (authoritative history) and job
+  states.
+- `secrets.json`: Workday account email and password per Workday site. It is
+  never printed or logged, never backed up by `update`, and the release audit
+  fails if Git tracks it.
+- `chrome/`: the tool's own clean Chrome profiles; never use your everyday
+  profile.
+- `backups/`: copies made by `update`.
+
+The two drop folders are created by setup with a short README each (created only
+when absent; your documents and edited guides are kept). Dropping a file there
+only stores it: it does not select a resume, extract or confirm facts, or upload
+anything. Resumes used by `apply` are the ones added in terminal setup;
+additional documents are never uploaded automatically.
+
+There is no Gmail command and no OAuth. The only Gmail access is the Gmail tab of
+the tool's own Chrome profile, where you signed in yourself: the tool searches it
+and reads result rows (sender, subject, snippet, date). It never opens, sends,
+drafts, archives or labels a message, verification emails are skipped, and
+nothing but the confirmation subject, company, role and date is stored.
+`history import PATH` previews a CSV/XLSX application history; `--confirm` imports
+it with deduplication. Keep backups of the tracker and ledger.
 
 ## Commands
 
-From the generated runtime root, run `python autoapply-local.py COMMAND`.
-The local slash commands and Codex skill use this same root-bound launcher.
-If invoking the installed module or entrypoint directly, put `--user-dir PATH`
-before the subcommand.
+From the runtime root run `python autoapply-local.py COMMAND`. The local slash
+commands and Codex skill use the same launcher. No command clicks Submit.
 
-For `apply` and `review`, `--approve-browser-tools` explicitly opts in
-for the current command only. It approves only the local browser MCP tools that
-each task requests and is never saved. Existing policy, including managed policy,
-permission denials and the review gate, still applies. It does not approve Gmail
-or analysis tools. No command clicks Submit, and no engine task may request a
-Submit capability; you review each held tab and submit it yourself.
-
-- `setup`: bootstrap local state safely and show the guided next step.
-- `setup --terminal [--no-launch]`: terminal questions (language, engine login and
-  quota check, quota stop percent, resume PDFs with role tags, jobs per run) saved
-  to `config.json`; then the tool's own clean Chrome profile (`chrome/lane-1` in the
-  runtime root) opens on Gmail for you to sign in, and six months of
-  application-confirmation emails are added to the tracker once each; then the
-  selected engine opens with `/setup`.
-- `setup --guided [--edit QUESTION_ID] --ui UI`: start/resume native questions or
-  edit a catalog/issued record question; output is a host tool packet, not a popup.
-- `setup --answer PATH --ui UI`: validate a private, batch-bound response and
-  update only the draft. Actions are mutually exclusive.
-- `setup --finish --ui UI`: save an intake draft and the exact confirmation
-  preview. `setup --confirm` applies it only after an explicit native Confirm.
-- `boards list`: show configured discovery sources.
-- `boards import PATH [--confirm]`: validate, normalize and deduplicate a JSON
-  source list; preview additions/changes, then explicitly confirm the merge.
-- `profile update PATH [--confirm]`: preview or import the complete intake.
-- `source extract PATH`: extract PDF/TEX/DOCX text to a draft JSON under
-  `user/drafts`; check and transfer facts into the full intake, then preview and
-  explicitly confirm `profile update`. Extraction cannot confirm itself.
-- `history import PATH [--confirm]`: preview CSV/XLSX application history, then
-  import on explicit confirmation while preserving historical stages and dedup.
-- `doctor [ENGINE]`: inspect dependencies; login/connectors remain unverified.
-- `fetch [ENGINE] [--url URL]`: fetch configured public Greenhouse, Workday CXS
-  and Rippling boards, or import a supported manual URL. Configure sources through
-  `boards import` or intake `resources.boards`. Unknown eligibility
-  follows your configured policy and never becomes an inferred fact.
-- `apply [ENGINE] [N|ID,ID]`: one run, in order: `track` (reported under
-  `track`); held forms whose tab Chrome lost (for example after a restart) are
-  opened again at the same URL and filled again first; `fetch` the active boards;
-  skip jobs the ledger already holds or that match a Gmail/imported history row by
-  company and role; then fill up to N new jobs (default: jobs per run from setup;
-  `--quick N` still works) with a role-mapped existing PDF and the ATS script
-  driver. Jobs on an ATS with no driver (iCIMS, SmartRecruiters, Taleo, ...) are
-  never opened: they go to a submit-by-hand list with link and suggested resume.
-  Target roles, recruiting season/window and each job's PDF appear on stderr
-  before browser work; at the end stderr shows a table (company, role, resume,
-  tab, fields to check), the confirmations found, skipped jobs with reasons, the
-  submit-by-hand list and the count of required questions still unanswered
-  (`questions`, see above; each field is listed under `unanswered`).
-  Final stdout stays JSON. Named job IDs are not deduplicated. This command never
-  submits.
-- `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
-  freshness. It never submits or closes forms.
-- `submitted ID,ID`: record held forms you submitted by hand. It writes the
-  tracker row and frees the held-tab slot without touching the browser or an
-  engine; the tab stays open until you close it.
-- `track`: record held forms you already submitted. A held tab now on the ATS
-  confirmation page of its own posting (Greenhouse, Workday, Rippling, Lever)
-  becomes a tracker row and the tab is closed. A Workday page that names no job
-  is not enough: the tab is listed as waiting until its email arrives. A
-  confirmation email in the Gmail tab that names the held job's exact company
-  (and role, when the email has one), dated on or after the day the form was held,
-  also becomes a tracker row. A form held before held days were stored needs an
-  email from the last 14 days with its exact role, and none already in the tracker
-  for that company and role. Tabs still on their form are listed as waiting and
-  kept; tabs that are gone without evidence are listed with their URL. Gmail is
-  searched back to the oldest held form (at least 14 days, at most six months);
-  confirmations for other companies join the applied history once, and other
-  emails naming a held job's company are held back. An email is matched only
-  when no other job of that company could have sent it: another held or filled
-  form (also one held before held days were stored, or one whose tab just showed
-  its confirmation page) or an application recorded in the last 14 days, unless
-  the email names a different role. Otherwise it is held back. It only lists tabs and
-  reads Gmail rows, never runs a script in a job tab, and changes nothing when
-  the tool's Chrome is not running.
+- `setup`: create or refresh the runtime (local commands, skill, launcher,
+  document folders, browser config) without replacing your files.
+  `setup --terminal [--no-launch]` is part 1; `setup --guided`, `--answer PATH`,
+  `--finish`, `--confirm` and `--restart` with `--ui UI` are part 2 (one action
+  at a time); `--edit QUESTION_ID` revisits a question.
+- `boards list|groups`, `boards group NAME on|off`, `boards import PATH
+  [--confirm]`: show, switch and add job sources.
+- `demo`: fill the offline demo form in the tool's Chrome.
+- `profile update PATH [--confirm]`: preview, then import, the advanced intake.
+- `source extract PATH`: draft text from a PDF/TEX/DOCX under `user/drafts`.
+- `history import PATH [--confirm]`: preview, then import, CSV/XLSX history.
+- `doctor [ENGINE]`: check executables and dependencies; sign-in and connectors
+  stay `not_verified`.
+- `fetch [ENGINE] [--url URL]`: fetch the active boards, or one supported job URL.
+- `apply [ENGINE] [N|ID,ID]`: one run as described in
+  [Daily use](#daily-use-apply); `--quick N` still works and
+  `--approve-browser-tools` approves the browser tools for this command only.
+- `review ID,ID|all`: read held forms again and check job, tab, values, profile and
+  PDF are current. It never submits or closes a form.
+- `submitted ID,ID`: record held forms you submitted by hand; this writes the
+  tracker row and frees the held-tab slot without touching the browser.
+- `questions --ui UI`, `questions --answer PATH`, `questions --refill`: ask, save
+  and refill required questions held by `apply`.
+- `track`: record held forms you already submitted, from the ATS confirmation page
+  in their tab (Greenhouse, Workday, Rippling, Lever) or a confirmation email in the
+  Gmail tab naming the job's exact company (and role when the email has one),
+  dated on or after the day the form was held. An email is matched only when no
+  other held, filled or recently recorded job of that company could have sent it;
+  otherwise it is held back. A Workday page that names no job waits for its email.
+  Tabs still on their form are listed as waiting; tabs gone without evidence are
+  listed with their URL. It never runs a script in a job tab and changes nothing
+  when the tool's Chrome is not running.
 - `status`: list held forms, counts and unresolved applications without an engine.
-- `update`: copy `user/` (except `backups/` and Chrome profiles) to
-  `user/backups/<date-time>/`, then `git pull --ff-only` (no git: download the
-  latest release zip, which never writes `user/` or `.venv/`), reinstall with
-  `pip install -e .`, run each pending data migration once and print what changed.
-  `apply` prints one line on stderr when a newer release exists; set
-  `AUTOAPPLY_LOCAL_NO_UPDATE_CHECK=1` to skip that lookup.
+- `update`: back up, update and migrate (see [Update](#update)).
 
-For account creation, sign-in, CAPTCHA, MFA or unsupported dynamic controls,
-complete the requested interaction in the held clean Chrome tab and resume.
-Resume with an explicit `apply [ENGINE] ID` after resolving the blocker.
-It uses the same held tab, and unresolved login/CAPTCHA/data keeps its manual
-state.
-Passwords are not collected or stored by this package. Do not close unsubmitted
-forms. Unknown required questions need your exact scoped confirmation.
+## Engines and browser approvals
 
-Native multipage filling receives the chosen PDF and uploads on the Resume step
-before advancing. Review needs fresh observed label/value text and an attachment
-that matches the browser-observed upload receipt; an expected local hash alone
-is insufficient. Missing evidence leaves the form held for manual inspection.
+Use one engine per task, the one chosen in setup or named on the command line;
+there is no fallback engine and no model is pinned. Sign in to it through its
+normal flow. Setup writes project-local `.mcp.json` and `mcp-codex.json` in the
+runtime root without replacing existing files; open the runtime root in your
+engine and approve the local browser MCP normally. Nothing changes global
+settings or writes approval rules, and approvals are never bypassed.
 
-There is no Gmail command and no OAuth. The only Gmail access is the Gmail tab
-of the tool's own Chrome profile, where you signed in yourself: setup searches it
-for application confirmations of the last 183 days and reads the result rows
-(sender, subject, snippet, date). It never opens, sends, drafts, archives or
-labels a message, verification emails are skipped, and nothing but the
-confirmation subject, company, role and date is stored. Analysis disables external tools; browser operations use the
-selected lane's connector and operation tools. Ordinary runtime approvals still
-apply.
+For `apply`, `review` and `questions`, `--approve-browser-tools` approves only the
+local browser MCP tools that each task requests, for that command only; it is
+never saved and does not approve Gmail or analysis tools. Existing and managed
+policy and permission denials still apply.
 
-The local XLSX tracker is authoritative for application history. JSON ledger
-recovery reconciles from all historical tracker stages. CSV/XLSX history import
-uses preview then explicit confirmation; unknown stages fail instead of returning
-to pending. Keep both the local tracker and ledger backups.
+```text
+python autoapply-local.py doctor
+```
+
+Claude external-tool tasks need CLI 2.1.295 or newer; older versions return
+`unsupported_version`. Codex runs read-only, outside Git, with session-only
+overrides that turn off inherited connectors, shell, native browser and code
+execution; it probes the effective MCP inventory with `mcp list --json` first
+and fails closed on unreadable or managed configuration it cannot verify.
+Errors are reported as `login_required`, `quota_exhausted`, `timeout`,
+`configuration`, `permission_required`, `unsupported_version`, `invalid_response`
+or `engine_failure` without echoing sensitive CLI output. Probes are bounded to
+10 seconds and tasks to 300 seconds; runtime failures exit 3, invalid input or
+response exits 2. An earlier Windows smoke run of both engines does not validate
+the current runtime.
+
+One browser lane is the default; two or three need an explicit opt-in in the
+intake. Admission checks free RAM and held tabs before every new job; the memory
+rule is a heuristic, not an 8 GB benchmark. Each job keeps its lane, so later
+commands find its tab again.
 
 ## Test and export
 
-From this release directory run:
+From the repository root:
 
 ```text
 python -m unittest discover -s tests -p "test_*.py" -v
@@ -520,38 +394,26 @@ node --test tests/adapters.test.cjs tests/gmail.test.cjs
 python scripts/check_release.py
 ```
 
-Tests use temporary synthetic data and mocked engines/browser/network. The real
-synthetic TeX smoke runs only when optional tools are installed. Source export
-uses export-allowlist.json and content scanning, not .gitignore alone. Runtime
-data, credentials and local build outputs are excluded. Audited synthetic test
-sources are included in the public repository for CI; wheels and sdists exclude tests.
+Tests use temporary synthetic data and mocked engines, browser and network.
+Source export uses `export-allowlist.json` plus content scanning, not `.gitignore`
+alone; runtime data, credentials and build outputs are excluded. Synthetic test
+sources ship in the public repository for CI; wheels and sdists exclude tests.
 This is an experimental public prerelease; check
 [Actions](https://github.com/tlamDson/autoapply-local/actions) for recorded CI results.
-Local checks reported here were run on Windows; the workflow defines Windows/macOS jobs with Python
-3.11 and 3.12, without claiming a remote CI run or macOS hardware validation.
-A second job, install-smoke, runs install.ps1 (Windows) or install.sh (macOS) on a clean runner,
-then scripts/ci_smoke.py: doctor, terminal setup with scripted answers and an offline stand-in for the
-engine CLI, a confirmed profile for an invented candidate, and the offline demo form fill.
+The workflow defines Windows and macOS jobs with Python 3.11 and 3.12. A second
+job, install-smoke, runs `install.ps1` (Windows) or `install.sh` (macOS) on a clean
+runner, then `scripts/ci_smoke.py`: doctor, terminal setup with scripted answers
+and an offline stand-in for the engine CLI, a confirmed profile for an invented
+candidate, and the offline demo form fill.
 
-`pyproject.toml` is the source of the project name, current version, dependencies
-and wheel package-data patterns. Artifact filenames and metadata must match that
-version. `--artifacts DIR` checks every final wheel, sdist and source ZIP in the
-directory for its exact file inventory, shipped source bytes, packaging metadata,
-wheel RECORD hashes/sizes and the existing privacy/path safety rules. Stale
-artifacts are rejected even when a current artifact is present beside them.
-`--expect wheel,sdist` is the default; use `--expect wheel,sdist,zip` to require
-all three kinds. Any missing expected kind fails the audit.
-
-The wheel contains package Python modules and declared package data, plus wheel
-metadata and license files. The sdist contains the export allowlist except tests,
-plus generated source-distribution metadata. The source ZIP contains exactly the
-entire allowlist, including synthetic tests, under its versioned root directory.
-Tests are included only in that source ZIP among these three artifacts.
-`--source-zip DIR` first audits the source, creates a sorted ZIP with fixed
-timestamps, then audits the ZIP. It refuses to overwrite an existing artifact.
-
-For a new export and a separate final-artifact directory, run from the release
-directory (the example export and install-work directories must not already exist):
+`pyproject.toml` is the source of the project name, version, dependencies and
+wheel package data. `--artifacts DIR` audits every final wheel, sdist and source
+ZIP in a directory (file inventory, shipped bytes, metadata, wheel RECORD hashes
+and the privacy/path rules) and rejects stale artifacts; `--expect wheel,sdist`
+is the default, `--expect wheel,sdist,zip` requires all three. `--source-zip DIR`
+audits the source, then writes and audits a reproducible ZIP; it never
+overwrites an artifact. From the repository root (the export and work
+directories must not exist yet):
 
 ```text
 python scripts/check_release.py --export ../autoapply-export-new
@@ -560,16 +422,13 @@ python -m pip wheel --no-deps --no-build-isolation --wheel-dir ../autoapply-arti
 python -m build --sdist --no-isolation --outdir ../autoapply-artifacts-new
 python scripts/check_release.py --source-zip ../autoapply-artifacts-new
 python scripts/check_release.py --artifacts ../autoapply-artifacts-new --expect wheel,sdist,zip
-python scripts/check_install.py --artifacts ../autoapply-artifacts-new --work-dir "../install thử ünïcode new"
+python scripts/check_install.py --artifacts ../autoapply-artifacts-new --work-dir "../install space ünïcode new"
 ```
 
-The build commands require the pinned build requirements from `pyproject.toml`
-and the `build` package. The install smoke audits final artifacts before creating
-two fresh venvs with dependencies, then checks wheel and sdist installations from
-outside the source tree. Its work directory contains commands/results; it is
-separate from the public source. To use a prepared offline dependency wheelhouse,
-add `--wheelhouse PATH` to `check_install.py`; dependencies are still installed.
-These commands document the integration procedure, not a completed integration
-result for the current artifacts.
+The build commands need the pinned build requirements and the `build` package.
+`check_install.py` installs the wheel and the sdist into two fresh venvs from
+outside the source tree; add `--wheelhouse PATH` for an offline dependency
+wheelhouse. These commands document the procedure, not a completed result for
+the current artifacts.
 
 MIT license; see NOTICE for layout and dependency attribution.

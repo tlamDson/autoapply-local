@@ -55,6 +55,14 @@ without confirming anything. Old answers/previews stay invalid. Use the numbered
 native existing-record picker for education, experience or authorization; Cancel
 keeps the original record. Unchanged facts keep their metadata.
 
+Your data stays in this runtime root (gitignored): config, confirmed facts,
+`resumes/` from terminal setup, tracker, ledger, `secrets.json` (Workday sign-in,
+never printed) and Chrome profiles. Setup creates two drop folders here:
+`user/resume/` for resume PDFs and TEX/DOCX sources and `user/additional-document/`
+for transcripts, certificates and cover letters. A file dropped there is only
+stored: it is never selected, confirmed or uploaded. `update` backs up this root
+to `backups/<date-time>/` before it pulls the new release and runs migrations.
+
 Use confirmed facts and exact scoped answers. Source extraction produces drafts;
 preview profile updates and import only after explicit confirmation. Unknown
 authorization, sponsorship, consent and EEO answers must remain unknown.
@@ -75,3 +83,6 @@ with `questions --refill`.
 
 There is no Gmail command. Never send, draft, archive, label, scrape browser
 Gmail, persist codes or access another workspace's private data. Report held tabs and unresolved work.
+
+Live ATS, Gmail, both-engine operation and an 8 GB machine are not validated.
+macOS has not been tested live.
