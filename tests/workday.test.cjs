@@ -12,7 +12,7 @@ const path = require('node:path');
 const { ADAPTER_ROOT, load, Element, Input, makeDocument } = require('./fake_dom.cjs');
 
 const EMAIL = 'alex.rivera@example.com';
-const PASSWORD = 'Synthetic-Passphrase-42';
+const PASSWORD = 'synthetic-passphrase-42';
 
 function page() {
   const result = makeDocument();

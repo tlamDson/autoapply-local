@@ -22,7 +22,7 @@ from test_support import ReleaseCase  # noqa: E402
 
 FLOW = json.loads((RELEASE / "tests" / "workday_flow.json").read_text(encoding="utf-8"))
 EMAIL = "alex.rivera@example.com"
-PASSWORD = "Synthetic-Passphrase-42"
+PASSWORD = "synthetic-passphrase-42"
 CODE = "482913"
 JOB = {
     "id": "wd-1",

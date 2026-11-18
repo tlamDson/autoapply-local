@@ -51,6 +51,15 @@ Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/w
 print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any
 secrets file; `scripts/check_release.py` fails when git tracks one.
 
+The Workday driver (`workday_driver.py`) fills each step from confirmed facts, uploads the
+selected resume on the step that asks for it and presses Next only through the guarded
+`press()` of `adapters/workday_steps.cjs` (fixed actions, never a control that says Submit,
+never on the last step); it stops on Review. Its account step (`workday_account.py`) runs over
+loopback CDP in the held tab, never through an engine: Apply, Apply Manually, sign-in with the
+stored credential, account creation when sign-in fails, and the one-time code read from the
+subject/snippet of Gmail result rows. The code is typed and dropped, never stored or returned.
+CAPTCHA, a link-only verification mail, a rejected code or an unknown page holds the tab.
+
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,
 Node adapter tests and scripts/check_release.py from this release root. Do not

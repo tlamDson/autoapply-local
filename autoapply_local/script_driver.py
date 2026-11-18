@@ -134,6 +134,10 @@ class ScriptDriver:
 
     def run(self, client, tab_id, profile, job, pdf=None):
         """Scan, plan and fill one held tab; never clicks and never closes it."""
+        return self.fill_page(client, tab_id, profile, job, pdf=pdf)[0]
+
+    def fill_page(self, client, tab_id, profile, job, pdf=None):
+        """``run`` for the current page: the report, the planned answers and the scanned fields."""
         scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
         if not isinstance(scanned, dict) or "fields" not in scanned:
             # Sign-in, account creation, CAPTCHA or an unreadable page: hold the
@@ -147,7 +151,7 @@ class ScriptDriver:
                 "unknown": [],
                 "resume_field": None,
                 "status": "needs_manual",
-            }
+            }, {}, []
         fields = scanned["fields"]
         plan = self.plan(fields, profile, job, pdf=pdf)
         # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
@@ -180,7 +184,7 @@ class ScriptDriver:
                 entry["option"] = item["option"]
             unknown.append(entry)
             listed.add(item.get("id"))
-        return {
+        report = {
             "driver": self.name,
             "filled": list(result.get("filled", [])),
             "blocked": list(result.get("blocked", [])),
@@ -193,6 +197,7 @@ class ScriptDriver:
             if any(item["required"] for item in unknown)
             else "filled",
         }
+        return report, plan["answers"], fields
 
 
 def driver_for(ats):
@@ -200,5 +205,7 @@ def driver_for(ats):
     from .ashby_driver import AshbyDriver
     from .greenhouse_driver import GreenhouseDriver
     from .lever_driver import LeverDriver
+    from .workday_driver import WorkdayDriver
 
-    return {"greenhouse": GreenhouseDriver, "ashby": AshbyDriver, "lever": LeverDriver}.get(ats, lambda: None)()
+    drivers = {"greenhouse": GreenhouseDriver, "ashby": AshbyDriver, "lever": LeverDriver, "workday": WorkdayDriver}
+    return drivers.get(ats, lambda: None)()
