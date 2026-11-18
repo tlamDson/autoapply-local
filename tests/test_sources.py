@@ -32,6 +32,9 @@ SEEDS = [
     },
     {"ats": "rippling", "board": "spreeai", "company": "SpreeAI"},
 ]
+# The shipped seeds are the grouped S&P 500 + unicorn list (plan aa-09,
+# test_board_seeds.py); examples/boards.json stays the small import example.
+SHIPPED = json.loads(files("autoapply_local").joinpath("data/boards.json").read_text(encoding="utf-8"))
 UUID = "11111111-2222-4333-8444-555555555555"
 OTHER_UUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 ABSENT = object()
@@ -70,7 +73,8 @@ class SourceTests(ReleaseCase):
     def test_packaged_seeds_examples_and_package_inventory_use_approved_public_metadata(self):
         resource = files("autoapply_local").joinpath("data/boards.json")
         self.assertTrue(resource.is_file(), "Setup defaults must be a packaged resource")
-        self.assertEqual(json.loads(resource.read_text(encoding="utf-8")), SEEDS)
+        self.assertEqual(json.loads(resource.read_text(encoding="utf-8")), SHIPPED)
+        self.assertTrue(all(seed.get("group") in ("sp500", "unicorn") for seed in SHIPPED))
         self.assertEqual(json.loads((RELEASE / "examples/boards.json").read_text(encoding="utf-8")), SEEDS)
         allowed = json.loads((RELEASE / "export-allowlist.json").read_text(encoding="utf-8"))
         self.assertIn("autoapply_local/data/boards.json", allowed)
@@ -94,7 +98,7 @@ class SourceTests(ReleaseCase):
 
     def test_fresh_setup_installs_seeds_without_claiming_authorization(self):
         self.module("runtime").setup(root=self.root)
-        self.assertEqual(self.read_config().get("boards"), SEEDS)
+        self.assertEqual(self.read_config().get("boards"), SHIPPED)
         profile = json.loads((self.root / "profile.json").read_text(encoding="utf-8"))
         self.assertEqual(profile["authorization"], [])
         self.assertEqual(profile["contact"], {})
@@ -116,7 +120,7 @@ class SourceTests(ReleaseCase):
     def test_existing_config_without_boards_gets_defaults_and_retains_other_settings(self):
         original = self.config()
         self.module("intake").setup(self.root)
-        self.assertEqual(self.read_config(), {**original, "boards": SEEDS})
+        self.assertEqual(self.read_config(), {**original, "boards": SHIPPED})
 
     def test_boards_import_preview_is_read_only_then_confirm_merges_stable_ats_identities(self):
         boards = self.module("boards")

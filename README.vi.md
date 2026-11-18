@@ -128,6 +128,14 @@ clearance và ITAR; kỳ và loại công việc tạo bộ lọc tiêu đề (v
 bỏ tiêu đề senior hoặc full-time); job đăng trong 7 ngày; các công ty bạn loại trừ.
 Bộ câu hỏi đầy đủ tiếp tục sau các bước này và vẫn là tùy chọn.
 
+Sau đó setup điền một form demo offline (`demo`: trang cục bộ không có nút Submit,
+mở trong Chrome riêng của tool) để chứng minh mọi thứ chạy được, rồi chạy `fetch`
+lần đầu; `report.summary` cho biết bao nhiêu job từ bao nhiêu board qua bộ lọc.
+Nguồn job là các board công khai đi kèm, chia hai nhóm S&P 500 (`sp500`) và
+unicorn (`unicorn`): `boards groups` liệt kê nhóm, `boards group NAME on|off` tắt
+hoặc bật cả nhóm mà không xoá board, `boards import PATH` thêm board của bạn (luôn
+được fetch).
+
 Để sửa record học tập, kinh nghiệm hoặc authorization đã có, chọn Edit an existing
 record rồi chọn đúng mục có số thứ tự trong popup. Sửa từng trường, chọn Done để
 giữ draft hoặc Cancel and keep original record để hủy thay đổi của record đó.
