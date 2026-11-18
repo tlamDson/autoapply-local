@@ -64,6 +64,8 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     setup_actions.add_argument("--finish", action="store_true")
     setup_actions.add_argument("--confirm", action="store_true")
     setup_actions.add_argument("--restart", action="store_true")
+    setup_actions.add_argument("--terminal", action="store_true")
+    setup.add_argument("--no-launch", action="store_true")
     setup.add_argument("--edit")
     setup.add_argument("--ui", choices=("codex-async", "codex", "claude", "none"), default=None)
     boards = commands.add_parser("boards").add_subparsers(dest="boards_command", required=True)
@@ -94,6 +96,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     review.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("submitted").add_argument("selection")
     commands.add_parser("status")
+    commands.add_parser("update")
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             try:
@@ -108,7 +111,13 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         if name == "setup":
             if args.edit and not args.guided:
                 raise ValueError("--edit requires setup --guided")
-            if args.guided or args.answer is not None or args.finish or args.confirm or args.restart:
+            if args.no_launch and not args.terminal:
+                raise ValueError("--no-launch requires setup --terminal")
+            if args.terminal:
+                if args.ui is not None or args.edit:
+                    raise ValueError("--terminal takes no --ui or --edit")
+                kwargs.update(terminal=True, launch=not args.no_launch)
+            elif args.guided or args.answer is not None or args.finish or args.confirm or args.restart:
                 kwargs.update(guided=args.guided, answer=args.answer, finish=args.finish,
                               confirm=args.confirm, edit=args.edit, ui=args.ui or "none")
                 if args.restart:
@@ -142,6 +151,10 @@ def main(argv=None, services=None, stdout=None, stderr=None):
             services = default_services()
         with contextlib.redirect_stderr(stderr):
             result = services[name](**kwargs)
+            if name == "apply" and "release_notice" in services:
+                notice = services["release_notice"]()
+                if notice:
+                    print(notice, file=stderr)
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str), file=stdout)
         return 0
     except (ValueError, KeyError) as error:

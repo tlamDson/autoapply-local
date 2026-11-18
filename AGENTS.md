@@ -5,6 +5,13 @@ source. Follow the user's selected engine per task without model pinning or
 fallback. Use only confirmed facts and exact question-scoped answers. Never
 infer work authorization, sponsorship or consent from student status or filters.
 
+The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
+engine opens: language, engine with one small login/quota probe call, quota stop
+percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
+saved to `config.json`. It then hands the terminal to the selected engine with
+`/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
+interview subprocess. Inside an engine, never run `setup --terminal`.
+
 For first setup, including when the user only says setup, follow the native
 onboarding loop in `.claude/commands/setup.md` or
 `.codex/skills/autoapply-local/SKILL.md`. Bootstrap safely, discover the actual
@@ -55,6 +62,8 @@ claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks
 - Fixture ZIP đặt ZipInfo.filename trực tiếp để giữ nguyên dấu backslash trên Windows; zipfile tự chuẩn hóa tên khi nhận chuỗi nên ca traversal trước đó không chứa member mà assertion cần kiểm. Không đổi assertion.
 
 - Installer (aa-04): install.ps1/install.sh only locate Python 3.11+ and git, then hand off to scripts/install.py; a missing dependency prints its winget/brew command and exits 3, a failed pip install exits 4; system software is never installed.
+
+- Update (aa-21): `update` works only from a source checkout; it backs up user/ (skipping backups/, browser/, chrome/) before any change, pulls with `git pull --ff-only` or extracts the latest release zip (never into user/, .venv/ or .git/), reinstalls, then runs migrations recorded in user/migrations.json. `apply`'s release lookup is skipped when AUTOAPPLY_LOCAL_NO_UPDATE_CHECK is set; the offline suite sets it.
 
 ## Câu hỏi của người thực thi
 

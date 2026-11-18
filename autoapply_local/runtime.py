@@ -49,11 +49,17 @@ def select_resume(profile, config, job, *, memory=None, ask=None):
     return choose_resume(profile, config, job, memory=memory, ask=ask).path
 
 
-def setup(*, root, guided=False, answer=None, finish=False, confirm=False, restart=False, edit=None, ui="none"):
+def setup(*, root, guided=False, answer=None, finish=False, confirm=False, restart=False, edit=None, ui="none",
+          terminal=False, launch=True):
     from . import browser, intake
     from .bootstrap import install
 
     root = Path(root)
+    if terminal:
+        from . import terminal_setup
+
+        setup(root=root)
+        return terminal_setup.run(root, launch=terminal_setup.launch_engine if launch else None)
     if restart:
         from .guided import run
 
@@ -422,6 +428,18 @@ def status(*, root):
     }
 
 
+def update(*, root):
+    from . import update as updater
+
+    return updater.update(root=root)
+
+
+def release_notice():
+    from . import update as updater
+
+    return updater.release_notice()
+
+
 def services():
     return {
         name: globals()[name]
@@ -438,5 +456,7 @@ def services():
             "review",
             "submitted",
             "status",
+            "update",
+            "release_notice",
         )
     }

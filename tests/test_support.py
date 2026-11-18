@@ -8,6 +8,7 @@ The plan is deliberately left untouched because this turn permits test files onl
 
 import copy
 import importlib
+import os
 import sys
 import tempfile
 import time
@@ -18,6 +19,8 @@ from unittest.mock import Mock
 
 RELEASE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RELEASE))
+# Offline suite: `apply` must never look up the latest release over the network.
+os.environ["AUTOAPPLY_LOCAL_NO_UPDATE_CHECK"] = "1"
 NOW = "2030-01-10T12:00:00Z"
 SCOPE = {
     "country": "US",
