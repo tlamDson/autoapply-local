@@ -139,6 +139,24 @@ class EngineLogin(Base):
         self.assertIsNone(config["runtime"].get("apply_engine"))
         self.assertEqual(self.launches, [])
 
+    def test_three_failed_checks_show_the_error_and_enter_stops(self):
+        broken = {"status": "engine_failure", "detail": "Error: Input must be provided", "five_hour_pct": None,
+                  "seven_day_pct": None}
+        with self.assertRaises(self.ts.SetupStopped):
+            self.wizard(["1", "1", "", "", ""], probe=(broken,))
+        self.assertEqual(len(self.probes), 3)
+        output = self.out.getvalue()
+        self.assertIn("Error: Input must be provided", output)
+        self.assertEqual(self.script.prompts[-1], self.ts.MESSAGES["en"]["retry_limit"])
+        self.assertIsNone(self.config()["runtime"].get("apply_engine"))
+
+    def test_retry_after_the_limit_needs_an_explicit_choice(self):
+        broken = {"status": "engine_failure", "detail": "boom", "five_hour_pct": None, "seven_day_pct": None}
+        answers = ["1", "1", "", "", "r", "", str(self.pdf("cv.pdf")), "SWE", "n", ""]
+        self.wizard(answers, probe=(broken, broken, broken, READY))
+        self.assertEqual(len(self.probes), 4)
+        self.assertEqual(self.config()["runtime"]["apply_engine"], "claude")
+
     def test_unknown_quota_is_said_plainly(self):
         unknown = {"status": "ready", "five_hour_pct": None, "seven_day_pct": None}
         self.wizard(["1", "1", "", str(self.pdf("cv.pdf")), "SWE", "n", ""], probe=(unknown,))

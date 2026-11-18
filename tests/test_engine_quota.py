@@ -139,3 +139,57 @@ class QuotaProbe(ReleaseCase):
     def test_login_instructions_name_the_cli_command(self):
         self.assertIn("codex login", self.quota.login_hint("codex"))
         self.assertIn("/login", self.quota.login_hint("claude"))
+
+
+class VariadicToolsRunner:
+    """Like Claude Code 2.1.x: --tools takes every following non-option value as a tool name."""
+
+    def __init__(self):
+        self.prompts = []
+
+    def __call__(self, argv, **kwargs):
+        positional, index = [], 1
+        while index < len(argv):
+            arg = argv[index]
+            if arg == "--tools":
+                index += 1
+                while index < len(argv) and not argv[index].startswith("--"):
+                    index += 1
+                continue
+            if arg == "--output-format":
+                index += 2
+                continue
+            if not arg.startswith("--"):
+                positional.append(arg)
+            index += 1
+        prompt = positional[0] if positional else kwargs.get("input")
+        if not prompt:
+            message = "Error: Input must be provided either through stdin or as a prompt argument when using --print"
+            return subprocess.CompletedProcess(argv, 1, "", message)
+        self.prompts.append(prompt)
+        return subprocess.CompletedProcess(argv, 0, CLAUDE_OK, "")
+
+
+class ClaudePromptDelivery(ReleaseCase):
+    def setUp(self):
+        super().setUp()
+        self.quota = self.module("quota")
+        patcher = patch.object(self.quota, "resolve_executable", lambda name: [f"/bin/{name}"])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_prompt_reaches_a_cli_whose_tools_flag_is_variadic(self):
+        runner = VariadicToolsRunner()
+        result = self.quota.probe("claude", runner=runner)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(runner.prompts, [self.quota.PROMPT])
+
+    def test_failure_keeps_a_short_error_detail(self):
+        message = "Error: Input must be provided either through stdin or as a prompt argument when using --print"
+        result = self.quota.probe("claude", runner=Runner(1, "", "\n" + message + "\n"))
+        self.assertEqual(result["status"], "engine_failure")
+        self.assertEqual(result["detail"], message)
+
+    def test_detail_is_capped(self):
+        result = self.quota.probe("claude", runner=Runner(1, "", "x" * 2000))
+        self.assertLessEqual(len(result["detail"]), self.quota.DETAIL_LIMIT)
