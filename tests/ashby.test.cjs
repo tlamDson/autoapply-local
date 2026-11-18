@@ -162,6 +162,27 @@ test('ashby: the submit guard recognises the Submit button by type, class and wo
   assert.equal(adapter.isSubmitControl(new Element('button', { type: 'button' }, 'Yes')), false);
 });
 
+test('ashby: the submit type is matched like the browser does, whatever its case', () => {
+  const adapter = load('ashby');
+  const { form } = ashbyForm();
+  const inForm = attributes => form.appendChild(new Element('button', attributes, 'Yes'));
+  for (const type of ['SUBMIT', 'Submit', ' submit ', 'bogus', ''])
+    assert.equal(adapter.isSubmitControl(inForm({ type })), true, `button type="${type}" submits`);
+  for (const type of ['button', 'BUTTON', 'Reset'])
+    assert.equal(adapter.isSubmitControl(inForm({ type })), false, `button type="${type}" does not submit`);
+  for (const type of ['SUBMIT', 'Image'])
+    assert.equal(adapter.isSubmitControl(new Element('input', { type, value: 'Yes' })), true, `input type="${type}" submits`);
+});
+
+test('ashby: an uppercase SUBMIT option is refused, not handed to a native click', async () => {
+  const adapter = load('ashby');
+  const { document, sponsor, submit } = ashbyForm({ sponsor: { type: 'SUBMIT' } });
+  const id = byLabel(adapter.scan(document).fields, SPONSOR).id;
+  const result = await adapter.fill(document, { [id]: confirmed('Yes') });
+  assert.deepEqual(result.blocked, [{ id, reason: 'submit_control' }]);
+  assert.equal(sponsor[0].clicks + submit.clicks, 0);
+});
+
 test('ashby: an answer keyed to the Submit button is refused', async () => {
   const adapter = load('ashby');
   const { document, submit } = ashbyForm();

@@ -23,8 +23,13 @@
 
   function isSubmitControl(el) {
     if (!el) return false;
-    const type = el.getAttribute('type');
-    if (type === 'submit' || (el.tagName === 'BUTTON' && type === null && el.closest('form'))) return true;
+    // Browsers read the type attribute case-insensitively, and a button whose
+    // type is missing or invalid submits its form.
+    const raw = el.getAttribute('type');
+    const type = raw === null ? null : String(raw).trim().toLowerCase();
+    if (type === 'submit') return true;
+    if (el.tagName === 'INPUT' && type === 'image') return true;
+    if (el.tagName === 'BUTTON' && type !== 'button' && type !== 'reset' && el.closest('form')) return true;
     if (classes(el).some(name => /submit/i.test(name))) return true;
     return SUBMIT_WORDS.test(clean(el.innerText || el.value));
   }
