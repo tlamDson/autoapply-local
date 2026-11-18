@@ -198,9 +198,19 @@ class Workflow:
             tab_id = record["tab_id"]
             result = self.browser.refill(tab_id, job=record, answers=answers)
             filled = set(result.get("filled", []))
-            remaining = [item for item in record.get("unanswered") or []
-                         if item["id"] not in answers or item["id"] not in filled]
-            live = self.browser.snapshot(tab_id, job_id=job_id)
+            fields = record.get("unanswered") or []
+            remaining = [item for item in fields if item["id"] not in answers or item["id"] not in filled]
+            try:
+                live = self.browser.snapshot(tab_id, job_id=job_id)
+            except ValueError as error:
+                # Without a fresh readback nothing counts as filled; every field stays retryable.
+                reason = f"Fresh readback failed: {error}"
+                self.store.update(job_id, unanswered=fields, problem=reason)
+                return {"job_id": job_id, "status": "needs_manual", "tab_id": tab_id,
+                        "questions": len(fields), "reason": reason}
+            if live.get("errors") or live.get("required_unknown"):
+                # The adapter's own report is not proof; keep every field for questions --refill.
+                remaining = fields
             if remaining or result.get("blocked") or live.get("errors") or live.get("required_unknown"):
                 self.store.update(job_id, unanswered=remaining, problem="Held form still contains unresolved fields")
                 return {"job_id": job_id, "status": "needs_manual", "tab_id": tab_id, "questions": len(remaining)}

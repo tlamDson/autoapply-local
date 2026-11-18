@@ -227,6 +227,12 @@ the same question (same wording, options, country and job type; questions about
 authorization, sponsorship, consent, EEO or pay also need the same employer and
 start date) is filled from the bank without asking. Skip, timeout or no native
 tool keeps the questions for later; `questions --refill` retries a failed refill.
+The popup is one native call, so it holds as many questions as the host tool
+takes at once (Claude 4, Codex 3); the rest, least shared first, wait for the
+next popup and its `deferred` count says how many. Workday tabs are refilled by
+the engine's native interaction, other tabs by the ATS adapter; a tab that shows
+another application is never written to, and a refill whose fresh readback is
+not clean keeps all its questions for `questions --refill`.
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.

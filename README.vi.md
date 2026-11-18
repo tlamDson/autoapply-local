@@ -217,6 +217,12 @@ Job sau hỏi cùng câu (cùng chữ, lựa chọn, quốc gia và loại job; 
 việc, sponsorship, đồng ý, EEO hoặc lương còn cần cùng công ty và ngày bắt đầu)
 được điền từ bank mà không hỏi lại. Bỏ qua, hết giờ hoặc không có công cụ native
 thì giữ câu hỏi cho lần sau; `questions --refill` thử lại lần điền bị lỗi.
+Popup là một lần gọi native, nên chỉ chứa số câu công cụ của host nhận một lần
+(Claude 4, Codex 3); phần còn lại, câu ít job hỏi hơn đi sau, chờ popup kế tiếp
+và trường `deferred` cho biết còn bao nhiêu. Tab Workday được engine điền lại
+bằng thao tác native, tab khác bằng adapter của ATS; tab đang hiện đơn khác
+không bao giờ bị ghi, và lần điền mà bản đọc lại mới chưa sạch thì giữ mọi câu
+hỏi cho `questions --refill`.
 
 ## Bắt đầu: setup, cấu hình nguồn, fetch và review
 

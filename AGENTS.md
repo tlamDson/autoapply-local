@@ -49,12 +49,15 @@ verification codes. Tests use synthetic Gmail DOM and rows only.
 
 Required questions no confirmed fact or answer-bank entry covers are held,
 collected for the whole `apply` run and asked once at the end: `questions --ui UI`
-returns one native popup packet; after the user's actual answers, `questions
+returns one native popup packet (a single native call; questions that do not
+fit are `deferred` to the next popup); after the user's actual answers, `questions
 --answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
 Skip, timeout or no native tool keeps them pending; a failed refill is retried
 with `questions --refill`. A banked answer is reused only for the same question
 wording, options, country and job type (authorization, sponsorship, consent,
-EEO and pay questions also keep employer and start date); it is never inferred.
+EEO and pay questions, including a money amount in the options, also keep
+employer and start date); it is never inferred. A refill never writes to a tab
+showing another application; Workday is refilled by native engine interaction.
 
 Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/wd_cred.py`): never
 print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any

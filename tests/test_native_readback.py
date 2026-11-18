@@ -152,7 +152,7 @@ class NativeReadbackTests(ReleaseCase):
         return result, engine.run.call_args.args[0]
 
     def interact_task(self):
-        value = {"filled": [], "blocked": [], "status": "filled"}
+        value = {"filled": [], "blocked": [], "unknown": [], "status": "filled"}
         engine = self.validating_engine(value)
         self.client(engine).interact("tab-1", candidate(), job(), [])
         return engine.run.call_args.args[0]
@@ -371,13 +371,14 @@ class NativeReadbackTests(ReleaseCase):
     def test_codex_native_fill_wraps_original_schema_and_preserves_optional_values(self):
         original = self.interact_task()
         values = [
-            {"filled": [], "blocked": [], "status": "filled"},
+            {"filled": [], "blocked": [], "unknown": [], "status": "filled"},
             {
                 "filled": ["name"],
                 "blocked": [{"extension": {"nested": [1, None, {"x": True}]}}],
+                "unknown": [],
                 "status": "needs_manual",
             },
-            {"filled": [], "blocked": [], "status": "filled", "upload_receipt": self.receipt},
+            {"filled": [], "blocked": [], "unknown": [], "status": "filled", "upload_receipt": self.receipt},
         ]
         for value in values:
             with self.subTest(value=value):
@@ -429,7 +430,7 @@ class NativeReadbackTests(ReleaseCase):
                 self.assertEqual(json.loads(runner.dispatches[0]["prompt"].splitlines()[-1]), task)
 
     def test_codex_wrapped_invalid_outer_and_inner_fail_closed_once(self):
-        valid = {"filled": [], "blocked": [], "status": "filled"}
+        valid = {"filled": [], "blocked": [], "unknown": [], "status": "filled"}
         raw_values = [
             "not JSON",
             "{}",
@@ -486,7 +487,7 @@ class NativeReadbackTests(ReleaseCase):
                 self.assertNotIn(WIRE_CONTRACT, dispatch["prompt"])
 
     def test_other_engine_interact_keeps_original_schema_and_prompt(self):
-        value = {"filled": [], "blocked": [], "status": "filled"}
+        value = {"filled": [], "blocked": [], "unknown": [], "status": "filled"}
         engine, runner = self.real_engine(json.dumps(envelope(value)), "claude")
         self.assertEqual(self.client(engine).interact("tab-1", candidate(), job(), []), value)
         self.assertEqual(len(runner.dispatches), 1)

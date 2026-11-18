@@ -307,7 +307,8 @@ class WorkflowTests(ReleaseCase):
         result = runner.refill("synthetic-1", {"question_2": "Robotics Society"})
         self.assertEqual(result["status"], "needs_manual")
         record = runner.store.get("synthetic-1")
-        self.assertEqual([item["id"] for item in record["unanswered"]], ["question_1"])
+        # The readback is not clean, so the filled field stays retryable as well.
+        self.assertEqual([item["id"] for item in record["unanswered"]], ["question_2", "question_1"])
 
     def test_refill_refuses_a_job_without_a_held_tab(self):
         runner = self.runner({"status": "filled"})

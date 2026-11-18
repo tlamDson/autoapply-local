@@ -3,8 +3,8 @@
 Each entry is an answer the user gave in the end-of-run popup, keyed by the
 exact question: its normalized label, its kind (choice, boolean or text), its
 option labels and the job's country and job type. Questions about work
-authorization, sponsorship, consent, EEO or pay also keep the employer and start
-date, the full scope a profile answer needs. A question outside that scope is a
+authorization, sponsorship, consent, EEO or pay (in the label or in a money
+option) also keep the employer and start date, the full scope a profile answer needs. A question outside that scope is a
 different question and is asked again. The bank
 lives in the runtime root (``user/answer-bank.json``) and never holds inferred
 answers: only explicit popup answers become ``confirmed`` entries.
@@ -23,8 +23,10 @@ FILE = "user/answer-bank.json"
 JOB_SCOPE = ("country", "level", "company", "start_date")
 SENSITIVE = re.compile(
     r"authori[sz]|sponsor|visa|citizen|immigra|work permit|right to work|clearance|export|itar|consent|"
-    r"criminal|convict|background check|gender|race|ethnic|hispanic|veteran|disab|pronoun|sexual|salary|"
-    r"compensation|pay rate",
+    r"criminal|convict|background check|gender|race|ethnic|hispanic|veteran|disab|pronoun|sexual|"
+    # Pay: any wording of salary, wage, rate or money amount keeps the full scope.
+    r"salar|compensat|remunerat|\bpay|wage|stipend|hourly|\brates?\b|per (?:hour|year|annum|month|week)|"
+    r"annual|income|\bearn|bonus|equity|\$|€|£|\busd\b|\beur\b|\bgbp\b",
     re.I,
 )
 CHOICE_TYPES = {"select", "select-one", "radio", "combobox", "listbox", "checkbox-group"}
@@ -63,7 +65,7 @@ def job_scope(job):
 def scope(field, job):
     job = job or {}
     result = {"country": normalize(job.get("country")), "job_type": normalize(job.get("level"))}
-    if SENSITIVE.search(str(field.get("label", ""))):
+    if SENSITIVE.search(" ".join([str(field.get("label", "")), *options(field)])):
         result.update(employer=normalize(job.get("company")), effective_at=normalize(job.get("start_date")))
     return result
 
@@ -106,7 +108,7 @@ class AnswerBank:
         for entry in self._load()["answers"]:
             if entry.get("status") != "confirmed" or entry.get("value") in (None, ""):
                 continue
-            field = {"label": entry.get("question", "")}
+            field = {"label": entry.get("question", ""), "options": entry.get("options") or []}
             if entry.get("scope") != scope(field, job):
                 continue
             found[entry["key"]] = {name: copy.deepcopy(entry.get(name)) for name in ("question", "kind", "options", "value")}

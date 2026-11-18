@@ -22,7 +22,7 @@ from .storage import atomic_write_json, read_json
 
 FILE = "user/unanswered-questions.json"
 TOOLS = {"codex-async": "request_user_input_async", "codex": "request_user_input", "claude": "AskUserQuestion"}
-# Questions per tool call and options per question each native tool accepts.
+# Questions per popup (one native call) and buttons per question each native tool accepts.
 LIMITS = {"claude": (4, 4), "codex": (3, 3), "codex-async": (None, None)}
 TEXT_LIMIT = 1000
 LABEL_LIMIT = 60  # longest option label shown as a native button
@@ -103,7 +103,8 @@ def _buttons(question, choices, per_question):
     """The choices shown as native buttons; the rest are typed in the text box."""
     answers = [choice for choice in choices if choice["value"] is not None]
     skip = choices[-2:-1]
-    labels = [answer_bank.normalize(choice["label"]) for choice in answers]
+    # The skip button counts too: an option named like it would be two buttons with one label.
+    labels = [answer_bank.normalize(choice["label"]) for choice in answers + skip]
     fits = (
         answers
         and len(set(labels)) == len(labels)
@@ -214,9 +215,13 @@ class Questions:
             return {"status": "ui_required", "batch_id": data["batch_id"], "pending": len(data["questions"]),
                     "questions": [], "ui": {},
                     "next": "Open a host with a native question tool, then run questions --ui UI; the batch is kept."}
-        per_call = LIMITS[ui][0] or len(data["questions"])
+        # One popup is one native call; what does not fit waits for the next popup,
+        # questions asked by the most held applications first.
+        ordered = sorted(data["questions"], key=lambda question: -len(question["targets"]))
+        per_call = LIMITS[ui][0] or len(ordered)
+        shown_now, deferred = ordered[:per_call], len(ordered) - per_call
         questions, natives, bindings = [], [], []
-        for question in data["questions"]:
+        for question in shown_now:
             choices = _choices(question)
             native, shown = _native(question, choices, ui)
             questions.append({"id": question["id"], "label": question["label"], "kind": question["kind"],
@@ -224,12 +229,14 @@ class Questions:
                               "jobs": [target["job_id"] for target in question["targets"]]})
             natives.append(native)
             bindings.append({"question_id": question["id"], "option_ids": [choice["id"] for choice in shown]})
-        calls = [{"questions": natives[start:start + per_call]} for start in range(0, len(natives), per_call)]
+        later = (f" {deferred} more question(s) do not fit this popup; they stay pending for the next one."
+                 if deferred > 0 else "")
         return {"status": "questions", "batch_id": data["batch_id"], "questions": questions,
-                "ui": {"tool": TOOLS[ui], "calls": calls, "bindings": bindings},
-                "next": ("Make these native calls in order as one popup, wait for the user's actual answers, then write "
+                "deferred": max(deferred, 0),
+                "ui": {"tool": TOOLS[ui], "calls": [{"questions": natives}], "bindings": bindings},
+                "next": ("Make this one native call as the popup, wait for the user's actual answers, then write "
                          '{"batch_id": ..., "answers": [{"question_id": ..., "option_id" or "text": ...}]} to a private file '
-                         "and run questions --answer PATH. Timeout or preselection is not an answer.")}
+                         "and run questions --answer PATH. Timeout or preselection is not an answer." + later)}
 
     @staticmethod
     def _decode(question, entry):
