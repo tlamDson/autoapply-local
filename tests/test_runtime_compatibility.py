@@ -437,9 +437,10 @@ class WorkflowCompatibilityTests(ReleaseCase):
         supplied = {}
 
         def evaluate(tab, function, *, operation="audit"):
-            if ".fill(document, " not in function:
+            if operation != "fill":
                 return {"fields": fields}
-            arguments = function.split(".fill(document, ", 1)[1].rsplit(");", 1)[0]
+            # The action is the last fill call; adapter code may contain others.
+            arguments = function.rsplit(".fill(document, ", 1)[1].rsplit(");", 1)[0]
             supplied.update(json.loads(arguments))
             return {"filled": list(supplied), "blocked": [], "uploads": []}
 

@@ -144,7 +144,8 @@ class ScriptDriverRunTests(unittest.TestCase):
         (_, fill_script), fill_kw = client.evaluate_script.call_args_list[1]
         self.assertEqual((audit_kw["operation"], fill_kw["operation"]), ("audit", "fill"))
         self.assertIn("AutoApplyGreenhouse.audit(document)", audit_script)
-        self.assertIn(json.dumps(recorded("answers.json")["answers"], ensure_ascii=False), fill_script)
+        sent = {key: {"value": value, "status": "confirmed"} for key, value in recorded("answers.json")["answers"].items()}
+        self.assertIn(json.dumps(sent, ensure_ascii=False), fill_script)
         self.assertEqual(report["driver"], "greenhouse")
         self.assertEqual(report["filled"], list(recorded("answers.json")["answers"]))
         self.assertEqual(report["blocked"], [])

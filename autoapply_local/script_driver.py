@@ -128,7 +128,9 @@ class ScriptDriver:
         scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
         fields = scanned.get("fields", []) if isinstance(scanned, dict) else []
         plan = self.plan(fields, profile, job, pdf=pdf)
-        result = client.evaluate_script(tab_id, self.script("fill", plan["answers"]), operation="fill")
+        # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
+        confirmed = {key: {"value": value, "status": "confirmed"} for key, value in plan["answers"].items()}
+        result = client.evaluate_script(tab_id, self.script("fill", confirmed), operation="fill")
         unknown = list(plan["unknown"])
         listed = {item["id"] for item in unknown}
         described = {field.get("id"): field for field in fields}
