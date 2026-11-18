@@ -88,6 +88,7 @@ def run(root, debug_url, profile, cdp=cdp_module):
     if parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost", "::1") or not parsed.port:
         raise ValueError("The demo needs the tool's loopback Chrome debugging URL")
     url = write(root).resolve().as_uri()
+    cdp.wait_ready(debug_url)
     page = cdp.open_page(debug_url, url)
     job = {"id": "demo", "ats": "greenhouse", "company": "AutoApply Local demo", "role": "Demo form", "url": url}
     result = GreenhouseDriver().run(_Tab(debug_url, cdp, url), page["id"], profile, job)

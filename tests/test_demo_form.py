@@ -56,10 +56,19 @@ def recorded_scan():
 
 
 class FakeCDP:
+    CDPError = RuntimeError
+
     def __init__(self):
-        self.opened, self.expressions, self.fill_result = [], [], None
+        self.opened, self.expressions, self.fill_result, self.events = [], [], None, []
+        self.not_ready = None
+
+    def wait_ready(self, debug_url, timeout=20):
+        self.events.append(("wait_ready", debug_url))
+        if self.not_ready:
+            raise self.not_ready
 
     def open_page(self, debug_url, url):
+        self.events.append(("open_page", debug_url))
         self.opened.append((debug_url, url))
         self.page = {"id": "T1", "url": url, "ws": "ws://127.0.0.1:9333/devtools/page/T1"}
         return dict(self.page)
@@ -174,6 +183,26 @@ class DemoRunTests(ReleaseCase):
         self.assertEqual([item["id"] for item in result["unknown"]], ["question_2", "question_3"])
         self.assertEqual(result["resume_field"], "resume")
         self.assertEqual((result["tab_id"], result["url"]), ("T1", page.as_uri()))
+
+    def test_run_waits_for_the_debug_endpoint_before_opening_the_page(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        self.assertEqual(cdp.events[:2], [("wait_ready", DEBUG_URL), ("open_page", DEBUG_URL)])
+
+    def test_run_stops_with_nothing_opened_when_chrome_never_answers(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        cdp.not_ready = RuntimeError("Chrome's debugging endpoint did not answer")
+        with self.assertRaises(RuntimeError):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        self.assertEqual((cdp.opened, cdp.expressions), ([], []))
+
+    def test_runtime_demo_waits_for_the_chrome_it_just_launched(self):
+        self.write_json("config.json", {"runtime": {}, "resources": {"lanes": 1}})
+        self.write_json("profile.json", candidate())
+        launcher = Mock(return_value=[{"lane": 1, "debug_url": DEBUG_URL, "profile_dir": "x"}])
+        cdp = FakeCDP()
+        self.module("runtime").demo(root=self.root, launcher=launcher, cdp=cdp)
+        self.assertEqual(cdp.events[0], ("wait_ready", DEBUG_URL))
 
     def test_fill_never_runs_after_the_tab_left_the_demo_page(self):
         demo, cdp = self.module("demo_form"), FakeCDP()
