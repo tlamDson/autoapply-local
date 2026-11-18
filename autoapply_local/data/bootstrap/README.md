@@ -30,6 +30,16 @@ text entries. Unknown/skip does not mean No; optional EEO can be declined.
 `setup --guided --edit QUESTION_ID --ui UI` revisits a catalog or issued record
 question. Draft answers never silently establish confirmed facts.
 
+After terminal setup, guided setup first shows each group of facts read from
+your resumes (contact, education, experience, skills) with Confirm / Edit, then
+asks what a resume lacks (work authorization, sponsorship need, address, EEO,
+recruiting season, target roles), then shows the job filters derived from those
+answers with Confirm / Edit: needing sponsorship drops "no sponsorship", U.S.
+citizen, clearance and ITAR jobs; season and job types shape the title filter
+(for example interns only, no senior or full-time titles); postings within 7
+days; your excluded companies. The complete intake continues after these steps
+and stays optional.
+
 To change existing education, experience or authorization, select Edit an existing
 record, choose its numbered option, and answer individual fields. Done keeps draft
 changes; Cancel and keep original record discards them. Skip leaves facts intact,

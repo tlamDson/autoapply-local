@@ -10,7 +10,7 @@ Authorization records: id, country, job_type, employer, current_status, authoriz
 CPT/OPT/STEM_OPT each: status not_applied/planned/pending/granted, valid_from, valid_to, school_support, dso_support, employer_support; keep visa/program/auth expiry separate.
 Câu nhạy cảm, pháp lý, đồng ý, quan hệ công ty và tự luận cần xác nhận đúng nguyên văn câu hỏi.
 Targets / Mục tiêu: internship/co-op/newgrad/experienced; SWE/backend/frontend/fullstack/mobile/platform/SRE/DevOps/data/AI/ML/research/QA/SDET/security/custom.
-Filters: eligibility broad_unknown|explicit_only; no_sponsor_conflict review|exclude.
+Filters: eligibility broad_unknown|explicit_only; no_sponsor_conflict review|exclude; posted_within_days 1-365; title_include/title_exclude word lists; jd_exclude no_sponsorship|us_citizen|clearance|itar.
 Tailor: scope all|priority|bigtech, user employer list; missing_facts ask|omit; pages 1|2.
 Gmail is opt-in: permissions search/read/current_job_verification and exact account.
 Gmail chỉ đọc khi bạn cho phép và chỉ với tài khoản đã chọn; tối đa 3 lane khi tự chọn.
@@ -202,7 +202,11 @@ Gmail chỉ đọc khi bạn cho phép và chỉ với tài khoản đã chọn;
       "no_sponsor_conflict": null,
       "priority_employers": [],
       "excluded_employers": [],
-      "include_big_tech": null
+      "include_big_tech": null,
+      "posted_within_days": null,
+      "title_include": [],
+      "title_exclude": [],
+      "jd_exclude": []
     },
     "experience": {
       "records": [],

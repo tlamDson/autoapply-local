@@ -25,6 +25,20 @@ prose, an engine subprocess, another engine/mode or preselected/default/timeout
 answers. The intake is an optional advanced editor/export. Setup grants no
 Submit permission and performs no Gmail access.
 
+Guided setup after terminal setup begins with quick steps: resume fact groups
+(contact, education, experience, skills) for Confirm/Edit, then facts a resume
+lacks (work authorization, sponsorship, address, EEO, season, roles), then job
+filters derived only from explicit answers for Confirm/Edit. An unknown
+sponsorship answer never produces a sponsorship filter.
+When changed answers reopen the filter review, a filter the user edited is
+shown and kept as edited; only unedited filters follow the answers.
+The confirmed intake records what the answers derived (`derived_filters`), so a
+filter cleared in an earlier session stays cleared. Only an intake without that
+record treats an empty filter as never derived and gives it the derived value.
+An edited filter is also marked in the intake (`edited_filters`) and the mark
+stays: an edit that later equals what changed answers derive, such as a cleared
+filter while sponsorship is Unknown, is still kept when the answers change back.
+
 If setup becomes stale, invoke native Reload latest confirmed profile / Keep
 current draft choices and wait. Run `setup --restart --ui UI` only after explicit
 Reload; Keep, timeout or unavailable native UI makes no changes. Restart saves

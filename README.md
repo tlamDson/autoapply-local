@@ -116,6 +116,16 @@ editors. Large choice lists paginate. Skip/unknown never becomes No, and optiona
 EEO can be declined. You can resume and edit previously issued question IDs.
 Setup is repeatable and preserves existing files.
 
+After terminal setup, guided setup first shows each group of facts read from
+your resumes (contact, education, experience, skills) with Confirm / Edit, then
+asks what a resume lacks (work authorization, sponsorship need, address, EEO,
+recruiting season, target roles), then shows the job filters derived from those
+answers with Confirm / Edit: needing sponsorship drops "no sponsorship", U.S.
+citizen, clearance and ITAR jobs; season and job types shape the title filter
+(for example interns only, no senior or full-time titles); postings within 7
+days; your excluded companies. The complete intake continues after these steps
+and stays optional.
+
 Existing education, experience and authorization records also have an Edit an
 existing record option. Choose the numbered native record, change individual
 fields, and use Done or Cancel and keep original record. Similar names have

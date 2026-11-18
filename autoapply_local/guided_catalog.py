@@ -7,6 +7,7 @@ Stable identifiers and dotted fields are backend bindings, never UI prompts.
 import copy
 
 from .intake import BOOL_FIELDS, FIELDS, INT_FIELDS, LIST_FIELDS
+from .job_rules import JD_RULES
 
 
 GROUP_LABELS = {
@@ -111,6 +112,10 @@ LABELS = {
     "priority_employers": ("priority employers", "các công ty ưu tiên"),
     "excluded_employers": ("employers to exclude", "các công ty muốn loại trừ"),
     "include_big_tech": ("whether to include big tech employers", "việc giữ các công ty big tech"),
+    "posted_within_days": ("maximum age of a job posting in days", "số ngày tối đa kể từ khi job được đăng"),
+    "title_include": ("words a job title must contain (any one)", "các từ tiêu đề job phải có (ít nhất một)"),
+    "title_exclude": ("words that drop a job title", "các từ trong tiêu đề khiến job bị loại"),
+    "jd_exclude": ("job description restrictions that drop a job", "các giới hạn trong mô tả job khiến job bị loại"),
     "current": ("current experience record", "mục kinh nghiệm hiện tại"),
     "most_recent": ("most recent experience record", "mục kinh nghiệm gần nhất"),
     "unlisted_projects": ("additional projects you actually worked on", "các dự án khác bạn thực sự đã làm"),
@@ -201,6 +206,7 @@ ENUMS = {
     "logistics.relocation": ("yes", "no", "case_by_case"),
     "filters.eligibility": ("broad_unknown", "explicit_only"),
     "filters.no_sponsor_conflict": ("review", "exclude"),
+    "filters.jd_exclude": JD_RULES,
     "education.records.status": ("current", "completed", "leave"),
     "education.records.graduation.precision": ("year", "month", "day"),
     "education.records.graduation.kind": ("expected", "actual"),
@@ -286,6 +292,10 @@ CHOICE_LABELS = {
     "case_by_case": ("Consider each location separately", "Cân nhắc từng địa điểm"),
     "search": ("Search mail", "Tìm thư"), "read": ("Read selected mail", "Đọc thư được chọn"),
     "current_job_verification": ("Read verification for the current job only", "Đọc xác minh cho job hiện tại"),
+    "no_sponsorship": ("Says it gives no visa sponsorship", "Ghi không bảo lãnh visa"),
+    "us_citizen": ("Requires U.S. citizenship or permanent residence", "Yêu cầu công dân hoặc thường trú nhân Mỹ"),
+    "clearance": ("Requires a security clearance", "Yêu cầu security clearance"),
+    "itar": ("Requires ITAR / U.S. person status", "Yêu cầu ITAR / U.S. person"),
 }
 
 PATH_FIELDS = {
