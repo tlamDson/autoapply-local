@@ -25,6 +25,9 @@ LATEST_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 ZIP_URL = f"https://github.com/{REPOSITORY}/archive/refs/tags/{{tag}}.zip"
 # Not copied into backups: earlier backups, and Chrome profiles (large, locked while Chrome runs).
 BACKUP_SKIP = {"backups", "browser", "chrome"}
+# Credentials live only in user/secrets.json (wd_cred.py); backups must never duplicate them,
+# including the file's .bak, temporary and lock siblings.
+SECRETS_PREFIX = "secrets.json"
 # Never written from a release zip.
 ZIP_SKIP = {"user", ".venv", ".git"}
 STATE_FILE = "migrations.json"
@@ -83,7 +86,7 @@ def backup_user(user_dir, now=None):
         target = user_dir / "backups" / f"{stamp}-{counter}"
     target.mkdir(parents=True)
     for item in user_dir.iterdir():
-        if item.name in BACKUP_SKIP:
+        if item.name in BACKUP_SKIP or item.name.lower().lstrip(".").startswith(SECRETS_PREFIX):
             continue
         if item.is_dir():
             shutil.copytree(item, target / item.name, symlinks=True)
