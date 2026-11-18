@@ -146,10 +146,12 @@
   "autoapply_local/cdp.py",
   "autoapply_local/gmail_tab.py",
   "autoapply_local/mail_history.py",
+  "autoapply_local/track.py",
   "tests/test_manual_submission.py",
   "tests/test_terminal_setup.py",
   "tests/gmail.test.cjs",
   "tests/test_gmail_tab.py",
   "tests/test_mail_history.py",
+  "tests/test_track.py",
   "tests/test_terminal_gmail.py"
 ]

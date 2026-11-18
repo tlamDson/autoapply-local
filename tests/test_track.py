@@ -162,6 +162,9 @@ class TrackTests(ReleaseCase):
         self.assertEqual(report["submitted"], [])
         self.assertEqual(self.store.get("c-1")["state"], "filled")
         self.assertEqual(self.store.get("c-2")["state"], "filled")
+        self.assertEqual(report["history"]["added"], 0, "an ambiguous email is not added as a separate application")
+        self.assertEqual(report["ambiguous_emails"], 1)
+        self.assertEqual(self.tracker_ids(), [])
 
     def test_chrome_not_running_changes_nothing(self):
         self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
@@ -210,6 +213,34 @@ class TrackTests(ReleaseCase):
         source = inspect.getsource(self.track)
         self.assertNotIn("evaluate", source)
         self.assertNotIn("click", source.lower())
+
+
+class ClosePageTests(ReleaseCase):
+    def test_close_page_calls_the_loopback_close_endpoint_only(self):
+        cdp = self.module("cdp")
+        requests = []
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self):
+                return b"Target is closing"
+
+        def opener(request, timeout):
+            requests.append(request.full_url)
+            return Response()
+
+        cdp.close_page(LANE, "ABC-123", opener=opener)
+        self.assertEqual(requests, [LANE + "/json/close/ABC-123"])
+        with self.assertRaises(ValueError):
+            cdp.close_page("http://example.invalid:9222", "ABC", opener=opener)
+        with self.assertRaises(ValueError):
+            cdp.close_page(LANE, "../json/new?x", opener=opener)
+        self.assertEqual(len(requests), 1)
 
 
 class TrackCommandTests(ReleaseCase):

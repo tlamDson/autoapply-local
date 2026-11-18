@@ -346,11 +346,19 @@ tab đang giữ rồi tự nộp.
   hoặc URL hỗ trợ nhập tay; sửa nguồn qua `boards import` hoặc `resources.boards`
   trong intake, mẫu ở examples/boards.json.
 - `apply [ENGINE] --quick N|ID,ID`: chọn PDF theo role, điền và giữ tab; không nộp. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng tuyển
-  dụng và PDF của từng job đã chọn; stdout cuối vẫn là JSON.
+  dụng và PDF của từng job đã chọn; stdout cuối vẫn là JSON. Lệnh chạy `track` trước và báo kết quả ở mục `track`.
 - `review ID,ID|all`: đọc lại form đang giữ, kiểm job/tab/field/fact/PDF còn mới.
 - `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng
   tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
   mở tới khi bạn tự đóng.
+- `track`: ghi lại các form đang giữ mà bạn đã tự nộp: tab đang giữ đã sang trang
+  xác nhận của ATS (Greenhouse, Workday, Rippling, Lever) hoặc mail xác nhận trong
+  tab Gmail nêu đúng công ty (và role, nếu mail có) của job đang giữ sẽ thành dòng
+  tracker, và tab ở trang xác nhận được đóng. Tab còn ở form được liệt kê là đang
+  chờ và giữ nguyên; tab đã mất mà chưa có bằng chứng được liệt kê kèm URL. Các mail
+  xác nhận khác trong 14 ngày gần nhất được thêm vào lịch sử một lần. Lệnh chỉ liệt
+  kê tab và đọc dòng Gmail, không chạy script trong tab job, và không đổi gì khi
+  Chrome của tool chưa chạy.
 - `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
 - `update`: chép `user/` (trừ `backups/` và profile Chrome) vào
   `user/backups/<ngày-giờ>/`, rồi `git pull --ff-only` (không có git: tải zip của

@@ -398,12 +398,20 @@ Submit capability; you review each held tab and submit it yourself.
 - `apply [ENGINE] --quick N|ID,ID`: choose a role-mapped existing PDF, fill,
   upload, and hold tabs. Target roles, recruiting season/window and each selected
   job's PDF mapping appear on stderr before browser work; final stdout stays JSON.
-  This command never submits.
+  It runs `track` first and reports it under `track`. This command never submits.
 - `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
   freshness. It never submits or closes forms.
 - `submitted ID,ID`: record held forms you submitted by hand. It writes the
   tracker row and frees the held-tab slot without touching the browser or an
   engine; the tab stays open until you close it.
+- `track`: record held forms you already submitted: a held tab now on the ATS
+  confirmation page (Greenhouse, Workday, Rippling, Lever) or a confirmation email
+  in the Gmail tab that names the held job's company (and role, when the email has
+  one) becomes a tracker row, and a tab on a confirmation page is closed. Tabs still
+  on their form are listed as waiting and kept; tabs that are gone without evidence
+  are listed with their URL. Other confirmations from the last 14 days join the
+  applied history once. It only lists tabs and reads Gmail rows, never runs a
+  script in a job tab, and changes nothing when the tool's Chrome is not running.
 - `status`: list held forms, counts and unresolved applications without an engine.
 - `update`: copy `user/` (except `backups/` and Chrome profiles) to
   `user/backups/<date-time>/`, then `git pull --ff-only` (no git: download the
