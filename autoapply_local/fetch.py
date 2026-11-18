@@ -180,6 +180,7 @@ class Fetcher:
         return list(result.values())
 
     def import_url(self, url):
+        url = url.strip()
         parsed = urlparse(url)
         board = None
         if parsed.hostname in ("job-boards.greenhouse.io", "boards.greenhouse.io", "job-boards.eu.greenhouse.io"):
