@@ -291,6 +291,37 @@ class GuidedQuickReviewTests(ReleaseCase):
         self.assertEqual(review["_draft"]["filters.title_include"], [], "An unedited filter follows the answers")
         self.assertNotIn("security clearance", review["prompt"]["en"])
 
+    def test_legacy_intake_without_filter_fields_gets_the_derived_filters(self):
+        self.prepared()
+        document = self.module("intake").blank_intake()
+        for name in ("posted_within_days", "title_include", "title_exclude", "jd_exclude"):
+            del document["groups"]["filters"][name]
+        document["groups"]["authorization"]["sponsorship_now"] = True
+        document["groups"]["targets"]["job_types"] = ["internship"]
+        self.write_json("intake-import.json", document)
+        base = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
+        packet, _ = self.drive(self.run_guided(), base, "setup.quick.filters")
+        prompt = packet["questions"][0]["prompt"]["en"]
+        self.assertIn("ITAR", prompt)
+        self.assertIn("title must include: intern", prompt)
+        self.reply(packet, [self.entry(packet["questions"][0], "confirm")])
+        filters = self.document()["filters"]
+        self.assertEqual((filters["jd_exclude"], filters["title_include"]), (ALL_JD, ["intern"]))
+        self.assertIn("senior", filters["title_exclude"])
+
+    def test_never_derived_empty_filters_are_not_treated_as_edits(self):
+        quick = self.module("guided_quick")
+        groups = self.module("intake").blank_intake()["groups"]
+        groups["authorization"]["sponsorship_future"] = True
+        groups["targets"]["job_types"] = ["internship"]
+        groups["filters"]["title_exclude"] = ["contract"]
+        state = {"document": {"groups": groups}, "quick_baseline": quick.baseline(groups)}
+        review = {"quick_step": "filters"}
+        quick.refresh(state, review)
+        self.assertEqual(review["_draft"]["filters.jd_exclude"], ALL_JD)
+        self.assertEqual(review["_draft"]["filters.title_include"], ["intern"])
+        self.assertEqual(review["_draft"]["filters.title_exclude"], ["contract"], "A saved edit is still kept")
+
     def test_new_sessions_record_the_loaded_filter_baseline(self):
         self.prepared()
         self.run_guided()
