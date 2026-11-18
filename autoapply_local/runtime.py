@@ -373,7 +373,58 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
             runner = runners[key]
             pdf = pdfs[job_id]
             results.append(runner.apply([job_id], pdf=pdf, engine=selected))
-    return {"results": results, **({"reason": reason} if reason else {}), **base.status()}
+    from .unanswered import Questions
+
+    asked = Questions(root).collect(base.store.jobs())
+    return {"results": results, **({"reason": reason} if reason else {}), "questions": asked, **base.status()}
+
+
+def _held_runner(root, record, runners, approve_browser_tools=False):
+    """The workflow bound to the browser lane that holds this job's tab."""
+    lane_path = Path(root) / "browser/active-lanes.json"
+    saved = read_json(lane_path) if lane_path.exists() else []
+    owner = next(
+        (item for item in saved if str(item.get("lane", 1)) == str(record.get("lane", 1))),
+        {"lane": record.get("lane", 1), "debug_url": "http://127.0.0.1:9222"},
+    )
+    owner = {**owner, "debug_url": record.get("debug_url", owner["debug_url"])}
+    key = (str(owner.get("lane", 1)), owner["debug_url"])
+    if key not in runners:
+        options = {"approve_browser_tools": True} if approve_browser_tools else {}
+        runners[key] = _workflow(root, record.get("engine"), lane=owner, **options)[0]
+    return runners[key]
+
+
+def questions(*, root, ui="none", answer=None, approve_browser_tools=False):
+    """The end-of-run popup for unanswered required questions, or its answers.
+
+    Without ``answer`` this returns the native popup packet for every held job's
+    open questions. With ``answer`` it saves the user's actual answers to the
+    answer bank and fills them into the held tabs; nothing is submitted.
+    """
+    if type(approve_browser_tools) is not bool:
+        raise ValueError("approve_browser_tools must be a bool")
+    from .unanswered import Questions
+    from .workflow import Workflow
+
+    batch = Questions(root)
+    store = Workflow(root, browser=None, engines={}).store
+    if answer is None:
+        batch.collect(store.jobs())
+        return batch.packet(ui)
+    saved = batch.answer(answer)
+    runners, refilled = {}, []
+    for job_id, values in saved["refill"].items():
+        record = store.get(job_id)
+        if record["state"] != "needs_manual" or not record.get("tab_id"):
+            refilled.append({"job_id": job_id, "status": record["state"], "reason": "no held tab to refill"})
+            continue
+        try:
+            refilled.append(_held_runner(root, record, runners, approve_browser_tools).refill(job_id, values))
+        except Exception as error:  # one tab's failure never loses the saved answers
+            refilled.append({"job_id": job_id, "status": "needs_manual", "reason": str(error) or type(error).__name__})
+    return {**{key: saved[key] for key in ("saved", "pending", "batch_id")}, "refilled": refilled,
+            **Workflow(root, browser=None, engines={}).status()}
 
 
 def review(*, root, selection, approve_browser_tools=False):
@@ -458,6 +509,7 @@ def services():
             "apply",
             "review",
             "submitted",
+            "questions",
             "status",
             "update",
             "release_notice",

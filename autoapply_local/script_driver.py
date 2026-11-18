@@ -89,7 +89,8 @@ class ScriptDriver:
             raise ValueError(f"The {self.name} adapter can click; a script driver never clicks or submits")
         return script
 
-    def plan(self, fields, profile, job, pdf=None):
+    def plan(self, fields, profile, job, pdf=None, bank=None):
+        """Answers from confirmed facts, then from the user's answer bank."""
         from .profile import resolve_field
 
         answers, unknown, resume = {}, [], None
@@ -108,6 +109,8 @@ class ScriptDriver:
             supplied = self.known(field, profile, job)
             if supplied is None and kind != "file":
                 supplied = resolve_field(profile, field, job)
+            if not _confirmed(supplied) and bank is not None and kind != "file":
+                supplied = bank.lookup(field, job) or supplied
             if not _confirmed(supplied):
                 if _empty(field.get("value")):
                     unknown.append({**entry, "reason": "no_confirmed_fact"})
@@ -131,7 +134,7 @@ class ScriptDriver:
                 answers[field["id"]] = value
         return {"answers": answers, "unknown": unknown, "resume": resume}
 
-    def run(self, client, tab_id, profile, job, pdf=None):
+    def run(self, client, tab_id, profile, job, pdf=None, bank=None):
         """Scan, plan and fill one held tab; never clicks and never closes it."""
         scanned = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
         if not isinstance(scanned, dict) or "fields" not in scanned:
@@ -148,7 +151,7 @@ class ScriptDriver:
                 "status": "needs_manual",
             }
         fields = scanned["fields"]
-        plan = self.plan(fields, profile, job, pdf=pdf)
+        plan = self.plan(fields, profile, job, pdf=pdf, bank=bank)
         # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
         confirmed = {key: {"value": value, "status": "confirmed"} for key, value in plan["answers"].items()}
         result = client.evaluate_script(tab_id, self.script("fill", confirmed), operation="fill")
@@ -179,6 +182,14 @@ class ScriptDriver:
             "resume_field": plan["resume"],
             "status": "needs_engine" if any(item["required"] for item in unknown) else "filled",
         }
+
+
+def refill_script(ats, answers):
+    """The fill script for answers the user gave after the run; never clicks."""
+    driver = driver_for(ats)
+    if driver is None:
+        raise ValueError("Unsupported ATS requires manual interaction")
+    return driver.script("fill", {key: {"value": value, "status": "confirmed"} for key, value in answers.items()})
 
 
 def driver_for(ats):

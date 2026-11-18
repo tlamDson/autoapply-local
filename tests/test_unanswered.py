@@ -46,7 +46,7 @@ class AnswerBankTests(ReleaseCase):
         field = {"id": "question_1", "label": HEAR, "type": "select", "options": OPTIONS}
         self.assertIsNone(self.bank().lookup(field, job()))
         self.bank().confirm(field, job(), "Friend", source_id="unanswered:batch-1")
-        path = self.root / "answer-bank.json"
+        path = self.root / "user/answer-bank.json"
         self.assertTrue(path.is_file())
         found = self.bank().lookup({**field, "id": "question_9", "label": "  how did you HEAR about this role? "}, job("other"))
         self.assertEqual(found["value"], "Friend")
@@ -67,10 +67,11 @@ class AnswerBankTests(ReleaseCase):
         self.bank().confirm(field, job(), "Chess", source_id="s1")
         self.bank().confirm(field, job(), "Robotics Society", source_id="s2")
         self.assertEqual(self.bank().lookup(field, job())["value"], "Robotics Society")
-        self.assertEqual(len(json.loads((self.root / "answer-bank.json").read_text(encoding="utf-8"))["answers"]), 1)
+        self.assertEqual(len(json.loads((self.root / "user/answer-bank.json").read_text(encoding="utf-8"))["answers"]), 1)
 
     def test_corrupt_bank_is_refused(self):
-        (self.root / "answer-bank.json").write_text('{"answers": "nope"}', encoding="utf-8")
+        (self.root / "user").mkdir()
+        (self.root / "user/answer-bank.json").write_text('{"answers": "nope"}', encoding="utf-8")
         with self.assertRaises(ValueError):
             self.bank().lookup({"id": "q", "label": CLUB, "type": "text"}, job())
 
@@ -128,7 +129,7 @@ class CollectTests(ReleaseCase):
         questions = self.module_().Questions(self.root)
         summary = questions.collect(self.records())
         self.assertEqual(summary["pending"], 2)
-        saved = json.loads((self.root / "unanswered-questions.json").read_text(encoding="utf-8"))
+        saved = json.loads((self.root / "user/unanswered-questions.json").read_text(encoding="utf-8"))
         by_label = {item["label"]: item for item in saved["questions"]}
         self.assertEqual(set(by_label), {HEAR, CLUB})
         self.assertEqual([(t["job_id"], t["field_id"]) for t in by_label[HEAR]["targets"]],
@@ -243,7 +244,7 @@ class PacketAndAnswerTests(ReleaseCase):
         skip = next(c["id"] for c in club["choices"] if c["label"] == "Skip for now")
         result = self.questions.answer(self.respond(packet, [{"question_id": club["id"], "option_id": skip}]))
         self.assertEqual((result["saved"], result["pending"], result["refill"]), (0, 6, {}))
-        self.assertFalse((self.root / "answer-bank.json").exists())
+        self.assertFalse((self.root / "user/answer-bank.json").exists())
 
     def test_stale_unknown_duplicate_or_empty_responses_are_refused(self):
         packet = self.questions.packet("claude")
@@ -253,7 +254,7 @@ class PacketAndAnswerTests(ReleaseCase):
                                ([entry, entry], None), ([], None), ([{"question_id": club["id"], "text": "  "}], None)):
             with self.assertRaises(ValueError):
                 self.questions.answer(self.respond(packet, answers, batch))
-        self.assertFalse((self.root / "answer-bank.json").exists())
+        self.assertFalse((self.root / "user/answer-bank.json").exists())
 
 
 class WorkflowTests(ReleaseCase):
@@ -328,6 +329,33 @@ class BrowserRefillTests(unittest.TestCase):
         self.assertIsNone(script_driver.CLICKS.search(script))
         with self.assertRaises(ValueError):
             bridge.refill("tab-1", job=job(ats="icims"), answers={"q": "x"})
+
+
+class RuntimeQuestionsTests(ReleaseCase):
+    def test_answers_are_saved_then_refilled_through_the_lane_holding_each_tab(self):
+        from unittest.mock import patch
+
+        from autoapply_local import runtime
+        from autoapply_local.storage import Store
+
+        store = Store(self.root)
+        store.enqueue(job("job-a"))
+        store.update("job-a", state="needs_manual", tab_id="tab-a", lane="1",
+                     unanswered=[unknown("question_2", CLUB, "text")])
+        store.enqueue(job("job-b"))
+        packet = runtime.questions(root=self.root, ui="claude")
+        self.assertEqual([item["label"] for item in packet["questions"]], [CLUB])
+        response = self.root / "response.json"
+        response.write_text(json.dumps({"batch_id": packet["batch_id"], "answers": [
+            {"question_id": packet["questions"][0]["id"], "text": "Robotics Society"}]}), encoding="utf-8")
+        runner = Mock()
+        runner.refill.return_value = {"job_id": "job-a", "status": "filled", "tab_id": "tab-a"}
+        with patch.object(runtime, "_workflow", return_value=(runner, {}, "codex")) as build:
+            result = runtime.questions(root=self.root, answer=response)
+        runner.refill.assert_called_once_with("job-a", {"question_2": "Robotics Society"})
+        self.assertEqual(build.call_args.kwargs["lane"]["lane"], "1")
+        self.assertEqual((result["saved"], result["pending"]), (1, 0))
+        self.assertEqual(result["refilled"], [{"job_id": "job-a", "status": "filled", "tab_id": "tab-a"}])
 
 
 class CliTests(unittest.TestCase):

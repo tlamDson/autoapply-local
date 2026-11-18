@@ -13,4 +13,9 @@ apply uses existing PDFs; it never submits.
 This tool never clicks Submit; the user submits held forms by hand. Preserve any held form tab and return manual-interaction states to the user.
 Use confirmed facts/exact scoped answers and normal MCP approvals. Never use
 private parent-workspace data, browser Gmail scraping or mail write actions.
+When the result shows `questions.pending`, run `python autoapply-local.py questions --ui UI`
+once, invoke its native calls as one popup, wait for the user's actual answers, write
+them to a private file and run `questions --answer PATH` to save them to the answer bank
+and refill the held tabs. Never answer for the user; skip or timeout keeps them pending.
+
 Report the command result and held tabs or unresolved items.

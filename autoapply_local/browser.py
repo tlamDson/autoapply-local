@@ -395,6 +395,9 @@ class BrowserBridge:
         self.observed_uploads = {}
         self.restore_errors = {}
 
+    # Script drivers read the user's answer bank for questions no fact covers.
+    answer_bank = True
+
     @property
     def native_uploads(self):
         return isinstance(self.client, EngineMCPClient)
@@ -422,7 +425,7 @@ class BrowserBridge:
 
         return adapter_script(ats, operation, answers)
 
-    def fill(self, tab_id, profile, job, pdf=None):
+    def fill(self, tab_id, profile, job, pdf=None, bank=None):
         self.tabs.setdefault(str(tab_id), {"url": job["url"]}).update(job=copy.deepcopy(job))
         self._native(tab_id)
         if isinstance(self.client, EngineMCPClient):
@@ -448,7 +451,7 @@ class BrowserBridge:
 
         driver = driver_for(job.get("ats", "greenhouse"))
         if driver is not None:
-            return driver.run(self.client, tab_id, profile, job, pdf=pdf)
+            return driver.run(self.client, tab_id, profile, job, pdf=pdf, bank=bank)
         # Map only supported confirmed facts; all other questions require an
         # exact scoped answer and are left to the native-agent interaction.
         scanned = self.client.evaluate_script(
@@ -467,6 +470,13 @@ class BrowserBridge:
             tab_id, self._script("fill", job.get("ats", "greenhouse"), answers), operation="fill"
         )
         return result
+
+    def refill(self, tab_id, job, answers):
+        """Fill popup answers into a held tab with the ATS adapter; never clicks."""
+        from .script_driver import refill_script
+
+        script = refill_script(job.get("ats", "greenhouse"), answers)
+        return self.client.evaluate_script(tab_id, script, operation="fill")
 
     def upload_file(self, tab_id, path):
         path = Path(path).resolve()

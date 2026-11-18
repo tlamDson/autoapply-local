@@ -37,6 +37,13 @@ loads current facts into a new session, and requires a new preview before Confir
 Existing records use the numbered native picker and field editor; Cancel keeps
 the original record, and unchanged facts keep their metadata.
 
+Required questions no confirmed fact or answer-bank entry covers are held,
+collected for the whole `apply` run and asked once at the end: `questions --ui UI`
+returns one native popup packet; after the user's actual answers, `questions
+--answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
+Skip, timeout or no native tool keeps them pending. A banked answer is reused
+only for the same question wording, options and country; it is never inferred.
+
 Never click a Submit control, through any command or raw browser action: the
 user reviews and submits each held form by hand. Follow normal engine/MCP
 approval prompts.

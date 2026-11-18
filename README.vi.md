@@ -206,6 +206,16 @@ Không khớp và có hơn một resume: `apply` hỏi một lần cho mỗi rol
 và nhớ đáp án ở `user/resume-choices.json`; không có terminal thì dừng thay vì
 đoán. `apply` in từng lựa chọn và lý do trước khi điền.
 
+Câu hỏi bắt buộc chưa có fact đã xác nhận (ví dụ "How did you hear about this
+role?") không làm dừng đợt chạy. `apply` điền mọi thứ khác, giữ tab và gom các
+câu đó cho cả đợt; kết quả có `questions.pending`. Sau đó
+`python autoapply-local.py questions --ui UI` trả về một popup native cho tất cả
+(cùng một câu từ nhiều job chỉ hỏi một lần). Ghi đáp án thật của người dùng vào
+một file riêng rồi chạy `questions --answer PATH`: đáp án vào answer bank
+`user/answer-bank.json` và được điền vào các tab đang giữ, không bao giờ Submit.
+Job sau hỏi cùng câu (cùng chữ, lựa chọn và quốc gia) được điền từ bank mà không
+hỏi lại. Bỏ qua, hết giờ hoặc không có công cụ native thì giữ câu hỏi cho lần sau.
+
 ## Bắt đầu: setup, cấu hình nguồn, fetch và review
 
 Sau các bước cài đặt/setup trên, chạy từ chính thư mục runtime vừa tạo.

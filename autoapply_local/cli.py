@@ -95,6 +95,10 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     review.add_argument("selection")
     review.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("submitted").add_argument("selection")
+    questions = commands.add_parser("questions")
+    questions.add_argument("--ui", choices=("codex-async", "codex", "claude", "none"), default="none")
+    questions.add_argument("--answer", type=Path)
+    questions.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("status")
     commands.add_parser("update")
     try:
@@ -106,7 +110,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         name = args.command.replace("-", "_")
         root = args.user_dir if args.user_dir is not None else _default_user_dir()
         kwargs = {"root": root.expanduser().resolve()}
-        if name in ("apply", "review") and args.approve_browser_tools:
+        if name in ("apply", "review", "questions") and args.approve_browser_tools:
             kwargs["approve_browser_tools"] = True
         if name == "setup":
             if args.edit and not args.guided:
@@ -143,6 +147,8 @@ def main(argv=None, services=None, stdout=None, stderr=None):
                 kwargs["selection"] = _selection(args.quick, "apply")
             if name == "fetch" and args.url:
                 kwargs["url"] = args.url
+        elif name == "questions":
+            kwargs.update(ui=args.ui, answer=args.answer)
         elif name in ("review", "submitted"):
             kwargs["selection"] = _selection(args.selection, name)
         if services is None:

@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .storage import Store, lock, read_json
+from .unanswered import pending_fields
 
 
 def _digest(value):
@@ -133,17 +134,23 @@ class Workflow:
                     )
                     # Preserve injected single-page bridges' existing signature.
                     native = getattr(self.browser, "native_uploads", False) is True
-                    fill_result = self.browser.fill(
-                        tab_id, profile=profile, job=job, **({"pdf": str(pdf)} if native else {})
-                    )
+                    extra = {"pdf": str(pdf)} if native else {}
+                    if getattr(self.browser, "answer_bank", False) is True:
+                        from .answer_bank import AnswerBank
+
+                        extra["bank"] = AnswerBank(self.root)
+                    fill_result = self.browser.fill(tab_id, profile=profile, job=job, **extra)
+                    unanswered = pending_fields(fill_result)
                     if fill_result.get("status") == "needs_manual" or fill_result.get("blocked"):
                         self.store.update(
                             job_id,
                             state="needs_manual",
                             fill_result=fill_result,
+                            unanswered=unanswered,
                             problem=str(fill_result.get("blocked") or "Complete the held form manually"),
                         )
-                        results.append({"job_id": job_id, "status": "needs_manual", "tab_id": tab_id})
+                        results.append({"job_id": job_id, "status": "needs_manual", "tab_id": tab_id,
+                                        **({"questions": len(unanswered)} if unanswered else {})})
                         continue
                     if native:
                         receipt = fill_result.get("upload_receipt")
@@ -152,6 +159,19 @@ class Workflow:
                         self.store.update(job_id, upload_receipt=receipt)
                     else:
                         self.browser.upload_file(tab_id, str(pdf))
+                    if unanswered:
+                        # Held for the end-of-run popup; questions --answer refills it.
+                        self.store.update(
+                            job_id,
+                            state="needs_manual",
+                            fill_result=fill_result,
+                            unanswered=unanswered,
+                            problem=f"{len(unanswered)} required question(s) wait for the end-of-run popup",
+                        )
+                        results.append(
+                            {"job_id": job_id, "status": "needs_manual", "tab_id": tab_id, "questions": len(unanswered)}
+                        )
+                        continue
                     live = self.browser.snapshot(tab_id, job_id=job_id)
                     if live.get("errors") or live.get("required_unknown"):
                         raise ValueError("Held form still contains unresolved fields")
@@ -164,6 +184,26 @@ class Workflow:
                     )
                     results.append({"job_id": job_id, "status": "needs_manual", "tab_id": tab_id, "reason": str(error)})
         return {"jobs": results, **self.status()}
+
+    def refill(self, job_id, answers):
+        """Fill the user's popup answers into one held tab; never submits or closes it."""
+        if not isinstance(answers, dict) or not answers:
+            raise ValueError("No answers to fill")
+        with self._operation_lock(job_id):
+            record = self.store.get(job_id)
+            if record["state"] != "needs_manual" or not record.get("tab_id"):
+                raise ValueError("Only a held tab waiting for answers can be refilled")
+            tab_id = record["tab_id"]
+            result = self.browser.refill(tab_id, job=record, answers=answers)
+            filled = set(result.get("filled", []))
+            remaining = [item for item in record.get("unanswered") or []
+                         if item["id"] not in answers or item["id"] not in filled]
+            live = self.browser.snapshot(tab_id, job_id=job_id)
+            if remaining or result.get("blocked") or live.get("errors") or live.get("required_unknown"):
+                self.store.update(job_id, unanswered=remaining, problem="Held form still contains unresolved fields")
+                return {"job_id": job_id, "status": "needs_manual", "tab_id": tab_id, "questions": len(remaining)}
+            self.store.update(job_id, state="filled", unanswered=[], problem=None, fill_snapshot=live)
+            return {"job_id": job_id, "status": "filled", "tab_id": tab_id}
 
     def _live(self, record):
         live = self.browser.snapshot(record["tab_id"], job_id=record["id"])

@@ -215,6 +215,16 @@ terminal and remembers the answer in `user/resume-choices.json`; without a
 terminal it stops instead of guessing. `apply` prints each choice and its
 reason before filling.
 
+Required questions no confirmed fact answers (for example "How did you hear
+about this role?") do not stop the run. `apply` fills everything else, holds
+the tab and collects those questions for the whole run; its result shows
+`questions.pending`. Then `python autoapply-local.py questions --ui UI` returns
+one native popup for all of them (the same question from several jobs is asked
+once). Write the user's actual answers to a private file and run `questions
+--answer PATH`: the answers go to the answer bank `user/answer-bank.json` and
+are filled into the held tabs, which are never submitted. The next job that asks
+the same question (same wording, options and country) is filled from the bank
+without asking. Skip, timeout or no native tool keeps the questions for later.
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.
