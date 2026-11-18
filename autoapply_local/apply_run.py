@@ -183,4 +183,7 @@ def table(report):
         lines.append(str(asked["next"]))
     if report.get("reason"):
         lines += ["", "Stopped: " + str(report["reason"])]
+        left = len(report.get("left") or [])
+        if left:
+            lines.append(f"{left} job{'s' if left != 1 else ''} left for the next run.")
     return "\n".join(lines)

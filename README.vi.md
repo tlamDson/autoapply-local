@@ -397,7 +397,12 @@ tab đang giữ rồi tự nộp.
   tuyển dụng và PDF của từng job; cuối lượt stderr in bảng (công ty, role, resume,
   tab, field cần kiểm), xác nhận tìm thấy, job bị bỏ kèm lý do, danh sách tự nộp và
   số câu bắt buộc chưa có đáp án (`questions`, xem ở trên; từng field nằm ở
-  `unanswered`). Stdout cuối vẫn là JSON. ID job ghi rõ thì không bị lọc trùng.
+  `unanswered`). Trước mỗi job, bộ chặn quota đọc mức dùng 5 giờ và tuần của engine
+  bằng một lệnh nhỏ (cứ ba job một lần, hoặc mỗi job khi cách ngưỡng dưới 10 điểm);
+  khi một trong hai đạt phần trăm dừng đã chọn ở setup, hoặc engine báo hết hạn mức,
+  lượt chạy dừng: tab đang giữ vẫn mở, job chưa bắt đầu giữ trạng thái chờ cho lượt
+  sau, cuối bảng ghi lý do và số job còn lại (`quota` và `left` trong JSON). Không
+  biết mức dùng thì không bao giờ dừng. Stdout cuối vẫn là JSON. ID job ghi rõ thì không bị lọc trùng.
   Lệnh không bao giờ nộp.
 - `review ID,ID|all`: đọc lại form đang giữ, kiểm job/tab/field/fact/PDF còn mới.
 - `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng

@@ -170,15 +170,16 @@ class ReleaseCase(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="autoapply-synthetic-")
         self.addCleanup(cleanup_temporary_directory, self.temporary)
         self.root = Path(self.temporary.name).resolve()
+
+    def run(self, result=None):
         # apply's quota guard probes the engine; tests never make that live call.
         # A test that needs usage numbers patches runtime.quota_probe itself.
         from unittest.mock import patch
 
         offline = {"status": "configuration", "five_hour_pct": None, "seven_day_pct": None}
-        quota_patch = patch("autoapply_local.runtime.quota_probe", create=True,
-                            side_effect=lambda engine, **kwargs: {"engine": engine, **offline})
-        quota_patch.start()
-        self.addCleanup(quota_patch.stop)
+        with patch("autoapply_local.runtime.quota_probe", create=True,
+                   side_effect=lambda engine, **kwargs: {"engine": engine, **offline}):
+            return super().run(result)
 
     def module(self, name):
         # Do not turn missing product modules into skips or configuration failures.
