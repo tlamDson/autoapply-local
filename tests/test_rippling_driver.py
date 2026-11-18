@@ -48,10 +48,12 @@ def form_fields(**values):
 class FakeForm:
     """Answers adapter calls the way the page would, and records their order."""
 
-    def __init__(self, ready_after=1, formsy=True, location=None, keep_empty=(), late_parse=0):
+    def __init__(self, ready_after=1, formsy=True, location=None, keep_empty=(), late_parse=0, scan_overwrite=None, check_overwrite=False):
         self.calls, self.ready_polls, self.ready_after = [], 0, ready_after
         # How many fills a slow parse still overwrites afterwards (-1: every fill).
         self.late_parse = late_parse
+        # The parse lands just before the n-th scan, or right after the first clean check.
+        self.scan_overwrite, self.scans, self.check_overwrite = scan_overwrite, 0, check_overwrite
         self.formsy, self.location_result, self.keep_empty = formsy, location, set(keep_empty)
         self.values = {"resume": []}
         self.client = Mock(spec=["evaluate_script", "upload_file", "list_pages"])
@@ -85,20 +87,26 @@ class FakeForm:
                 return fill(["resume"])
             return fill(blocked=[{"id": "resume", "reason": "resume_parse_pending"}])
         if name == "modelScan":
+            self.scans += 1
+            if self.scans == self.scan_overwrite:
+                self.values["linkedin_link"] = "https://parsed.example/wrong"
             fields = form_fields(**self.values) if self.formsy else []
             page = {"index": 1, "total": 1, "title": "Example", "formsy": self.formsy, "valid": not self.missing()}
             return {"fields": fields, "errors": [], "text": "", "url": "https://ats.rippling.com/x", "attachments": [], "page": page, "required_unknown": []}
         if name == "modelFill":
             filled = [key for key in payload if key not in self.keep_empty]
             for key in filled:
-                self.values[key] = payload[key]["value"]
+                self.values[key] = self.stored(key, payload[key]["value"])
             if self.late_parse:
                 self.late_parse -= 1
                 self.values["linkedin_link"] = "https://parsed.example/wrong"
             return fill(filled)
         if name == "modelCheck":
-            same = [key for key in payload if self.values.get(key) == payload[key]["value"]]
+            same = [key for key in payload if self.values.get(key) == self.stored(key, payload[key]["value"])]
             changed = [{"id": key, "reason": "value_changed"} for key in payload if key not in same]
+            if self.check_overwrite and not changed:
+                self.check_overwrite = False
+                self.values["linkedin_link"] = "https://parsed.example/wrong"
             return fill(same, changed)
         if name == "location":
             if self.location_result:
@@ -106,6 +114,12 @@ class FakeForm:
             self.values["location"] = payload["query"] + ", USA"
             return fill(["location"])
         raise AssertionError("unexpected adapter call " + name)
+
+    @staticmethod
+    def stored(key, value):
+        """What the page model holds for an answer: a choice keeps its option value."""
+        options = next((item["options"] for item in form_fields() if item["id"] == key), [])
+        return next((o["value"] for o in options if value in (o["value"], o["label"])), value)
 
     def missing(self):
         return [item["id"] for item in form_fields(**self.values) if item["required"] and not item["value"]]
@@ -262,6 +276,23 @@ class DriverTests(Base):
         self.assertEqual(names[-2:], ["modelCheck", "modelScan"], "the last check passes before the final scan")
         self.assertEqual(result["status"], "filled")
         self.assertEqual(result["blocked"], [])
+
+    def test_overwrite_seen_only_by_the_final_scan_is_reported(self):
+        # The parse lands after every check passed: the final scan is the proof.
+        form = FakeForm(scan_overwrite=2)
+        result = self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
+        self.assertEqual(form.names()[-1], "modelScan")
+        self.assertEqual(result["status"], "needs_manual")
+        self.assertIn({"id": "linkedin_link", "reason": "value_overwritten"}, result["blocked"])
+        self.assertNotIn("linkedin_link", result["filled"])
+        self.assertIn(SPONSOR, result["filled"], "a choice answer matches its option value")
+
+    def test_parse_landing_after_one_clean_check_is_rewritten(self):
+        form = FakeForm(check_overwrite=True)
+        result = self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
+        self.assertEqual(form.values["linkedin_link"], "https://www.linkedin.com/in/alex-rivera-example")
+        self.assertEqual(result["status"], "filled", result["blocked"])
+        self.assertEqual([call[1] for call in form.calls if call[0] == "modelFill"][1:], [{"linkedin_link": {"value": "https://www.linkedin.com/in/alex-rivera-example", "status": "confirmed"}}])
 
     def test_parse_that_keeps_overwriting_a_fact_holds_the_tab(self):
         form = FakeForm(late_parse=-1)
