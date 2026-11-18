@@ -1,0 +1,52 @@
+{
+  "note": "Synthetic Workable application form (apply.workable.com/<account>/j/<shortcode>/apply). form builds the DOM in adapters.test.cjs: each box is a [data-ui=<form-API id>] container with its question label and controls; radios are Workable's role=radio buttons, cards are saved education/experience entries and add marks the Add-entry control. scan is the adapter's recorded scan of it (asserted there) that test_workable_driver.py plans from; answers is what the driver plans and the adapter fills. Invented employer and candidate.",
+  "form": [
+    {"ui": "resume", "label": "Resume*", "controls": [{"tag": "input", "attrs": {"type": "file", "accept": ".pdf"}}]},
+    {"ui": "firstname", "label": "First name*", "controls": [{"tag": "input", "attrs": {"type": "text", "id": "firstname", "name": "firstname"}}]},
+    {"ui": "lastname", "label": "Last name*", "controls": [{"tag": "input", "attrs": {"type": "text", "id": "lastname", "name": "lastname"}}]},
+    {"ui": "email", "label": "Email*", "controls": [{"tag": "input", "attrs": {"type": "email", "id": "email", "name": "email"}}]},
+    {"ui": "headline", "label": "Headline", "controls": [{"tag": "input", "attrs": {"type": "text", "id": "headline", "name": "headline"}}]},
+    {"ui": "phone", "label": "Phone*", "controls": [{"tag": "input", "attrs": {"type": "tel", "id": "input_phone", "name": "phone"}}]},
+    {"ui": "address", "label": "Address", "controls": [{"tag": "input", "attrs": {"type": "text", "id": "address", "name": "address"}}]},
+    {"ui": "education", "label": "Education", "add": true, "cards": []},
+    {"ui": "experience", "label": "Experience", "add": true, "cards": []},
+    {"ui": "summary", "label": "Summary", "controls": [{"tag": "textarea", "attrs": {"id": "summary", "name": "summary"}}]},
+    {"ui": "cover_letter", "label": "Cover letter", "controls": [{"tag": "textarea", "attrs": {"id": "cover_letter", "name": "cover_letter"}}]},
+    {"ui": "QA_100", "label": "Are you legally authorized to work in the United States?*", "radios": ["Yes", "No"]},
+    {"ui": "QA_101", "label": "Will you now or in the future require sponsorship for employment visa status?*", "radios": ["Yes", "No"]},
+    {"ui": "QA_102", "label": "How did you hear about us?", "controls": [{"tag": "input", "attrs": {"type": "text", "id": "input_QA_102_input", "role": "combobox"}}]},
+    {"ui": "QA_103", "label": "Which locations work for you?", "controls": [
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "QA_103", "value": "Remote"}, "text": "Remote"},
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "QA_103", "value": "Boston"}, "text": "Boston"},
+      {"tag": "input", "attrs": {"type": "checkbox", "name": "QA_103", "value": "Austin"}, "text": "Austin"}
+    ]},
+    {"ui": "QA_104", "label": "Why do you want to join Example Co?*", "controls": [{"tag": "textarea", "attrs": {"id": "QA_104", "name": "QA_104"}}]},
+    {"ui": "gdpr", "label": null, "controls": [{"tag": "input", "attrs": {"type": "checkbox", "name": "gdpr", "required": ""}, "text": "I agree to the data processing terms"}]},
+    {"ui": null, "label": null, "controls": [{"tag": "textarea", "attrs": {"name": "h-captcha-response"}}]}
+  ],
+  "scan": [
+    {"id": "resume", "label": "Resume", "type": "file", "required": true, "value": "", "options": []},
+    {"id": "firstname", "label": "First name", "type": "text", "required": true, "value": "", "options": []},
+    {"id": "lastname", "label": "Last name", "type": "text", "required": true, "value": "", "options": []},
+    {"id": "email", "label": "Email", "type": "email", "required": true, "value": "", "options": []},
+    {"id": "headline", "label": "Headline", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "phone", "label": "Phone", "type": "tel", "required": true, "value": "", "options": []},
+    {"id": "address", "label": "Address", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "education", "label": "Education", "type": "group", "required": false, "value": [], "options": []},
+    {"id": "experience", "label": "Experience", "type": "group", "required": false, "value": [], "options": []},
+    {"id": "summary", "label": "Summary", "type": "textarea", "required": false, "value": "", "options": []},
+    {"id": "cover_letter", "label": "Cover letter", "type": "textarea", "required": false, "value": "", "options": []},
+    {"id": "QA_100", "label": "Are you legally authorized to work in the United States?", "type": "radiogroup", "required": true, "value": null, "options": [{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}]},
+    {"id": "QA_101", "label": "Will you now or in the future require sponsorship for employment visa status?", "type": "radiogroup", "required": true, "value": null, "options": [{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}]},
+    {"id": "QA_102", "label": "How did you hear about us?", "type": "combobox", "required": false, "value": "", "options": []},
+    {"id": "QA_103", "label": "Which locations work for you?", "type": "checkbox-group", "required": false, "value": [], "options": [{"value": "Remote", "label": "Remote"}, {"value": "Boston", "label": "Boston"}, {"value": "Austin", "label": "Austin"}]},
+    {"id": "QA_104", "label": "Why do you want to join Example Co?", "type": "textarea", "required": true, "value": "", "options": []},
+    {"id": "gdpr", "label": "I agree to the data processing terms", "type": "checkbox", "required": true, "value": false, "options": []}
+  ],
+  "answers": {
+    "firstname": "Alex",
+    "lastname": "Rivera",
+    "email": "alex.rivera@example.com",
+    "phone": "+1 555 0100"
+  }
+}
