@@ -317,6 +317,47 @@ def _choices(field, values):
     return result
 
 
+_HEAD_STOPS = {"of", "to", "for", "with", "by", "that", "you", "a", "or", "per", "when", "where", "as", "in", "on", "at",
+               "from", "replaced", "eligible"}
+# Entry fields that describe a record or a board, not the candidate: asked with "the", not "your".
+_IMPERSONAL = {"value", "name", "kind", "precision", "path", "role", "category", "ats", "company", "board", "host",
+               "tenant", "site", "endpoint", "search", "job_type", "effective_at"}
+
+
+def _plural(phrase):
+    """Guess plural agreement from the head noun: the last word before a modifier."""
+    head = ""
+    for word in phrase.split():
+        if word.startswith("("):
+            break
+        if word.casefold() == "and":
+            return True
+        if word.strip(",)").casefold() in _HEAD_STOPS:
+            break
+        head = word.strip(",)").casefold()
+        if word.endswith(","):
+            break
+    return head.endswith("s") and not head.endswith(("ss", "us"))
+
+
+def _prompt(name, label_en, label_vi, group_en, group_vi):
+    """Build a grammatical question from a noun phrase or 'whether ...' clause."""
+    owner_en, owner_vi = ("the", "") if name in _IMPERSONAL else ("your", " của bạn")
+    if label_en.startswith("whether "):
+        en = f"For {group_en}, can you tell us {label_en}?"
+    else:
+        phrase = label_en.removeprefix("your ")
+        if phrase.startswith("one or more "):
+            phrase = phrase.removeprefix("one or more ") + " (one or more)"
+        en = f"For {group_en}, what {'are' if _plural(phrase) else 'is'} {owner_en} {phrase}?"
+    if label_en.startswith("whether ") or label_vi.startswith("việc "):
+        vi = f"Về {group_vi}, bạn trả lời thế nào về {label_vi}?"
+    else:
+        phrase = label_vi.removesuffix(" của bạn")
+        vi = f"Về {group_vi}, {phrase}{'' if 'bạn' in phrase else owner_vi} là gì?"
+    return {"en": en, "vi": vi}
+
+
 def _descriptor(field):
     group, name = field.split(".")[0], field.rsplit(".", 1)[-1]
     en, vi = LABELS[name]
@@ -327,7 +368,7 @@ def _descriptor(field):
         "group": group,
         "kind": "text",
         "value_type": "string",
-        "prompt": {"en": f"For {group_en}, what is your {en}?", "vi": f"Về {group_vi}, bạn chọn gì cho {vi}?"},
+        "prompt": _prompt(name, en, vi, group_en, group_vi),
         "mandatory": field in {"runtime.mode", "runtime.language", "runtime.apply_engine"},
         "allow_unknown": True,
         "allow_skip": True,
