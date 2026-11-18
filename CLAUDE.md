@@ -11,6 +11,16 @@ install, auto-start setup). The source autoapply-local.py defaults to setup in
 <repo>/user; open the generated
 runtime and use its own root-bound launcher for subsequent commands.
 
+The product is quick apply (README.md, README.vi.md): install, terminal setup,
+engine setup, then `apply [N]` only when the user types it, and `update`. All
+user data stays in the runtime root, `<repo>/user/` by default (gitignored):
+config, confirmed facts, `resumes/` from terminal setup, tracker, ledger,
+`secrets.json` and Chrome profiles. Setup also creates the drop folders
+`user/resume/` (resume PDFs and TEX/DOCX sources) and `user/additional-document/`
+(transcripts, certificates, cover letters) inside the runtime root; a file there
+is only stored, never selected, confirmed or uploaded.
+macOS has not been tested live; never claim it from offline tests.
+
 The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
 engine opens: language, engine with one small login/quota probe call, quota stop
 percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,

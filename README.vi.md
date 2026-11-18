@@ -1,41 +1,29 @@
 # AutoApply Local 0.1.0a1 — bản thử nghiệm
 
-Công cụ tìm và điền đơn cục bộ, setup qua popup native, fact được xác nhận,
-resume PDF theo role, và luồng điền → giữ tab → kiểm. Công cụ không bao giờ bấm
-Submit: bạn tự nộp từng form đang giữ.
+Công cụ apply nhanh cho người tìm thực tập và việc new-grad, ưu tiên du học sinh,
+chạy trên Windows và macOS. Công cụ tìm job trên các board ATS công khai, điền
+từng đơn bằng chính resume PDF của bạn (đúng bản cho role đó), rồi để form đã điền
+mở trong một tab trình duyệt. Công cụ không bao giờ bấm Submit: bạn tự kiểm và tự
+nộp từng form đang giữ. Tracker cục bộ được cập nhật từ các form bạn đã nộp và từ
+mail xác nhận trong tab Gmail của bạn.
 [Hướng dẫn tiếng Anh](README.md).
 
-Fact phụ thuộc thay đổi thì câu trả lời cần xác nhận lại; lỗi phân tích trước thao tác browser trả job vừa claim về `pending` để thử lại thủ công, còn tab đang giữ vẫn mở.
+Tóm tắt luồng: cài một lần, trả lời phần setup trên terminal, xác nhận fact trong
+engine AI lập trình của bạn (Claude Code hoặc Codex), rồi gõ `apply` mỗi khi muốn
+điền một đợt đơn.
+
+## Trạng thái và giới hạn
 
 Các kiểm tra offline, DOM tổng hợp và package cài đặt được tự động hóa. Chưa xác
 minh ATS thật, Gmail thật, toàn bộ luồng trên cả hai engine, phần cứng macOS hoặc
-máy 8 GB. Những trường chưa hỗ trợ hoặc bước đăng nhập cần người dùng sẽ giữ tab.
+máy 8 GB. Đây là bản thử nghiệm, chưa phải tự động hóa ổn định. Những trường chưa
+hỗ trợ hoặc bước tài khoản cần người dùng sẽ giữ tab mở cho bạn.
+macOS chưa được thử thật: trên macOS mới chỉ có test offline và job cài đặt của CI.
 
 Fill browser native còn rủi ro
 với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
 
-Native browser fill still carries
-real-engine risks and needs a live ATS gate before it can be considered stable.
-
-Kết quả smoke test runtime Part2 trên Windows là kết quả lịch sử, trên revision
-engine cũ hơn, trước các thay đổi engine, tool-gate và an toàn profile. Khi đó,
-kiểm tra đã đạt với Codex 0.165.0-alpha.1.2 và Claude 2.1.312: JSON/Unicode ngoài
-Git và MCP trình duyệt trên hai làn riêng mỗi engine. Fixture Claude được cấp rõ
-quyền chỉ đọc `list_pages`; lượt chưa được cấp quyền dừng đúng. Kết quả lịch sử
-này không xác nhận toàn bộ runtime hiện tại; các thay đổi hiện tại có kiểm thử
-offline. Kết quả chưa xác nhận ATS thực tế, Gmail, phần cứng macOS, máy 8 GB hay
-khả năng vận hành ổn định.
-
-## Kho mã
-
-Kho mã nguồn: [tlamDson/autoapply-local](https://github.com/tlamDson/autoapply-local).
-
-```text
-git clone https://github.com/tlamDson/autoapply-local.git
-cd autoapply-local
-```
-
-## Cài đặt và khởi tạo
+## Cài đặt
 
 Một dòng. Windows PowerShell:
 
@@ -49,14 +37,24 @@ macOS:
 curl -fsSL https://raw.githubusercontent.com/tlamDson/autoapply-local/main/install.sh | bash
 ```
 
-Script clone kho mã vào `./autoapply-local` (hoặc dùng checkout chứa nó; trong bản
-clone chạy `./install.ps1` hoặc `./install.sh`). Script kiểm Python 3.11+, git,
-Node.js/npm và Google Chrome. Thiếu thứ nào thì in đúng lệnh `winget install ...`
-hoặc `brew install ...` rồi thoát với mã 3; script không bao giờ tự cài phần mềm hệ
-thống. Đủ hết thì tạo `.venv` trong kho mã, chạy `pip install -e .` rồi tự mở setup.
-Chạy lại an toàn: `.venv` có sẵn được dùng lại và setup giữ nguyên mọi file bạn đã
-sửa. Thêm `--no-setup` để chỉ cài. Mọi dữ liệu của bạn nằm trong `<repo>/user/`
-(đã gitignore).
+Hoặc clone [kho mã](https://github.com/tlamDson/autoapply-local) rồi chạy installer
+trong đó (macOS dùng `./install.sh`):
+
+```text
+git clone https://github.com/tlamDson/autoapply-local.git
+cd autoapply-local
+./install.ps1
+```
+
+Script clone kho mã vào `./autoapply-local` (hoặc dùng checkout chứa nó). Script
+kiểm Python 3.11+, git, Node.js/npm và Google Chrome. Thiếu thứ nào thì in đúng
+lệnh `winget install ...` hoặc `brew install ...` rồi thoát với mã 3; script không
+bao giờ tự cài phần mềm hệ thống. Đủ hết thì tạo `.venv` trong kho mã, chạy
+`pip install -e .` và chạy `setup` một lần để tạo thư mục runtime `<repo>/user/`
+cùng command, skill và launcher `autoapply-local.py`. Chạy lại installer an toàn:
+`.venv` có sẵn được dùng lại và setup giữ nguyên mọi file bạn đã sửa. Thêm
+`--no-setup` để chỉ cài. Không ghi gì ra ngoài kho mã; mọi dữ liệu của bạn nằm
+trong `<repo>/user/` (đã gitignore, xem [Dữ liệu của bạn](#dữ-liệu-của-bạn)).
 
 Cài thủ công, Windows PowerShell:
 
@@ -78,420 +76,334 @@ python -m autoapply_local --user-dir ./user setup
 cd user
 ```
 
-Nếu tải wheel, thay `python -m pip install .` bằng
-`python -m pip install path/to/autoapply_local-0.1.0a1-py3-none-any.whl`.
-Package đã cài chạy setup từ thư mục bất kỳ, không cần checkout gốc.
-Khi ở ngoài source, chọn runtime tường minh, ví dụ
-`python -m autoapply_local --user-dir ./autoapply-user setup`, rồi mở thư mục đó.
-Dependency được ghim phiên bản.
-Apply dùng PDF có sẵn nên không cần TeX; `source extract` với PDF cần `pdftotext`
-của Poppler.
-Browser MCP ghim chrome-devtools-mcp 0.14.0; npm có thể tải phiên bản đó ở lần
-đầu bạn phê duyệt connector. Không dùng profile Chrome cá nhân thường ngày.
+Mọi lệnh bên dưới chạy từ `<repo>/user/` với `.venv` của kho mã đã kích hoạt,
+dạng `python autoapply-local.py LỆNH`. Launcher được tạo đó luôn dùng chính thư
+mục của nó làm runtime root. Launcher nguồn ở gốc kho mã (`python autoapply-local.py`
+tại đó) cũng mặc định dùng `<repo>/user/`; không có đối số thì chạy `setup`. Với
+module hoặc entry point đã cài, đặt `--user-dir PATH` trước tên lệnh: runtime root
+là `--user-dir`, rồi `AUTOAPPLY_LOCAL_HOME`, rồi `user/` của checkout nguồn nhận
+diện được, cuối cùng `~/.autoapply-local` khi ngoài checkout nguồn. Runtime có sẵn
+không bao giờ bị di chuyển.
 
-Trong checkout hoặc ZIP source đã giải nén, chạy `python autoapply-local.py`
-không có đối số để setup tại `<source>/user`. Launcher nguồn chọn theo
-vị trí của chính nó, kể cả khi gọi từ thư mục khác. Cũng có thể chạy
-`python -m autoapply_local setup` từ source root hoặc thư mục con.
-Nhận diện source cần `pyproject.toml` có tên project `autoapply-local`, package
-và `export-allowlist.json`; không cần metadata Git.
+Apply nhanh dùng PDF có sẵn nên không cần TeX; `source extract` với PDF cần
+`pdftotext` của Poppler. Dependency được ghim trong `pyproject.toml` và
+`requirements.txt`. Connector browser ghim chrome-devtools-mcp 0.14.0; npm có thể
+tải bản đó khi bạn phê duyệt connector lần đầu.
 
-Với lệnh module, thứ tự chọn runtime là `--user-dir PATH`, rồi
-`AUTOAPPLY_LOCAL_HOME`, rồi `user` trong source đã nhận diện, cuối cùng
-`~/.autoapply-local` khi ngoài source (kể cả bản cài wheel). Root tường minh và
-biến môi trường cũng ưu tiên hơn mặc định của launcher nguồn. Runtime cũ (kể cả
-`<source>/.autoapply-local` trước đây) không tự di chuyển hoặc migrate; dùng
-`--user-dir` để tiếp tục dùng nó.
+## Thiết lập, phần 1: terminal
 
-Mở chính thư mục runtime vừa tạo trong engine đã chọn, với virtual environment
-vẫn kích hoạt. Setup cài command, skill, file hỗ trợ và launcher runtime
-`autoapply-local.py`, giữ nguyên file đã có và không ghi cấu hình toàn cục hay
-hook. Launcher được tạo trong runtime luôn dùng thư mục chứa nó, kể cả khi
-AUTOAPPLY_LOCAL_HOME trỏ nơi khác. Đặt đường dẫn có dấu cách trong dấu nháy.
-Setup không tự phê duyệt browser MCP; dùng quy trình phê duyệt bình thường.
-
-Trong host đó, yêu cầu setup. Command/skill khám phá công cụ hỏi native thực có,
-chạy `python autoapply-local.py setup --guided --ui UI`, gọi chính tool đó với
-packet nhận được và chờ bạn trả lời. Ba câu đầu chọn cách chạy, ngôn ngữ và engine;
-mỗi lượt tối đa ba câu. Không cần sửa JSON. Tên và đường dẫn PDF có sẵn được nhập
-bằng text; danh sách và nhiều record học tập/authorization/kinh nghiệm dùng
-Add/Done từng trường. Danh sách lựa chọn dài có phân trang. Unknown/skip không
-biến thành No; EEO tùy chọn có thể từ chối. Có thể tiếp tục hoặc sửa câu đã hỏi
-bằng `setup --guided --edit QUESTION_ID --ui UI`.
-
-Sau phần setup trong terminal, setup có hướng dẫn trước hết hiện từng nhóm thông
-tin đọc từ resume (liên hệ, học tập, kinh nghiệm, kỹ năng) với Xác nhận / Sửa, rồi
-hỏi những gì resume không có (quyền làm việc, nhu cầu bảo lãnh, địa chỉ, EEO, kỳ
-tuyển dụng, role mong muốn), rồi hiện bộ lọc job suy ra từ các câu trả lời đó với
-Xác nhận / Sửa: cần bảo lãnh thì bỏ job ghi "no sponsorship", chỉ công dân Mỹ,
-clearance và ITAR; kỳ và loại công việc tạo bộ lọc tiêu đề (ví dụ chỉ thực tập,
-bỏ tiêu đề senior hoặc full-time); job đăng trong 7 ngày; các công ty bạn loại trừ.
-Bộ câu hỏi đầy đủ tiếp tục sau các bước này và vẫn là tùy chọn.
-
-Sau đó setup điền một form demo offline (`demo`: trang cục bộ không có nút Submit,
-mở trong Chrome riêng của tool) để chứng minh mọi thứ chạy được, rồi chạy `fetch`
-lần đầu; `report.summary` cho biết bao nhiêu job từ bao nhiêu board qua bộ lọc.
-Nguồn job là các board công khai đi kèm, chia hai nhóm S&P 500 (`sp500`) và
-unicorn (`unicorn`): `boards groups` liệt kê nhóm, `boards group NAME on|off` tắt
-hoặc bật cả nhóm mà không xoá board, `boards import PATH` thêm board của bạn (luôn
-được fetch).
-
-Để sửa record học tập, kinh nghiệm hoặc authorization đã có, chọn Edit an existing
-record rồi chọn đúng mục có số thứ tự trong popup. Sửa từng trường, chọn Done để
-giữ draft hoặc Cancel and keep original record để hủy thay đổi của record đó.
-Các trường bỏ qua giữ nguyên fact và metadata; thay đổi chỉ được xác nhận sau
-preview và Confirm rõ ràng. Add dùng cho record mới.
-
-Nếu dependency đổi, host hỏi Reload latest confirmed profile / Keep current draft
-bằng popup native. Chỉ khi bạn chọn Reload rõ ràng mới chạy
-`setup --restart --ui UI`. Lệnh giữ backup riêng của tiến độ và intake draft cũ,
-báo đường dẫn, rồi tạo phiên mới từ fact hiện tại mà không sửa fact đã xác nhận.
-Keep, timeout hoặc thiếu native tool giữ nguyên draft. Câu trả lời/preview cũ
-không dùng cho phiên mới; cần finish, xem preview mới rồi Confirm.
-
-Host gắn tool-call ID và thứ tự câu hỏi với stable question/option IDs của batch,
-ghi file trả lời JSON riêng tư rồi chạy `setup --answer PATH --ui UI`. Chỉ câu trả
-lời thật mới cập nhật draft; timeout, gián đoạn hay lựa chọn được chọn sẵn không
-phải câu trả lời. Profile/config/answers/reviews chưa thay đổi ở bước này.
-`setup --finish --ui UI` lưu draft và đúng preview sẽ nhập. Host hiển thị preview
-rồi hỏi Confirm/Keep draft bằng popup native; chỉ khi bạn chọn Confirm rõ ràng
-mới chạy `setup --confirm` với preview đã lưu. Dependency đổi thì từ chối để kiểm
-lại, không ghi đè hoặc tính lại preview âm thầm. Có thể giữ draft còn unknown.
-
-`UI` là `codex-async` khi khám phá được `request_user_input_async`, `codex` khi
-`request_user_input` được phép trong mode hiện tại, hoặc `claude` khi có
-`AskUserQuestion`. Flag chỉ chọn schema packet, không cấp quyền hay đổi mode.
-Nếu host thiếu tool hoặc mode cấm, `--ui none` trả `ui_required` và giữ tiến độ để
-bạn mở lại host/mode hỗ trợ. CLI terminal không tự hiển thị popup. Không hỏi thay
-bằng chat prose, không phỏng vấn qua subprocess, không tự chuyển Plan/engine,
-không tạo browser form hay cài server mới. [Tài liệu structured UI chính thức](https://learn.chatgpt.com/docs/app-server)
-mô tả tool/requestUserInput và MCP elicitation; package chỉ dùng công cụ host đã
-có, không cài app server. Test packet offline chưa chứng nhận UI native đầu cuối.
-
-Form `user/profile-intake.md` vẫn dành cho sửa/export nâng cao: preview bằng
-`python autoapply-local.py profile update PATH`, kiểm lại rồi thêm `--confirm`.
-Lối nâng cao tách khỏi guided confirm vì guided phải dùng đúng preview đã lưu.
-Catalog và intake có đủ 14 nhóm: engine/ngôn ngữ, liên hệ, PDF thay thế/role mapping, nhiều
-hồ sơ học tập, role/job type, thời gian/địa điểm, work authorization, CPT/OPT/STEM
-OPT, chính sách lọc, kinh nghiệm/skill, lương/EEO, lịch sử ứng tuyển, tailor,
-Gmail và tài nguyên máy. Trống vẫn là unknown; không suy ra quyền làm việc hay
-sponsorship từ tình trạng sinh viên. Sponsorship hiện tại/tương lai tách riêng.
-Form có câu hỏi song ngữ thực tế cho đủ 14 nhóm. Tên và họ được xác nhận riêng
-qua `first_name`/`last_name`, không đoán từ thứ tự họ tên pháp lý. Thêm câu trả lời
-đúng nguyên văn vào danh sách `answers` ở cấp document, với `question`, `value`,
-`status`, `provenance`, `confirmed_at`, `scope` gồm quốc gia, loại job, công ty,
-nguyên văn câu hỏi và thời điểm. Lệnh `profile update PATH` hiện preview các đáp
-án này; thêm `--confirm` sau khi kiểm để nhập. Không cần sửa profile nội bộ.
-
-Trích PDF/TEX/DOCX chỉ tạo draft. Với Codex hoặc Claude đã chọn, chạy
-`source extract PATH` để lấy text nháp, rồi kiểm từng fact với nguồn trước khi
-nhập qua câu hỏi guided. Nếu dùng intake nâng cao, xem preview
-`profile update PATH` trước khi thêm `--confirm` để xác nhận.
-Không suy authorization, visa, sponsorship hoặc đáp án EEO từ resume.
-Resume sinh ra không phải nguồn fact mới. Đổi học tập/authorization/target
-làm đáp án phụ thuộc và review cũ hết hiệu lực. Câu nhạy cảm cần xác nhận chính
-xác theo câu hỏi, công ty, quốc gia, loại job và thời điểm.
-
-## Thư mục để tài liệu
-
-Setup tạo hai thư mục bên trong runtime đã chọn. JSON kết quả trả `resume_dir`
-và `additional_document_dir`, đều là đường dẫn tuyệt đối tới thư mục đã tạo:
-
-- `user/resume/`: resume PDF và file nguồn resume như TEX hoặc DOCX.
-- `user/additional-document/`: bảng điểm, chứng chỉ, cover letter và tài liệu
-  bổ sung khác.
-
-Mỗi thư mục có README hướng dẫn chung, chỉ tạo khi chưa có. Chạy setup lại giữ
-nguyên tài liệu và README bạn đã sửa; không di chuyển, sao chép, đổi tên hay xóa
-tài liệu. File chiếm chỗ thư mục, thư mục chiếm chỗ README hoặc symlink thoát
-runtime bị từ chối trước khi ghi bất kỳ hướng dẫn nào của hai thư mục.
-Nội dung `user/` của runtime tiếp tục được loại khỏi Git và artifact phát hành.
-
-Đặt tài liệu vào đây chỉ để lưu. Thao tác này không tự chọn resume, trích hoặc
-xác nhận fact, bật tailor hay upload. Bạn phải chọn rõ `main_pdf` trong nhóm
-`resumes` của intake bằng **đường dẫn tuyệt đối** tới PDF. Không dựa vào đường
-dẫn PDF tương đối `user/resume/...`: đường dẫn tương đối được resolve theo thư
-mục làm việc của lệnh gọi. Xem preview `profile update`, kiểm fact rồi xác nhận
-rõ bằng `--confirm`. Quick apply với PDF có sẵn không cần LaTeX; tài liệu bổ sung
-không tự upload.
-
-Cách chọn resume cho mỗi job: gán role tag cho từng PDF (`main_tags` cho PDF
-chính, `tags` trong từng mục của `alternatives`). Resume có tag trùng nguyên từ
-với tiêu đề job là resume khớp. Nhiều resume khớp: resume nêu nhiều từ khóa công
-nghệ của mô tả job nhất thắng (không dùng model; hòa thì giữ thứ tự cấu hình).
-Không khớp và có hơn một resume: `apply` hỏi một lần cho mỗi role trong terminal
-và nhớ đáp án ở `user/resume-choices.json`; không có terminal thì dừng thay vì
-đoán. `apply` in từng lựa chọn và lý do trước khi điền.
-
-Câu hỏi bắt buộc chưa có fact đã xác nhận (ví dụ "How did you hear about this
-role?") không làm dừng đợt chạy. `apply` điền mọi thứ khác, giữ tab và gom các
-câu đó cho cả đợt; kết quả có `questions.pending`. Sau đó
-`python autoapply-local.py questions --ui UI` trả về một popup native cho tất cả
-(cùng một câu từ nhiều job chỉ hỏi một lần). Ghi đáp án thật của người dùng vào
-một file riêng rồi chạy `questions --answer PATH`: đáp án vào answer bank
-`user/answer-bank.json` và được điền vào các tab đang giữ, không bao giờ Submit.
-Job sau hỏi cùng câu (cùng chữ, lựa chọn, quốc gia và loại job) được điền từ
-bank mà không hỏi lại. Chỉ câu hỏi chắc chắn về riêng bạn (học vấn, kỹ năng,
-ngôn ngữ, câu lạc bộ, dự án) mới được dùng lại cho công ty khác. Mọi câu khác
-còn cần cùng công ty và ngày bắt đầu, kể cả ô tick bắt buộc, câu có/không hoặc
-đồng ý/từ chối, câu nhắc tới công ty hay vị trí, và câu về quyền làm việc,
-sponsorship, đồng ý, thoả thuận, cho phép liên hệ hoặc dùng dữ liệu, EEO hoặc
-lương. Một câu được điền lại chỉ tính là
-xong khi tab, đọc lại mới, hiện đúng đáp án của bạn; giá trị sai hoặc thiếu thì
-giữ câu đó cho `questions --refill`. Bỏ qua, hết giờ hoặc không có công cụ native
-thì giữ câu hỏi cho lần sau; `questions --refill` thử lại lần điền bị lỗi.
-Popup là một lần gọi native, nên chỉ chứa số câu công cụ của host nhận một lần
-(Claude 4, Codex 3); phần còn lại, câu ít job hỏi hơn đi sau, chờ popup kế tiếp
-và trường `deferred` cho biết còn bao nhiêu. Tab Workday được engine điền lại
-bằng thao tác native, tab khác bằng adapter của ATS; tab đang hiện đơn khác
-không bao giờ bị ghi, và lần điền mà bản đọc lại mới chưa sạch thì giữ mọi câu
-hỏi cho `questions --refill`.
-
-## Bắt đầu: setup, cấu hình nguồn, fetch và review
-
-Sau các bước cài đặt/setup trên, chạy từ chính thư mục runtime vừa tạo.
-Dùng launcher được tạo trong runtime cho các lệnh dưới đây để chọn rõ runtime
-đó, kể cả khi gọi từ thư mục làm việc khác.
+Chạy phần terminal trong một terminal thường, trước khi mở engine nào (chạy lại
+lúc nào cũng được; câu trả lời hiện tại được đưa làm mặc định):
 
 ```text
-python autoapply-local.py source extract path/to/resume.pdf
+python autoapply-local.py setup --terminal
 ```
 
-Yêu cầu setup trong host đã chọn để host khám phá native tool rồi chạy vòng hỏi,
-bao gồm engine, PDF resume có sẵn, fact, nguồn job và preview. Các lệnh dưới đây
-là bước CLI do host chạy; file trả lời được tạo từ popup thật, bạn không phải tự
-soạn JSON:
+1. Ngôn ngữ: English hoặc Tiếng Việt.
+2. Engine: Claude Code hoặc Codex. Một lần gọi nhỏ kiểm bạn đã đăng nhập và hiện
+   mức quota 5 giờ và quota tuần đã dùng. Chưa đăng nhập: in cách đăng nhập rồi chờ
+   bạn thử lại hoặc thoát.
+3. Phần trăm quota để dừng (mặc định 90): mức dùng quota 5 giờ hoặc quota tuần của
+   engine mà tại đó `apply` dừng (xem [Dùng hằng ngày](#dùng-hằng-ngày-apply)).
+   Giá trị lưu trong `config.json`.
+4. Resume PDF: thêm một hoặc nhiều file và gắn tag role cho từng file (SWE, Data,
+   ML hoặc chữ tùy ý). File được chép vào `resumes/` của runtime root và thành
+   `main_pdf`/`main_tags` và `alternatives` trong `config.json`.
+5. Số job mỗi lượt (mặc định 10). Trần tab đang giữ được tính từ RAM trống và
+   hiện ra.
+6. Gmail: tool mở profile Chrome sạch riêng của nó (`chrome/lane-1`) ở trang Gmail;
+   bạn tự đăng nhập ở đó. Sau đó tool tìm mail xác nhận nộp đơn của 183 ngày qua và
+   thêm mỗi đơn vào tracker đúng một lần. Có thể bỏ qua bước này.
+7. Engine đã chọn mở ngay trong terminal này với `/setup` (Codex:
+   `$autoapply-local setup`) cho phần 2. `--no-launch` chỉ in bước đó ra.
+
+Câu trả lời được lưu vào `config.json` ngay khi bạn trả lời, nên setup bị dừng
+giữa chừng vẫn giữ những gì đã trả lời. Trong engine, không bao giờ chạy
+`setup --terminal`.
+
+## Thiết lập, phần 2: trong engine
+
+Lệnh `/setup` của engine (Codex: `$autoapply-local setup`) hỏi phần còn lại bằng
+popup câu hỏi native của chính engine, mỗi lượt tối đa ba câu. Không cần sửa JSON.
+
+1. Fact đọc từ resume, từng nhóm một (liên hệ, học tập, kinh nghiệm, kỹ năng),
+   mỗi nhóm có Xác nhận / Sửa.
+2. Những gì resume không có: quyền làm việc, nhu cầu bảo lãnh, địa chỉ, EEO (có
+   thể từ chối), kỳ tuyển dụng và role mong muốn. Bỏ qua hoặc không biết không bao
+   giờ thành Không; quyền làm việc, visa, bảo lãnh và EEO không bao giờ được đoán
+   từ resume.
+3. Bộ lọc job suy ra từ các câu trả lời đó, có Xác nhận / Sửa: cần bảo lãnh thì bỏ
+   job ghi "no sponsorship", chỉ công dân Mỹ, clearance và ITAR; kỳ và loại công
+   việc tạo bộ lọc tiêu đề (ví dụ chỉ thực tập, bỏ tiêu đề senior hoặc full-time);
+   job đăng trong 7 ngày; các công ty bạn loại trừ. Bộ lọc bạn đã sửa giữ nguyên
+   khi câu trả lời đổi về sau.
+4. Một preview đã lưu của toàn bộ, rồi lựa chọn native Confirm / Keep draft. Chỉ
+   khi bạn chọn Confirm rõ ràng thì fact mới được lưu.
+5. Một form demo offline (`demo`: trang cục bộ không có nút Submit, mở trong
+   Chrome riêng của tool) chứng minh mọi thứ chạy được.
+6. `fetch` lần đầu; `report.summary` cho biết bao nhiêu job từ bao nhiêu board qua
+   bộ lọc. Setup xong.
+
+Phía sau popup, engine chạy các lệnh này; file trả lời được ghi từ câu trả lời
+thật của bạn trong popup, bạn không tự gõ (`claude` là UI cho AskUserQuestion của
+Claude Code; Codex dùng `codex` hoặc `codex-async`):
 
 ```text
-python autoapply-local.py setup --guided --ui codex-async
-python autoapply-local.py setup --answer user/setup-response.json --ui codex-async
-python autoapply-local.py setup --finish --ui codex-async
+python autoapply-local.py setup --guided --ui claude
+python autoapply-local.py setup --answer user/setup-response.json --ui claude
+python autoapply-local.py setup --finish --ui claude
 python autoapply-local.py setup --confirm
+python autoapply-local.py demo
+python autoapply-local.py fetch
 ```
 
-Dòng cuối chỉ chạy sau khi bạn chọn Confirm rõ ràng trên popup của preview đã
-lưu. Chọn identifier UI đúng tool khám phá được; thiếu tool thì giữ draft bằng
-`--ui none`. Sau đó tiếp tục nguồn, fetch và review:
+Engine khám phá đúng công cụ hỏi native thật trước. Không có công cụ được phép thì
+dùng `--ui none`, lệnh trả `ui_required` và giữ tiến độ để bạn mở lại engine hoặc
+mode hỗ trợ. Timeout, gián đoạn hay lựa chọn được chọn sẵn không bao giờ là câu trả
+lời, và không có lối hỏi thay bằng chat. `setup --guided --edit QUESTION_ID --ui UI`
+mở lại một câu. Record học tập, kinh nghiệm và authorization đã có dùng bộ chọn
+Edit an existing record có số thứ tự; Cancel giữ nguyên record gốc. Nếu fact đã xác
+nhận đổi trong lúc đang có draft, engine hỏi Reload latest confirmed profile / Keep
+current draft; chỉ khi bạn chọn Reload rõ ràng mới chạy `setup --restart --ui UI`,
+lệnh này backup draft cũ và mở phiên mới (cần finish và Confirm preview mới).
+
+Nguồn job là các board công khai đi kèm, chia hai nhóm S&P 500 (`sp500`) và unicorn
+(`unicorn`). `boards groups` liệt kê nhóm, `boards group NAME on|off` tắt hoặc bật
+cả nhóm mà không xoá board, `boards import PATH` xem preview board của bạn rồi
+`--confirm` để thêm; board của bạn luôn được fetch. Các nguồn này không bảo đảm
+eligibility hay bảo lãnh.
 
 ```text
-python autoapply-local.py boards list
+python autoapply-local.py boards groups
+python autoapply-local.py boards group unicorn off
 python autoapply-local.py boards import examples/boards.json
 python autoapply-local.py boards import examples/boards.json --confirm
-python autoapply-local.py fetch
-python autoapply-local.py apply 1
-python autoapply-local.py review all
 ```
 
-Setup chỉ cài nguồn mặc định khi config chưa có khóa `boards`: Anthropic qua
-Greenhouse, NVIDIA qua Workday (search `software`) và SpreeAI qua Rippling. Đây là
-nguồn khám phá công khai có thể sửa, không bảo đảm eligibility hay sponsorship.
-Chạy setup lại giữ lựa chọn của bạn, kể cả danh sách rỗng. Import mẫu ở trên xem
-preview rồi gộp cùng bộ nguồn mặc định; muốn thêm hoặc đổi nguồn, chép/sửa JSON
-list đó rồi preview và confirm file riêng. Import khớp định danh ATS ổn định, giữ
-cấu hình không liên quan; input/config đổi thì cần preview mới. Endpoint override
-phải là HTTPS công khai đúng ATS được hỗ trợ.
+Để sửa nâng cao, `user/profile-intake.md` chứa mọi nhóm fact trong một form: xem
+preview bằng `profile update PATH`, rồi thêm `--confirm`. `source extract PATH`
+biến PDF/TEX/DOCX thành text nháp để kiểm; bản nháp không bao giờ là fact đã xác
+nhận. Đổi profile làm các câu trả lời và review phụ thuộc hết hiệu lực.
 
-Cũng có thể sửa `resources.boards` trong intake đầy đủ: thiếu trường hoặc `null`
-giữ nguồn hiện tại; `[]` chủ ý tắt nguồn đã cấu hình. Fetch khi không có nguồn cần
-cấu hình qua `boards list` / `boards import` / `setup` hoặc truyền `--url` hỗ trợ,
-không âm thầm thành công với zero job. Nguồn đã cấu hình vẫn có thể không có job
-khớp. List/import nguồn và fetch không đòi các trường onboarding không liên quan.
-Apply điền rồi giữ tab; review kiểm lại tab đó. Giữ form chưa nộp mở.
+## Dùng hằng ngày: apply
 
-## Engine, quyền và lệnh
+Không có gì chạy theo lịch. Một lượt chỉ bắt đầu khi bạn gõ `apply [N]`: `/apply 5`
+trong Claude Code, `$autoapply-local apply 5` trong Codex, hoặc trong terminal:
 
-Đăng nhập engine đã chọn theo luồng bình thường. `doctor [ENGINE]` chỉ kiểm có
-executable/dependency; không kết luận đã đăng nhập hay đã có connector. Setup
-tạo `.mcp.json` và `mcp-codex.json` trong thư mục runtime để bạn kiểm và phê duyệt
-browser MCP. Fragment Codex dùng `mcp_servers` để kiểm cấu hình; mỗi task tự
-truyền endpoint của lane. Nếu config kế thừa đã có `autoapply-local-browser`,
-cần bỏ entry trùng trước khi dùng transport riêng để tránh kế thừa env ngoài ý
-muốn. Không thay cấu hình global. Mỗi task dùng một engine, CLI override có
-ưu tiên, không pin model hoặc fallback sang engine khác; không bypass approvals.
-Analysis tắt công cụ ngoài; browser chỉ dùng connector của lane đã chọn
-và công cụ của thao tác đó. Các quyền runtime bình thường vẫn được giữ.
+```text
+python autoapply-local.py apply 5
+```
 
-Task có công cụ ngoài trên Claude cần CLI từ 2.1.295 để hook chặn lỗi hoạt động.
-Runtime probe đúng executable đã chọn trước khi dispatch. Bản cũ hoặc version
-không đọc được trả `unsupported_version`; cập nhật thủ công theo hướng dẫn cài
-đặt chính thức của CLI. Analysis không có công cụ ngoài không gắn hook
-này. Chỉ tên nội bộ chính xác `StructuredOutput` được phép định dạng JSON;
-runtime chỉ nhận success envelope và structured output đúng schema.
-Native `permission_denials` có phần tử sẽ trả `permission_required` trước khi
-nhận structured output. Phê duyệt tool bằng quy trình approval project bình
-thường của CLI rồi thử lại thủ công; sản phẩm không tự ghi luật cấp quyền.
+Không có N thì điền đúng số job mỗi lượt đã chọn trong setup. Một lượt, theo thứ tự:
 
-Prompt, JSON và đường dẫn có dấu cách/Unicode được truyền bằng UTF-8. Với npm
-`.cmd` của hai package CLI đã biết trên Windows, resolver chạy bin JavaScript
-bằng Node hoặc bin `.exe` native trực tiếp, `shell=False`. Hỗ trợ cả npm global
-prefix và local `node_modules/.bin`. Shim khác hoặc bản cài
-thiếu file trả `configuration`; hoàn tất cài đặt/postinstall native thủ công.
-MCP Codex/Windows dùng argv cố định `cmd /c npx`, env hệ thống, timeout khởi động
-20 giây, phiên bản MCP đã ghim và URL loopback được kiểm. Transport Claude tách
-riêng. Các quyền phê duyệt bình thường vẫn áp dụng, không tự cấp quyền tool.
+1. Track: tab đang giữ đã sang trang xác nhận của ATS và mail xác nhận trong tab
+   Gmail thành dòng tracker (xem `track` ở mục [Lệnh](#lệnh)). Tab đã điền nhưng
+   chưa nộp được liệt kê, giữ nguyên và tính vào trần tab. Form đang giữ mà Chrome
+   đã mất tab (ví dụ sau khi khởi động lại) được mở lại đúng URL và điền lại.
+2. Fetch job mới từ các board đang bật.
+3. Lọc theo bộ lọc đã xác nhận và bỏ job đã có trong tracker hoặc trong lịch sử
+   Gmail/file nhập (cùng công ty và role).
+4. Chọn resume: PDF có tag role trùng nguyên từ với tiêu đề job; nhiều PDF khớp →
+   PDF nêu nhiều từ khóa công nghệ của mô tả job nhất (không dùng model; hòa thì giữ
+   thứ tự cấu hình); không PDF nào khớp và bạn có hơn một PDF → `apply` hỏi một lần
+   cho mỗi role trong terminal và nhớ ở `user/resume-choices.json`. Mỗi lựa chọn và
+   lý do được in ra trước khi điền.
+5. Điền bằng script driver của ATS: Greenhouse, Workday, Rippling, Ashby, Lever và
+   Workable. Workday đăng nhập bằng tài khoản lưu cho site Workday đó trong
+   `secrets.json`, tạo tài khoản khi đăng nhập thất bại, và gõ mã xác minh đọc từ
+   tab Gmail. Hiện chưa có bước setup nào lưu tài khoản đó; không có tài khoản thì
+   tab Workday được giữ để bạn tự đăng nhập.
+6. Câu hỏi bắt buộc chưa có đáp án đã xác nhận không làm dừng lượt chạy: chúng được
+   gom cho cả lượt và kết quả có `questions.pending`. Sau đó engine hỏi tất cả trong
+   một popup native (cùng một câu từ nhiều job chỉ hỏi một lần), lưu đáp án vào
+   `user/answer-bank.json` và điền vào các tab đang giữ. Đáp án trong bank chỉ được
+   dùng lại cho cùng chữ câu hỏi, lựa chọn, quốc gia và loại job; chỉ câu hỏi về
+   riêng bạn (học vấn, kỹ năng, ngôn ngữ, câu lạc bộ, dự án) mới được dùng cho công
+   ty khác. Câu về quyền làm việc, bảo lãnh, đồng ý, EEO, lương và câu riêng của
+   công ty không bao giờ được suy ra. Một lần điền lại chỉ tính khi tab, đọc lại
+   mới, hiện đúng đáp án của bạn; nếu không thì `questions --refill` thử lại.
+7. Không bao giờ Submit. Bạn tự kiểm từng tab đang giữ và tự nộp.
+8. Job trên ATS chưa có driver (iCIMS, SmartRecruiters, Taleo, ...) không bao giờ
+   được mở: chúng vào danh sách tự nộp kèm link và resume gợi ý. CAPTCHA, đăng nhập
+   hoặc control chưa hỗ trợ giữ tab; xử lý ngay trong tab đó rồi chạy `apply ID`
+   cho job đó.
+9. Bộ chặn quota: trước mỗi job, một lệnh nhỏ đọc mức dùng 5 giờ và tuần của
+   engine (cứ ba job một lần, hoặc mỗi job khi cách ngưỡng dưới 10 điểm). Khi một
+   trong hai đạt phần trăm dừng đã chọn ở setup, hoặc engine báo hết hạn mức, lượt
+   chạy dừng: tab đang giữ vẫn mở, job chưa bắt đầu giữ trạng thái chờ cho lượt
+   sau, cuối bảng ghi lý do và số job còn lại (`quota` và `left` trong JSON). Không
+   biết mức dùng thì không bao giờ dừng.
+10. Cuối lượt, stderr in một bảng, mỗi job một dòng (công ty, role, resume, tab,
+   field cần kiểm), rồi mail xác nhận tìm thấy trong Gmail, job bị bỏ kèm lý do,
+   danh sách tự nộp và các câu hỏi chưa có đáp án. Stdout cuối vẫn là JSON.
 
-Codex dùng `--skip-git-repo-check` cho runtime ngoài Git và sandbox chỉ đọc.
-Override TOML trong từng lần gọi tắt connector kế thừa, shell, browser/computer
-native, thực thi code và multi-agent; browser chỉ mở thao tác MCP được chọn.
-Giữ model/provider, kho đăng nhập và approval policy hiện có. Codex chỉ bật
-`features.code_mode_host` và `features.workspace_dependencies` khi task yêu cầu
-rõ công cụ MCP/connector native. Đây là hạ tầng broker; analysis và danh
-sách tool rỗng giữ cả hai tắt, còn `features.code_mode` và các capability bị hạn
-chế khác vẫn tắt. Trước inference,
-probe `mcp list --json` lấy inventory MCP hiệu lực qua cùng CLI đã resolve,
-thư mục làm việc và policy task, gồm cả hai cờ broker, trên Windows, macOS và
-Linux. Chỉ giữ
-identifier và cờ enabled; bỏ metadata transport, môi trường và xác thực.
-Inventory lỗi/không dùng được, config không đọc được, policy managed đã phát
-hiện nhưng chưa xác minh hoặc legacy profile không hỗ trợ đều bị chặn.
-Không vượt requirements managed; lỗi cấu hình cần xử lý thủ công. Override
-không chứng minh capability live. Không đọc auth file, chép credential hay cấu
-hình toàn cục.
+```text
+python autoapply-local.py questions --ui claude
+python autoapply-local.py questions --answer user/question-answers.json
+python autoapply-local.py questions --refill
+python autoapply-local.py status
+python autoapply-local.py review all
+python autoapply-local.py submitted greenhouse:acme:4012345
+python autoapply-local.py track
+python autoapply-local.py apply greenhouse:acme:4012345
+```
 
-Lỗi được phân biệt `login_required`, `quota_exhausted`, `timeout`, `configuration`,
-`permission_required`, `unsupported_version`, `invalid_response`, `engine_failure`, không in output
-nhạy cảm từ CLI. Probe tối đa 10 giây, task tối đa 300 giây. Lỗi runtime trả exit
-3; JSON/schema không hợp lệ trả exit 2. Không tự fallback engine.
-`doctor` báo riêng executable có tồn tại, argv đã resolve và dependency;
-login/connector/capability vẫn là `not_verified`. Test offline chưa chứng minh
-CLI thật, handshake MCP, ATS hay Gmail đã chạy được.
+Một popup chứa số câu mà công cụ của engine nhận một lần (Claude 4, Codex 3); phần
+còn lại chờ popup kế tiếp và `deferred` cho biết còn bao nhiêu. Bỏ qua, hết giờ hoặc
+không có công cụ native thì câu hỏi vẫn chờ. Tab đang hiện đơn khác không bao giờ
+bị ghi.
 
-Từ runtime root, chạy `python autoapply-local.py LỆNH`; slash command và skill
-Codex cục bộ cũng dùng launcher chọn đúng root này. Nếu gọi thẳng module hoặc
-entrypoint đã cài, đặt `--user-dir PATH` trước tên lệnh.
+Khi chạm trần tab đang giữ, hãy tự nộp các form đang giữ và ghi lại bằng
+`submitted ID,ID` (hoặc để `track` tự tìm) trước khi mở thêm. Không đóng form chưa
+nộp. ID job ghi rõ thì không bị lọc trùng. Lỗi phân tích trước thao tác browser trả
+job vừa claim về `pending` để thử lại thủ công, còn tab đang giữ vẫn mở.
 
-Với `apply` và `review`, `--approve-browser-tools` là opt-in tường minh
-chỉ cho lệnh hiện tại. Cờ chỉ duyệt các tool MCP browser cục bộ mà từng task yêu
-cầu và không được lưu lại. Policy hiện có, gồm managed policy, permission denials
-và review gate, vẫn áp dụng. Cờ không duyệt tool Gmail hay analysis. Không lệnh
-nào bấm Submit, và không task engine nào được xin quyền Submit; bạn tự kiểm từng
-tab đang giữ rồi tự nộp.
+## Cập nhật
 
-- `setup`: khởi tạo intake và state trống, không ghi đè file cũ.
-- `setup --terminal [--no-launch]`: hỏi trên terminal (ngôn ngữ, engine kèm kiểm
-  đăng nhập và quota, phần trăm quota để dừng, resume PDF gắn tag vị trí, số job mỗi
-  lượt), lưu vào `config.json`; sau đó mở profile Chrome sạch riêng của tool
-  (`chrome/lane-1` trong thư mục runtime) ở trang Gmail để bạn đăng nhập, rồi thêm
-  mail xác nhận nộp đơn của sáu tháng qua vào tracker, mỗi đơn một lần; cuối cùng
-  mở engine đã chọn với `/setup`.
-- `boards list`: xem nguồn khám phá job đã cấu hình.
-- `boards import PATH [--confirm]`: kiểm, chuẩn hóa và bỏ trùng JSON list nguồn;
-  xem preview nguồn thêm/đổi rồi xác nhận để gộp.
-- `profile update PATH [--confirm]`: xem preview rồi xác nhận intake.
-- `source extract PATH`: trích PDF/TEX/DOCX thành draft JSON ở `user/drafts`;
-  kiểm, chuyển fact vào intake, preview rồi xác nhận `profile update`.
-- `history import PATH [--confirm]`: preview lịch sử CSV/XLSX rồi xác nhận nhập,
-  giữ trạng thái đơn lịch sử và chống trùng.
-- `doctor [ENGINE]`: kiểm dependency và nêu phần login/connector chưa xác minh.
-- `fetch [ENGINE] [--url URL]`: lấy board Greenhouse/Workday/Rippling đã cấu hình
-  hoặc URL hỗ trợ nhập tay; sửa nguồn qua `boards import` hoặc `resources.boards`
-  trong intake, mẫu ở examples/boards.json.
-- `apply [ENGINE] [N|ID,ID]`: một lượt chạy theo thứ tự: `track` (báo ở mục
-  `track`); form đang giữ mà Chrome đã mất tab (ví dụ sau khi khởi động lại) được
-  mở lại đúng URL và điền lại trước; `fetch` các board đang bật; bỏ job ledger đã
-  có hoặc trùng công ty và role với dòng lịch sử từ Gmail/file nhập; rồi điền tối đa
-  N job mới (mặc định: số job mỗi lượt trong setup; `--quick N` vẫn dùng được) bằng
-  PDF theo role và script driver của ATS. Job trên ATS chưa có driver (iCIMS,
-  SmartRecruiters, Taleo, ...) không bao giờ được mở: chúng vào danh sách tự nộp
-  kèm link và resume gợi ý. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng
-  tuyển dụng và PDF của từng job; cuối lượt stderr in bảng (công ty, role, resume,
-  tab, field cần kiểm), xác nhận tìm thấy, job bị bỏ kèm lý do, danh sách tự nộp và
-  số câu bắt buộc chưa có đáp án (`questions`, xem ở trên; từng field nằm ở
-  `unanswered`). Trước mỗi job, bộ chặn quota đọc mức dùng 5 giờ và tuần của engine
-  bằng một lệnh nhỏ (cứ ba job một lần, hoặc mỗi job khi cách ngưỡng dưới 10 điểm);
-  khi một trong hai đạt phần trăm dừng đã chọn ở setup, hoặc engine báo hết hạn mức,
-  lượt chạy dừng: tab đang giữ vẫn mở, job chưa bắt đầu giữ trạng thái chờ cho lượt
-  sau, cuối bảng ghi lý do và số job còn lại (`quota` và `left` trong JSON). Không
-  biết mức dùng thì không bao giờ dừng. Stdout cuối vẫn là JSON. ID job ghi rõ thì không bị lọc trùng.
-  Lệnh không bao giờ nộp.
-- `review ID,ID|all`: đọc lại form đang giữ, kiểm job/tab/field/fact/PDF còn mới.
-- `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng
-  tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
-  mở tới khi bạn tự đóng.
-- `track`: ghi lại các form đang giữ mà bạn đã tự nộp. Tab đang giữ đã sang trang
-  xác nhận của chính posting đó (Greenhouse, Workday, Rippling, Lever) sẽ thành dòng
-  tracker và tab được đóng. Trang Workday không nêu job nào thì chưa đủ: tab được
-  liệt kê là đang chờ tới khi có mail. Mail xác nhận trong tab Gmail nêu đúng tên
-  công ty (và role, nếu mail có) của job đang giữ, gửi từ ngày giữ form trở đi,
-  cũng thành dòng tracker. Form giữ từ trước khi tool lưu ngày giữ cần mail trong
-  14 ngày gần nhất nêu đúng role, và tracker chưa có đơn nào cùng công ty và role
-  đó. Tab còn ở form được liệt kê là đang chờ và giữ nguyên; tab đã mất mà chưa có
-  bằng chứng được liệt kê kèm URL. Gmail được tìm ngược tới form giữ lâu nhất (ít
-  nhất 14 ngày, nhiều nhất sáu tháng); mail xác nhận của công ty khác được thêm vào
-  lịch sử một lần, còn mail khác nêu công ty của job đang giữ thì được để lại. Mail
-  chỉ được khớp khi không job nào khác của công ty đó có thể đã gửi nó: một form
-  khác đang giữ hoặc đã điền (kể cả form giữ từ trước khi tool lưu ngày giữ, hoặc
-  form mà tab vừa hiện trang xác nhận) hay một đơn được ghi trong 14 ngày qua, trừ
-  khi mail nêu role khác. Không thì mail được để lại. Lệnh chỉ liệt kê tab và đọc
-  dòng Gmail, không chạy script trong tab job, và không đổi gì khi Chrome của tool chưa chạy.
-- `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
-- `update`: chép `user/` (trừ `backups/` và profile Chrome) vào
-  `user/backups/<ngày-giờ>/`, rồi `git pull --ff-only` (không có git: tải zip của
-  bản phát hành mới nhất, không bao giờ ghi vào `user/` hay `.venv/`), cài lại bằng
-  `pip install -e .`, chạy mỗi migration dữ liệu còn thiếu đúng một lần và in những gì đã đổi.
-  `apply` in một dòng ra stderr khi có bản mới; đặt
-  `AUTOAPPLY_LOCAL_NO_UPDATE_CHECK=1` để bỏ bước kiểm này.
+```text
+python autoapply-local.py update
+```
 
-Mặc định một lane Chrome sạch và bền giữa các lệnh. Hai/ba lane cần opt-in.
-Kiểm RAM và giới hạn tab là heuristic, chưa phải benchmark máy 8 GB. Khi chạm trần,
-hãy tự nộp các form đang giữ và ghi lại bằng `submitted ID,ID` trước khi mở thêm. Khi cần tạo
-tài khoản, đăng nhập, CAPTCHA/MFA hoặc sửa control chưa hỗ trợ, thao tác trong tab
-đang giữ rồi tiếp tục. Không đóng form chưa nộp. Package không thu/lưu mật khẩu.
-Chạy lại `apply [ENGINE] ID` với đúng ID để tiếp tục cùng tab sau khi xử lý
-blocker. Nếu login/CAPTCHA/thiếu dữ liệu còn vướng, giữ trạng thái manual.
+`update` chép thư mục runtime `<repo>/user/` (trừ `backups/`, profile Chrome và
+`secrets.json`) vào `<repo>/user/backups/<ngày-giờ>/`, rồi chạy `git pull --ff-only`
+(không có git thì tải zip của bản phát hành mới nhất, không bao giờ ghi vào `user/`,
+`.venv/` hay `.git/`), cài lại bằng `pip install -e .`, chạy mỗi migration dữ liệu
+còn thiếu đúng một lần và in những gì đã đổi. `apply` in một dòng ra stderr khi có
+bản mới; đặt `AUTOAPPLY_LOCAL_NO_UPDATE_CHECK=1` để bỏ bước kiểm này.
 
-Job mới luân phiên lane trong giới hạn opt-in; mỗi job lưu lane/debug endpoint để
-restore đúng browser. Kiểm RAM và trần tab trước từng job, giữ kết quả từng phần
-khi hết tài nguyên; vẫn được kiểm/tiếp tục tab đang giữ lúc chạm trần.
-Luồng nhiều trang truyền PDF đã chọn vào thao tác native, upload tại bước Resume
-trước Next. Review kiểm text/value mới và attachment khớp receipt upload được
-browser quan sát; hash dự kiến của file cục bộ không tự chứng minh đã upload.
+## Dữ liệu của bạn
+
+Mọi thứ bạn thêm hoặc tool ghi lại đều nằm trong runtime root, mặc định là
+`<repo>/user/`, được Git bỏ qua và bị loại khỏi artifact phát hành. Đường dẫn dưới
+đây tính từ root đó:
+
+- `config.json`, `profile.json`, `answers.json`: cấu hình, fact đã xác nhận và câu
+  trả lời đã xác nhận.
+- `resumes/`: các resume PDF bạn thêm trong setup terminal.
+- `user/resume/`: thư mục để resume PDF và file nguồn resume (TEX, DOCX).
+- `user/additional-document/`: thư mục để bảng điểm, chứng chỉ, cover letter và
+  tài liệu bổ sung khác.
+- `user/answer-bank.json`, `user/resume-choices.json`: câu trả lời bạn đã đưa cho
+  câu hỏi trong form và lựa chọn resume theo role.
+- `tracker.xlsx` và `ledger.json`: tracker (lịch sử chuẩn) và trạng thái job.
+- `secrets.json`: email và mật khẩu tài khoản Workday cho từng site Workday. File
+  không bao giờ được in hay ghi log, không được `update` backup, và audit phát hành
+  thất bại nếu Git theo dõi nó.
+- `chrome/`: profile Chrome sạch riêng của tool; không bao giờ dùng profile thường
+  ngày của bạn.
+- `backups/`: bản sao do `update` tạo.
+
+Hai thư mục để tài liệu được setup tạo kèm một README ngắn (chỉ tạo khi chưa có;
+tài liệu và README bạn đã sửa được giữ nguyên). Bỏ file vào đó chỉ để lưu: không tự
+chọn resume, trích hay xác nhận fact, hay upload gì. Resume mà `apply` dùng là các
+file thêm trong setup terminal; tài liệu bổ sung không bao giờ tự upload.
 
 Không có lệnh Gmail và không có OAuth. Truy cập Gmail duy nhất là tab Gmail trong
-profile Chrome riêng của tool, nơi bạn tự đăng nhập: setup tìm trong đó mail xác
-nhận nộp đơn của 183 ngày qua và đọc các dòng kết quả (người gửi, tiêu đề, đoạn
-trích, ngày). Tool không bao giờ mở, gửi, soạn nháp, lưu trữ hay gắn nhãn mail,
-bỏ qua mail xác minh, và chỉ lưu tiêu đề mail xác nhận, công ty, vị trí, ngày.
+profile Chrome riêng của tool, nơi bạn tự đăng nhập: tool tìm trong đó và đọc các
+dòng kết quả (người gửi, tiêu đề, đoạn trích, ngày). Tool không bao giờ mở, gửi,
+soạn nháp, lưu trữ hay gắn nhãn mail, bỏ qua mail xác minh, và chỉ lưu tiêu đề mail
+xác nhận, công ty, role và ngày. `history import PATH` xem preview lịch sử ứng tuyển
+CSV/XLSX; `--confirm` nhập có chống trùng. Giữ backup tracker và ledger.
 
-Tracker XLSX cục bộ là nguồn chuẩn; khôi phục ledger phải đối chiếu mọi trạng thái
-lịch sử. Nhập lịch sử CSV/XLSX cần preview và confirm; trạng thái không biết phải
-xử lý rõ ràng, không biến thành pending. Giữ backup tracker và ledger.
+## Lệnh
+
+Từ runtime root, chạy `python autoapply-local.py LỆNH`. Slash command cục bộ và
+skill Codex dùng cùng launcher đó. Không lệnh nào bấm Submit.
+
+- `setup`: tạo hoặc làm mới runtime (command, skill, launcher, thư mục tài liệu,
+  cấu hình browser) mà không thay file của bạn. `setup --terminal [--no-launch]` là
+  phần 1; `setup --guided`, `--answer PATH`, `--finish`, `--confirm` và `--restart`
+  kèm `--ui UI` là phần 2 (mỗi lần một hành động); `--edit QUESTION_ID` mở lại một câu.
+- `boards list|groups`, `boards group NAME on|off`, `boards import PATH
+  [--confirm]`: xem, bật/tắt và thêm nguồn job.
+- `demo`: điền form demo offline trong Chrome của tool.
+- `profile update PATH [--confirm]`: xem preview rồi nhập intake nâng cao.
+- `source extract PATH`: text nháp từ PDF/TEX/DOCX, lưu ở `user/drafts`.
+- `history import PATH [--confirm]`: xem preview rồi nhập lịch sử CSV/XLSX.
+- `doctor [ENGINE]`: kiểm executable và dependency; đăng nhập và connector vẫn là
+  `not_verified`.
+- `fetch [ENGINE] [--url URL]`: fetch các board đang bật, hoặc một URL job hỗ trợ.
+- `apply [ENGINE] [N|ID,ID]`: một lượt như mô tả ở
+  [Dùng hằng ngày](#dùng-hằng-ngày-apply); `--quick N` vẫn dùng được và
+  `--approve-browser-tools` duyệt công cụ browser chỉ cho lệnh này.
+- `review ID,ID|all`: đọc lại form đang giữ và kiểm job, tab, giá trị, profile và PDF
+  còn mới. Lệnh không bao giờ nộp hay đóng form.
+- `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp; lệnh ghi dòng
+  tracker và giải phóng chỗ trong trần tab, không đụng browser.
+- `questions --ui UI`, `questions --answer PATH`, `questions --refill`: hỏi, lưu và
+  điền lại câu hỏi bắt buộc mà `apply` đang giữ.
+- `track`: ghi lại các form đang giữ mà bạn đã tự nộp, từ trang xác nhận của ATS
+  trong tab của chúng (Greenhouse, Workday, Rippling, Lever) hoặc mail xác nhận
+  trong tab Gmail nêu đúng tên công ty của job (và role, nếu mail có), gửi từ ngày
+  giữ form trở đi. Mail chỉ được khớp khi không job nào khác của công ty đó (đang
+  giữ, đã điền hoặc vừa được ghi) có thể đã gửi nó; không thì mail được để lại.
+  Trang Workday không nêu job nào thì chờ mail. Tab còn ở form được liệt kê là đang
+  chờ; tab đã mất mà chưa có bằng chứng được liệt kê kèm URL. Lệnh không bao giờ
+  chạy script trong tab job và không đổi gì khi Chrome của tool chưa chạy.
+- `status`: xem form đang giữ, số đếm và đơn chưa giải quyết, không cần engine.
+- `update`: backup, cập nhật và migrate (xem [Cập nhật](#cập-nhật)).
+
+## Engine và quyền browser
+
+Mỗi task dùng một engine, engine chọn trong setup hoặc ghi trên dòng lệnh; không có
+engine dự phòng và không ghim model. Đăng nhập engine theo luồng bình thường của nó.
+Setup ghi `.mcp.json` và `mcp-codex.json` cục bộ trong runtime root mà không thay
+file có sẵn; mở runtime root trong engine và phê duyệt browser MCP cục bộ như bình
+thường. Không gì thay cấu hình toàn cục hay ghi luật cấp quyền, và không bao giờ
+vượt qua phê duyệt.
+
+Với `apply`, `review` và `questions`, `--approve-browser-tools` chỉ duyệt các công cụ
+browser MCP cục bộ mà từng task yêu cầu, chỉ cho lệnh đó; cờ không được lưu và không
+duyệt công cụ Gmail hay analysis. Policy hiện có, policy managed và permission
+denials vẫn áp dụng.
+
+```text
+python autoapply-local.py doctor
+```
+
+Task có công cụ ngoài trên Claude cần CLI từ 2.1.295; bản cũ hơn trả
+`unsupported_version`. Codex chạy chỉ đọc, ngoài Git, với override trong phiên tắt
+connector kế thừa, shell, browser native và thực thi code; Codex probe inventory MCP
+hiệu lực bằng `mcp list --json` trước và chặn khi cấu hình không đọc được hoặc
+managed mà không xác minh được. Lỗi được báo là `login_required`, `quota_exhausted`,
+`timeout`, `configuration`, `permission_required`, `unsupported_version`,
+`invalid_response` hoặc `engine_failure`, không in output nhạy cảm của CLI. Probe tối
+đa 10 giây, task tối đa 300 giây; lỗi runtime thoát mã 3, input hoặc phản hồi không
+hợp lệ thoát mã 2. Lần smoke trước đây trên Windows với cả hai engine không xác nhận
+runtime hiện tại.
+
+Mặc định một lane browser; hai hoặc ba lane cần opt-in rõ trong intake. Trước mỗi job
+mới, tool kiểm RAM trống và số tab đang giữ; luật bộ nhớ là heuristic, chưa phải
+benchmark máy 8 GB. Mỗi job giữ lane của nó nên các lệnh sau tìm lại đúng tab.
 
 ## Kiểm và export
 
-Từ thư mục release: `python -m unittest discover -s tests -p "test_*.py" -v`,
-`node --test tests/adapters.test.cjs tests/gmail.test.cjs`, `python scripts/check_release.py`.
-Test dùng dữ liệu tổng hợp và mock engine/browser/network; smoke TeX chỉ chạy
-khi có công cụ tùy chọn. Manifest và scanner kiểm nội dung nguồn lẫn archive
-wheel/sdist/ZIP cuối; .gitignore không thay thế kiểm. Không publish user data,
-credential hay build output. Repo public chứa source test tổng hợp đã qua audit
-để CI chạy; wheel và sdist không chứa test.
+Từ gốc kho mã:
 
-Đây là bản public prerelease thử nghiệm; xem kết quả CI được ghi nhận tại
-[Actions](https://github.com/tlamDson/autoapply-local/actions).
-Các kiểm tra cục bộ được ghi nhận ở đây chạy trên Windows; workflow khai báo Windows/macOS với Python 3.11 và 3.12,
-chưa khẳng định CI remote đã chạy hay đã kiểm phần cứng macOS.
-Job thứ hai, install-smoke, chạy install.ps1 (Windows) hoặc install.sh (macOS) trên runner sạch,
-rồi scripts/ci_smoke.py: doctor, setup terminal với câu trả lời định sẵn và một bản thay thế offline cho
-CLI engine, profile đã xác nhận của một ứng viên giả, và điền form demo offline.
+```text
+python -m unittest discover -s tests -p "test_*.py" -v
+node --test tests/adapters.test.cjs tests/gmail.test.cjs
+python scripts/check_release.py
+```
 
-`pyproject.toml` là nguồn chuẩn cho tên project, version hiện tại, dependencies và
-glob package-data của wheel. Tên artifact và metadata phải khớp version đó.
-`--artifacts DIR` kiểm mọi wheel, sdist và ZIP source cuối trong thư mục: đúng bộ
-file, byte của source đã đóng gói, metadata, hash/kích thước trong wheel RECORD và
-các luật privacy/đường dẫn hiện có. Artifact cũ bị từ chối kể cả khi nằm cạnh bản
-hiện tại. Mặc định là `--expect wheel,sdist`; dùng `--expect wheel,sdist,zip` để
-yêu cầu đủ ba loại. Thiếu loại được yêu cầu làm audit thất bại.
+Test dùng dữ liệu tổng hợp tạm và mock engine, browser, network. Export nguồn dùng
+`export-allowlist.json` kèm quét nội dung, không chỉ dựa vào `.gitignore`; dữ liệu
+runtime, credential và output build bị loại. Source test tổng hợp có trong repo public
+để CI chạy; wheel và sdist không chứa test. Đây là bản public prerelease thử nghiệm;
+xem kết quả CI tại [Actions](https://github.com/tlamDson/autoapply-local/actions).
+Workflow khai báo job Windows và macOS với Python 3.11 và 3.12. Job thứ hai,
+install-smoke, chạy `install.ps1` (Windows) hoặc `install.sh` (macOS) trên runner sạch,
+rồi `scripts/ci_smoke.py`: doctor, setup terminal với câu trả lời định sẵn và một bản
+thay thế offline cho CLI engine, profile đã xác nhận của một ứng viên giả, và điền form
+demo offline.
 
-Wheel chứa module Python trong package và package-data đã khai báo, cùng metadata
-wheel và file license. Sdist chứa allowlist export trừ test, cộng metadata sinh
-ra cho source distribution. ZIP source chứa đúng toàn bộ allowlist, kể cả test
-tổng hợp, dưới thư mục gốc có version. Trong ba artifact này, chỉ ZIP source chứa
-test. `--source-zip DIR` kiểm source trước, tạo ZIP theo thứ tự sort với timestamp
-cố định rồi tự kiểm ZIP. Lệnh từ chối ghi đè artifact đã tồn tại.
-
-Từ thư mục release, tạo export mới và thư mục artifact cuối tách riêng (thư mục
-export và install-work trong ví dụ phải chưa tồn tại):
+`pyproject.toml` là nguồn chuẩn cho tên project, version, dependency và package data
+của wheel. `--artifacts DIR` kiểm mọi wheel, sdist và ZIP nguồn cuối trong thư mục
+(bộ file, byte đã đóng gói, metadata, hash RECORD của wheel và luật privacy/đường dẫn)
+và từ chối artifact cũ; mặc định `--expect wheel,sdist`, `--expect wheel,sdist,zip`
+yêu cầu đủ ba loại. `--source-zip DIR` kiểm nguồn, rồi ghi và kiểm một ZIP tái lập
+được; lệnh không bao giờ ghi đè artifact. Từ gốc kho mã (thư mục export và thư mục làm
+việc phải chưa tồn tại):
 
 ```text
 python scripts/check_release.py --export ../autoapply-export-new
@@ -500,15 +412,12 @@ python -m pip wheel --no-deps --no-build-isolation --wheel-dir ../autoapply-arti
 python -m build --sdist --no-isolation --outdir ../autoapply-artifacts-new
 python scripts/check_release.py --source-zip ../autoapply-artifacts-new
 python scripts/check_release.py --artifacts ../autoapply-artifacts-new --expect wheel,sdist,zip
-python scripts/check_install.py --artifacts ../autoapply-artifacts-new --work-dir "../install thử ünïcode new"
+python scripts/check_install.py --artifacts ../autoapply-artifacts-new --work-dir "../install space ünïcode new"
 ```
 
-Các lệnh build cần build requirements đã ghim trong `pyproject.toml` và package
-`build`. Smoke cài đặt kiểm artifact cuối trước khi tạo hai venv mới có đủ
-dependencies, rồi kiểm bản cài wheel và sdist từ ngoài source tree. Thư mục làm
-việc chứa lệnh/kết quả và tách khỏi source public. Nếu đã chuẩn bị wheelhouse
-dependency offline, thêm `--wheelhouse PATH` vào `check_install.py`; dependencies
-vẫn được cài đầy đủ. Đây là quy trình kiểm tích hợp, chưa phải báo cáo tích hợp
-đã hoàn tất cho artifact hiện tại.
+Các lệnh build cần build requirements đã ghim và package `build`. `check_install.py`
+cài wheel và sdist vào hai venv mới từ ngoài cây nguồn; thêm `--wheelhouse PATH` khi
+có wheelhouse dependency offline. Đây là quy trình kiểm, chưa phải kết quả đã hoàn
+tất cho artifact hiện tại.
 
 License MIT, ghi nguồn tại NOTICE.

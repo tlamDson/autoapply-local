@@ -3,8 +3,9 @@
 Native browser fill still carries
 real-engine risks and needs a live ATS gate before it can be considered stable.
 
-Fill browser native còn rủi ro
-với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
+The flow: terminal setup (`python autoapply-local.py setup --terminal`, in a plain
+terminal), engine setup (`/setup`, Codex: `$autoapply-local setup`), then
+`apply [N]` whenever you want a batch filled, and `update` for a new release.
 
 Open this exact directory in your selected engine. Activate the Python environment
 where autoapply-local is installed. Commands and the Codex skill here use
@@ -112,7 +113,7 @@ stderr before browser work. It fills and holds existing PDFs and never clicks
 Submit. Keep held tabs open, review each one, submit it yourself, then record
 it with `submitted ID,ID` to free its held-tab slot.
 
-## Document drop folders / Thư mục tài liệu
+## Document drop folders
 
 Setup JSON returns absolute `resume_dir` and `additional_document_dir` paths
 inside this runtime. Put resume PDFs and TEX/DOCX resume source files in
@@ -122,17 +123,10 @@ only when absent. Repeat setup preserves all documents and edited guides.
 Folder/file conflicts and symlinks escaping the runtime are rejected before
 writing either guide. Keep runtime `user/` data out of Git and release artifacts.
 
-Storing documents does not select a PDF, extract or confirm facts, enable tailor,
-or upload files. Explicitly set `main_pdf` in the intake's `resumes` group to the
-PDF's absolute path; relative paths resolve from the caller's working directory.
-Preview profile update, check facts, then explicitly confirm. PDF-only quick
-apply needs no LaTeX. Additional documents are not uploaded automatically.
-
-Để resume PDF và nguồn TEX/DOCX vào `user/resume/`; để bảng điểm, chứng chỉ,
-cover letter và tài liệu bổ sung vào `user/additional-document/`. Chọn rõ PDF
-bằng đường dẫn tuyệt đối trong intake, xem preview rồi xác nhận fact.
-Chỉ lưu file không tự chọn PDF, trích fact, xác nhận fact, bật tailor hay upload.
-Quick apply với PDF có sẵn không cần LaTeX; tài liệu bổ sung không tự upload.
+Storing documents does not select a PDF, extract or confirm facts, or upload
+files. The PDFs `apply` uses are the ones added with role tags in terminal setup
+(copied to `resumes/`). PDF-only quick apply needs no LaTeX. Additional documents
+are not uploaded automatically.
 
 Live ATS, Gmail, both-engine operation, macOS hardware and an 8 GB machine remain
-untested. See AGENTS.md for runtime constraints. Back up your local runtime data.
+untested; macOS has not been tested live. See AGENTS.md for runtime constraints. Back up your local runtime data.

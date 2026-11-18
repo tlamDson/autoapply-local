@@ -3,7 +3,7 @@
 Assumption: runtime root contains profile.json/config.json/answers.json and user/;
 all profile edits invalidate reviews conservatively, even non-dependent edits.
 
-Giả định của người thực thi:
+Implementation notes:
 - PR2 uses the frozen tests' resume_dir/additional_document_dir JSON fields;
   validate both folders and guides before exclusive creation, preserving edits.
 """

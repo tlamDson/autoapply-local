@@ -1,9 +1,25 @@
 # AutoApply Local
 
-This experimental standalone product keeps runtime user data outside tracked
-source. Follow the user's selected engine per task without model pinning or
+This experimental standalone product is a quick-apply tool for internship and
+new-grad job seekers (international students first) on Windows and macOS: script
+filling with the user's own resume PDFs, the right resume picked per job, held tabs
+the user submits by hand, and a tracker fed by submitted-tab detection and Gmail
+confirmation emails. Resume tailoring, a Submit command and any local model are out of
+scope. Follow the user's selected engine per task without model pinning or
 fallback. Use only confirmed facts and exact question-scoped answers. Never
 infer work authorization, sponsorship or consent from student status or filters.
+
+Install is `install.ps1` / `install.sh` (dependency check that prints the per-OS
+install command, repo `.venv`, `pip install -e .`, then `setup`). All user data
+lives in the runtime root, `<repo>/user/` by default (gitignored, never written
+outside the repository): config, confirmed facts, `resumes/`, tracker, ledger,
+`secrets.json`, Chrome profiles and backups. Setup also creates two drop folders
+inside the runtime root: `user/resume/` (resume PDFs and TEX/DOCX sources) and
+`user/additional-document/` (transcripts, certificates, cover letters); storing
+a file there never selects a resume, confirms a fact or uploads anything.
+`update` backs up the runtime root to `backups/<date-time>/` (without Chrome
+profiles or secrets), runs `git pull --ff-only` or extracts the release zip,
+reinstalls and runs each pending migration once.
 
 The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
 engine opens: language, engine with one small login/quota probe call, quota stop
@@ -112,25 +128,19 @@ Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,
 Node adapter tests and scripts/check_release.py from this release root. Do not
 claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks.
+macOS has not been tested live; README.md and README.vi.md say so.
 
-## Giả định của người thực thi
+## Implementation notes
 
-- Runtime CLI trả exit 2 cho input/schema không hợp lệ, exit 3 cho thiếu dependency/lỗi engine; doctor chỉ báo executable và trạng thái login/connector chưa xác minh.
-- Runtime chọn theo --user-dir > AUTOAPPLY_LOCAL_HOME > source đã nhận diện/user (aa-04; formerly .autoapply-local) > thư mục người dùng .autoapply-local; giả định PR1: marker package là autoapply_local/__init__.py, TOML thiếu/hỏng không nhận diện source, launcher nguồn không đối số chạy setup cạnh nó; launcher runtime giữ root riêng.
-- Giữ JSON schema nhỏ, kiểm đệ quy type/required/properties/enum/items; payload không khớp bị từ chối trước khi dùng.
-- Bổ sung lối CLI source extract và history import để người dùng thường truy cập workflow đã có; test dispatch mới đỏ trước khi thêm lệnh, không thay assertion cũ.
-- Rewrite dùng đối chiếu từ có thứ tự và giữ qualifier/ownership, từ chối thay đổi ngữ nghĩa chưa có nguồn; đáp án hết hiệu lực giữ provenance và valid=False.
-- Lịch sử nhập có trạng thái chưa biết bị từ chối ở preview; trạng thái biết được chuẩn hóa lowercase. Metadata sdist cố định được allowlist riêng và vẫn quét nội dung.
-- Intake đã confirm với lanes=2 hoặc 3 là opt-in nhiều lane; runtime vẫn kiểm RAM và giữ mọi tab chưa nộp.
-- Fixture ZIP đặt ZipInfo.filename trực tiếp để giữ nguyên dấu backslash trên Windows; zipfile tự chuẩn hóa tên khi nhận chuỗi nên ca traversal trước đó không chứa member mà assertion cần kiểm. Không đổi assertion.
-
+- The runtime CLI returns exit 2 for invalid input or schema and exit 3 for a missing dependency or engine error; `doctor` reports only executables and leaves login/connector state unverified.
+- The runtime root is chosen by `--user-dir` > `AUTOAPPLY_LOCAL_HOME` > the detected source checkout's `user/` (aa-04; formerly `.autoapply-local`) > `~/.autoapply-local`. A source checkout is recognized by `autoapply_local/__init__.py` and a readable `pyproject.toml`; the source launcher with no arguments runs setup next to itself; the generated runtime launcher keeps its own root.
+- JSON schemas stay small and are checked recursively (type, required, properties, enum, items); a payload that does not match is rejected before use.
+- `source extract` and `history import` are CLI entry points to existing workflows.
+- Rewrites compare words in order, keep qualifiers and ownership, and refuse meaning changes without a source; an expired answer keeps its provenance with `valid=False`.
+- Imported history with an unknown state is rejected at preview; known states are normalized to lowercase. Fixed sdist metadata has its own allowlist and is still content-scanned.
+- A confirmed intake with `lanes` 2 or 3 opts in to several lanes; the runtime still checks RAM and keeps every unsubmitted tab.
+- ZIP fixtures set `ZipInfo.filename` directly to keep backslashes on Windows, because `zipfile` normalizes names given as strings.
 - Installer (aa-04): install.ps1/install.sh only locate Python 3.11+ and git, then hand off to scripts/install.py; a missing dependency prints its winget/brew command and exits 3, a failed pip install exits 4; system software is never installed.
 - Rippling driver (aa-13): `rippling_driver.RipplingDriver` uploads the resume first, waits for Rippling's own parse, then writes confirmed facts into the Formsy model (`adapters/rippling.cjs`), so they win over the parse; every written fact is read back (`modelCheck`) until two checks in a row are clean, a fact a late parse changed is rewritten at most twice and then reported `value_overwritten`, and the final scan must still show each written value or it is reported the same way; location is typed, the old place id is cleared first, and only the single matching Places suggestion is picked (mousedown first, click only if needed, never inside a button, link, label or other activating control), succeeding only with a fresh place id and matching location text; anything unknown, ambiguous or still required-empty is reported and the tab is held. No adapter action clicks a button.
-
 - Apply run (aa-19): `apply [ENGINE] [N|ID,ID]` (no N = `runtime.jobs_per_run`) runs track, reopens held forms whose tab Chrome lost (state back to pending, `previous_tab_id` kept; Chrome is started first when it was closed), fetches active boards, then `apply_run.pick`: pending jobs matching a Gmail/imported history row by company and role become `skipped`, jobs on an ATS with no driver become `by_hand` and are never opened; named IDs are not deduplicated. The end table goes to stderr; stdout stays JSON.
-
 - Update (aa-21): `update` works only from a source checkout; it backs up user/ (skipping backups/, browser/, chrome/) before any change, pulls with `git pull --ff-only` or extracts the latest release zip (never into user/, .venv/ or .git/), reinstalls, then runs migrations recorded in user/migrations.json. `apply`'s release lookup is skipped when AUTOAPPLY_LOCAL_NO_UPDATE_CHECK is set; the offline suite sets it.
-
-## Câu hỏi của người thực thi
-
-Không có câu hỏi chặn trong phạm vi triển khai offline.
