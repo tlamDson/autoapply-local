@@ -367,6 +367,63 @@ class GuidedQuickReviewTests(ReleaseCase):
         self.assertEqual(self.document()["filters"]["jd_exclude"], [],
                          "The derivation saved with the intake lets a new session resync")
 
+    def change_sponsorship(self, *answers, confirm=False):
+        """Change the sponsorship answer in turn; optionally confirm each reopened filter review."""
+        for value in answers:
+            packet = (self.edit_answer("authorization.sponsorship_now", status="unknown") if value is None
+                      else self.edit_answer("authorization.sponsorship_now", value))
+            review = packet["questions"][0]
+            self.assertEqual(review["id"], "setup.quick.filters", "Changed answers show the filter review again")
+            if confirm:
+                self.reply(packet, [self.entry(review, "confirm")])
+        return review
+
+    def test_saved_clear_survives_sponsorship_unknown_and_back_after_restart(self):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [], "unknown")])
+        review = self.change_sponsorship(None, True)
+        self.assertNotIn("ITAR", review["prompt"]["en"])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [],
+                         "A clear that once matched the derivation is still the user's edit")
+
+    def test_saved_clear_survives_confirmed_reviews_while_sponsorship_changes(self):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [], "answered")])
+        self.change_sponsorship(None, True, confirm=True)
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+
+    def test_clear_in_the_same_session_survives_sponsorship_unknown_and_back(self):
+        self.confirmed_filters({"authorization.sponsorship_now": True})
+        packet = self.run_guided(edit="filters.jd_exclude")
+        self.reply(packet, [{"question_id": "filters.jd_exclude", "status": "answered", "value": []}])
+        self.change_sponsorship(None, True, confirm=True)
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+
+    def test_edit_mark_is_saved_and_survives_a_second_restart(self):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [], "answered")])
+        self.change_sponsorship(None)
+        self.run_guided(finish=True)
+        self.assertTrue(self.run_guided(confirm=True)["applied"])
+        saved = json.loads((self.root / "intake-import.json").read_text(encoding="utf-8"))
+        self.assertEqual(saved["edited_filters"], ["filters.jd_exclude"])
+        self.assertEqual(saved["derived_filters"]["filters.jd_exclude"], [])
+        self.run_guided(restart=True)
+        self.change_sponsorship(True, confirm=True)
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+
+    def test_unedited_filters_follow_sponsorship_unknown_and_back_after_restart(self):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True})
+        self.change_sponsorship(None, True, confirm=True)
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ALL_JD)
+        self.assertNotIn("edited_filters", {k for k, v in self.progress()["document"].items() if v})
+
+    def test_malformed_edit_marks_are_ignored(self):
+        quick = self.module("guided_quick")
+        groups = self.module("intake").blank_intake()["groups"]
+        groups["authorization"]["sponsorship_now"] = True
+        groups["filters"]["jd_exclude"] = list(ALL_JD)
+        for marks in ("filters.jd_exclude", ["filters.posted_within_days"], [3], {"filters.jd_exclude": True}):
+            state = {"document": {"groups": groups, "derived_filters": quick.baseline(groups), "edited_filters": marks}}
+            self.assertEqual(quick.edited(state), set(), marks)
+
     def test_new_sessions_record_the_loaded_filter_baseline(self):
         self.prepared()
         self.run_guided()
