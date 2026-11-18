@@ -322,6 +322,42 @@ class GuidedQuickReviewTests(ReleaseCase):
         self.assertEqual(review["_draft"]["filters.title_include"], ["intern"])
         self.assertEqual(review["_draft"]["filters.title_exclude"], ["contract"], "A saved edit is still kept")
 
+    def confirmed_and_restarted(self, answers, edits=()):
+        self.confirmed_filters(answers)
+        for field, value in edits:
+            packet = self.run_guided(edit=field)
+            question = next(q for q in packet["questions"] if q["id"] == field)
+            # A typed empty list is how a host sends a cleared multi-choice.
+            self.reply(packet, [{"question_id": field, "status": "answered", "value": value}])
+            self.assertEqual(self.document()[field.split(".")[0]][field.split(".")[1]], value)
+        self.run_guided(finish=True)
+        self.assertTrue(self.run_guided(confirm=True)["applied"])
+        return self.run_guided(restart=True)
+
+    def test_confirmed_intake_records_what_the_answers_derived(self):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [])])
+        saved = json.loads((self.root / "intake-import.json").read_text(encoding="utf-8"))
+        self.assertEqual(saved["derived_filters"]["filters.jd_exclude"], ALL_JD)
+        self.assertEqual(saved["groups"]["filters"]["jd_exclude"], [])
+
+    def test_saved_filter_clear_survives_a_restarted_session(self):
+        packet = self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [])])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+        base = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
+        packet, _ = self.drive(packet, base, "setup.quick.filters")
+        review = next(q for q in packet["questions"] if q["id"] == "setup.quick.filters")
+        self.assertNotIn("ITAR", review["prompt"]["en"], "A saved clear is an edit, not a legacy blank")
+        self.reply(packet, [self.entry(q, "confirm") if q is review else self.entry(q, status="notasked")
+                            for q in packet["questions"]])
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [])
+
+    def test_restarted_session_still_syncs_unedited_filters(self):
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True})
+        self.assertEqual(self.document()["filters"]["jd_exclude"], ALL_JD)
+        self.edit_answer("authorization.sponsorship_now", status="unknown")
+        self.assertEqual(self.document()["filters"]["jd_exclude"], [],
+                         "The derivation saved with the intake lets a new session resync")
+
     def test_new_sessions_record_the_loaded_filter_baseline(self):
         self.prepared()
         self.run_guided()
