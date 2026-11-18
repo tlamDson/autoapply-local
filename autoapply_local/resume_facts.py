@@ -185,11 +185,50 @@ def _experience(lines):
             for r in records]
 
 
+SKILL_SEPARATORS = ",;|•"
+
+
+def _split_skills(text, names, state):
+    """Split on separators outside brackets; a stray ')' is dropped, an open group carries over."""
+    for char in text:
+        if char == "(":
+            state["depth"] += 1
+        elif char == ")":
+            if not state["depth"]:
+                continue
+            state["depth"] -= 1
+        elif char in SKILL_SEPARATORS and not state["depth"]:
+            names.append(state.pop("buffer", ""))
+            continue
+        state["buffer"] = state.get("buffer", "") + char
+
+
+def _drop_unclosed(text):
+    opened = []
+    for index, char in enumerate(text):
+        if char == "(":
+            opened.append(index)
+        elif char == ")" and opened:
+            opened.pop()
+    unclosed = set(opened)
+    return "".join(char for index, char in enumerate(text) if index not in unclosed)
+
+
 def _skills(lines):
-    names = []
+    """Skill names; a parenthesised group stays with its parent, even when it wraps to the next line."""
+    names, state = [], {"depth": 0}
     for line in lines:
-        text = line.split(":", 1)[1] if ":" in line else line
-        names.extend(part.strip() for part in re.split(r"[,;|•]", text))
+        text = line.split(":", 1)[1] if ":" in line and not state["depth"] else line
+        _split_skills(text, names, state)
+        if state["depth"]:
+            state["buffer"] = state.get("buffer", "") + " "
+        else:
+            names.append(state.pop("buffer", ""))
+    if state["depth"]:
+        rest = {"depth": 0}
+        _split_skills(_drop_unclosed(state.pop("buffer", "")), names, rest)
+        names.append(rest.pop("buffer", ""))
+    names = (" ".join(name.split()) for name in names)
     return _unique_skills({"name": name} for name in names if name)
 
 
