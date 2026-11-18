@@ -74,6 +74,48 @@ class ManualSubmissionTests(ReleaseCase):
             self.runtime.submitted(root=self.root, selection=["good", "pending-job"])
         self.assertEqual(self.store.get("good")["state"], "filled")
 
+    def interrupt_once(self, name):
+        cls = self.store.__class__
+        original = getattr(cls, name)
+        calls = []
+
+        def flaky(store, *args, **kwargs):
+            if not calls:
+                calls.append(name)
+                raise OSError("interrupted: " + name)
+            return original(store, *args, **kwargs)
+
+        return patch.object(cls, name, flaky)
+
+    def test_interrupted_recording_can_be_retried_and_frees_the_slot(self):
+        for step in ("record_submit_intent", "mark_submitted", "_save_workbook"):
+            for state in HELD_STATES:
+                with self.subTest(step=step, state=state):
+                    job_id = f"{step}-{state}"
+                    self.held(job_id, state)
+                    with self.interrupt_once(step):
+                        with self.assertRaises(OSError):
+                            self.runtime.submitted(root=self.root, selection=[job_id])
+                    self.assertIn(job_id, self.held_ids())
+                    result = self.runtime.submitted(root=self.root, selection=[job_id])
+                    self.assertEqual(result["jobs"], [{"job_id": job_id, "status": "submitted"}])
+                    self.assertEqual(self.store.get(job_id)["state"], "submitted")
+                    self.assertNotIn(job_id, self.held_ids())
+                    rows = [row for row in self.store.tracker_rows() if str(row["id"]) == job_id]
+                    self.assertEqual(len(rows), 1)
+
+    def test_claims_of_other_flows_are_not_taken_for_manual_submissions(self):
+        self.held("filling", "claimed")
+        self.held("intent", "submit_intent")
+        self.store.update("intent", submit_intent={"review_id": "another-flow"})
+        for job_id in ("filling", "intent"):
+            with self.subTest(job_id=job_id):
+                before = self.store.get(job_id)
+                with self.assertRaises(ValueError):
+                    self.runtime.submitted(root=self.root, selection=[job_id])
+                self.assertEqual(self.store.get(job_id), before)
+                self.assertFalse(self.store.has_tracker_job(job_id))
+
     def test_cli_dispatches_explicit_ids_only(self):
         cli = self.module("cli")
         calls = []
