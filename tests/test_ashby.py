@@ -4,10 +4,11 @@ import json
 import unittest
 from pathlib import Path
 
+import test_support  # noqa: F401  (puts the release root on sys.path)
 from autoapply_local import ashby
 from autoapply_local.profile import fact
 
-FIXTURE = Path(__file__).with_name("fixtures") / "ashby" / "posting.json"
+FIXTURE = Path(__file__).with_name("ashby_posting.json")
 URL = "https://jobs.ashbyhq.com/example-labs/0b7c1d4e-2f3a-4b5c-9d6e-7f8091a2b3c4"
 JOB = {"url": URL, "company": "Example Labs", "country": "US", "level": "intern", "start_date": "2027-06"}
 
@@ -20,7 +21,7 @@ def profile(*answers):
     return {
         "schema_version": 1,
         "revision": 1,
-        "contact": {"legal_name": fact("Alex Rivera"), "application_email": fact("alex.rivera@example.test")},
+        "contact": {"legal_name": fact("Alex Rivera"), "application_email": fact("alex.rivera@example.com")},
         "answers": list(answers),
     }
 
@@ -111,7 +112,7 @@ class AnswerPlan(unittest.TestCase):
         fields = ashby.parse_posting(recorded())["fields"]
         plan = ashby.plan_answers(fields, profile(), JOB)
         self.assertEqual(plan["known"]["_systemfield_name"]["value"], "Alex Rivera")
-        self.assertEqual(plan["known"]["_systemfield_email"]["value"], "alex.rivera@example.test")
+        self.assertEqual(plan["known"]["_systemfield_email"]["value"], "alex.rivera@example.com")
         self.assertEqual(plan["uploads"], ["resume"])
         self.assertEqual(plan["unknown"], ["7c2d", "5e3f", "1c5d"])
         self.assertNotIn("9a1b", plan["known"])

@@ -418,7 +418,13 @@ class BrowserBridge:
         return tab_id
 
     def _script(self, operation, ats="greenhouse", answers=None):
-        if ats not in ("greenhouse", "rippling", "workday"):
+        adapters = {
+            "greenhouse": "AutoApplyGreenhouse",
+            "rippling": "AutoApplyRippling",
+            "workday": "AutoApplyWorkday",
+            "ashby": "AutoApplyAshby",
+        }
+        if ats not in adapters:
             raise ValueError("Unsupported ATS requires manual interaction")
         directory = Path(__file__).with_name("adapters")
         code = (
@@ -426,9 +432,7 @@ class BrowserBridge:
             + "\n"
             + (directory / (ats + ".cjs")).read_text(encoding="utf-8")
         )
-        adapter = {"greenhouse": "AutoApplyGreenhouse", "rippling": "AutoApplyRippling", "workday": "AutoApplyWorkday"}[
-            ats
-        ]
+        adapter = adapters[ats]
         if operation == "fill":
             action = (
                 f"return await globalThis.{adapter}.fill(document, {json.dumps(answers or {}, ensure_ascii=False)});"
@@ -438,7 +442,7 @@ class BrowserBridge:
                 f"const result = globalThis.{adapter}.audit(document);"
                 + """
 for (const field of result.fields) {
-  const element = globalThis.AutoApplyDOM.resolve(document, field.id);
+  const element = globalThis.""" + adapter + """.resolve(document, field.id);
   if (element?.type === 'file') {
     field.files = [];
     for (const file of element.files || []) {

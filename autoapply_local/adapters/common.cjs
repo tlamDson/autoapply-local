@@ -210,6 +210,14 @@
     }
     return result;
   }
+  // A required field still needs an answer when its observed value is empty.
+  const missing = item =>
+    item.value === '' ||
+    item.value === null ||
+    item.value === undefined ||
+    (Array.isArray(item.value) && !item.value.length) ||
+    (typeof item.value === 'string' && /^select (one|an? |country)/i.test(item.value.trim())) ||
+    (item.type === 'checkbox' && item.value !== true);
   function audit(document) {
     const current = scan(document);
     current.text = document.body?.innerText || '';
@@ -236,24 +244,13 @@
         evidence: { quote: current.text.slice(start, end), start, end },
       });
     }
-    current.required_unknown = current.fields
-      .filter(
-        item =>
-          item.required &&
-          (item.value === '' ||
-            item.value === null ||
-            item.value === undefined ||
-            (Array.isArray(item.value) && !item.value.length) ||
-            (typeof item.value === 'string' && /^select (one|an? |country)/i.test(item.value.trim())) ||
-            (item.type === 'checkbox' && item.value !== true)),
-      )
-      .map(item => item.id);
+    current.required_unknown = current.fields.filter(item => item.required && missing(item)).map(item => item.id);
     current.errors = [
       ...document.querySelectorAll('[role="alert"],[aria-invalid="true"],[data-automation-id="errorMessage"]'),
     ].map(item => item.validationMessage || item.innerText || item.getAttribute('aria-label') || 'Invalid field');
     return current;
   }
-  const api = { scan, fill, audit, resolve };
+  const api = { scan, fill, audit, resolve, missing };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.AutoApplyDOM = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
