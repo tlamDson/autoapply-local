@@ -199,15 +199,19 @@ def refresh(state, question):
     question["_derived"] = {field: copy.deepcopy(draft[field]) for field in SYNCED}
     record = recorded(state)
     reference = record or state.get("quick_baseline") or {}
+    marked = edited(state)
     for field in SYNCED:
         current = job_filters.raw(_value(groups, field))
         # Without a recorded derivation (legacy or advanced-only intake) an empty
         # filter was never derived, so it is not an edit; once a review recorded
         # one, in this session or a confirmed earlier one, a cleared filter is.
-        if field in reference and isinstance(current, list) and current != reference[field] and (record or current):
+        if isinstance(current, list) and (field in marked or (
+                field in reference and current != reference[field] and (record or current))):
             draft[field] = copy.deepcopy(current)
             derived[field.split(".")[1]] = list(current)
+            marked.add(field)
     question["_draft"] = draft
+    question["_edited"] = sorted(marked)
     question["prompt"] = {lang: job_filters.summary(derived, lang) + (
         " Xác nhận hay sửa?" if lang == "vi" else " Confirm these filters, or edit them?") for lang in ("en", "vi")}
 
@@ -238,6 +242,23 @@ def recorded(state):
     return None
 
 
+def edited(state):
+    """Filters the user edited. The mark travels with the intake (``edited_filters``)
+    and stays once set: an edit that later equals what changed answers derive, such
+    as a clear while sponsorship is Unknown, must not turn back into a derived filter."""
+    marks = state["document"].get("edited_filters")
+    marks = set(marks) if isinstance(marks, list) and all(item in SYNCED for item in marks) else set()
+    record, groups = recorded(state), state["document"]["groups"]
+    if record:
+        marks.update(field for field in SYNCED if job_filters.raw(_value(groups, field)) != record[field])
+    return marks
+
+
+def _mark(state, fields):
+    if fields:
+        state["document"]["edited_filters"] = sorted(fields)
+
+
 def sync_filters(state):
     """After answers change, replace derived filters the user has not edited and
     show the filter review again, so an answer such as Unknown sponsorship never
@@ -245,13 +266,13 @@ def sync_filters(state):
     record = recorded(state)
     if not record:
         return
-    groups = state["document"]["groups"]
-    derived = baseline(groups)
+    marked = edited(state)
+    _mark(state, marked)
+    derived = baseline(state["document"]["groups"])
     if derived == record:
         return
-    for field, old in record.items():
-        group, name = field.split(".")
-        if groups[group].get(name) == old:
+    for field in record:
+        if field not in marked:
             _put(state, field, derived[field])
     state["document"]["derived_filters"] = derived
     if not any(pending.get("quick_step") == "filters" for pending in state["queue"]):
@@ -273,6 +294,7 @@ def apply(state, question, status, value):
             # Record what the answers derived, not the draft: an edited filter stays an edit.
             state["document"]["derived_filters"] = copy.deepcopy(question.get("_derived") or {
                 field: question["_draft"][field] for field in SYNCED})
+            _mark(state, edited(state) | set(question.get("_edited") or ()))
         if value == "edit":
             for field, draft in question["_draft"].items():
                 word = ("Suggested", "Gợi ý") if question["quick_step"] == "filters" else ("Resume shows", "Resume ghi")
