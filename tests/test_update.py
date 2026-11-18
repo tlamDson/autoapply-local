@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -11,7 +12,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 RELEASE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RELEASE))
@@ -52,7 +53,7 @@ class Workspace(unittest.TestCase):
         self.user = self.repo / "user"
         (self.user / "resumes").mkdir(parents=True)
         (self.user / "config.json").write_text('{"jobs_per_run": 10}', encoding="utf-8")
-        (self.user / "secrets.json").write_text('{"workday": {"email": "alex.rivera@example.test"}}', encoding="utf-8")
+        (self.user / "secrets.json").write_text('{"workday": {"password": "synthetic"}}', encoding="utf-8")
         (self.user / "resumes/swe.pdf").write_bytes(b"%PDF-1.4 synthetic")
         (self.user / "chrome/Default").mkdir(parents=True)
         (self.user / "chrome/Default/Cookies").write_bytes(b"locked")
@@ -246,6 +247,12 @@ class NoticeTests(unittest.TestCase):
         self.assertFalse(update.is_newer("0.1.0", "0.2.0a1"))
         self.assertFalse(update.is_newer("nightly", "0.2.0a1"))
 
+    def setUp(self):
+        patcher = patch.dict(os.environ)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        os.environ.pop("AUTOAPPLY_LOCAL_NO_UPDATE_CHECK", None)
+
     def test_notice_is_one_line_only_when_newer(self):
         line = update.release_notice(current="0.2.0a1", latest=lambda: {"tag": "v0.3.0", "zip": "z"})
         self.assertIsInstance(line, str)
@@ -257,6 +264,12 @@ class NoticeTests(unittest.TestCase):
 
     def test_notice_never_raises_on_network_error(self):
         self.assertIsNone(update.release_notice(current="0.2.0a1", latest=Mock(side_effect=OSError("offline"))))
+
+    def test_notice_opt_out_skips_the_lookup(self):
+        lookup = Mock(return_value={"tag": "v9.0.0", "zip": "z"})
+        with patch.dict(os.environ, {"AUTOAPPLY_LOCAL_NO_UPDATE_CHECK": "1"}):
+            self.assertIsNone(update.release_notice(current="0.2.0a1", latest=lookup))
+        lookup.assert_not_called()
 
     def test_latest_release_parses_github_payload(self):
         payload = json.dumps({"tag_name": "v0.3.0", "draft": False}).encode()
@@ -300,7 +313,7 @@ class CliTests(unittest.TestCase):
 @unittest.skipUnless(shutil.which("git"), "git is not installed")
 class RealGitTests(Workspace):
     def git(self, cwd, *args):
-        return subprocess.run(["git", "-c", "user.name=Alex Rivera", "-c", "user.email=alex@example.test",
+        return subprocess.run(["git", "-c", "user.name=Alex Rivera", "-c", "user.email=ci",
                                "-c", "commit.gpgsign=false", *args], cwd=cwd, check=True,
                               capture_output=True, text=True).stdout
 

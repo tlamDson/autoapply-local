@@ -94,6 +94,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     review.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("submitted").add_argument("selection")
     commands.add_parser("status")
+    commands.add_parser("update")
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             try:
@@ -142,6 +143,10 @@ def main(argv=None, services=None, stdout=None, stderr=None):
             services = default_services()
         with contextlib.redirect_stderr(stderr):
             result = services[name](**kwargs)
+            if name == "apply" and "release_notice" in services:
+                notice = services["release_notice"]()
+                if notice:
+                    print(notice, file=stderr)
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str), file=stdout)
         return 0
     except (ValueError, KeyError) as error:

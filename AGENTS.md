@@ -52,6 +52,8 @@ claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks
 
 - Installer (aa-04): install.ps1/install.sh only locate Python 3.11+ and git, then hand off to scripts/install.py; a missing dependency prints its winget/brew command and exits 3, a failed pip install exits 4; system software is never installed.
 
+- Update (aa-21): `update` works only from a source checkout; it backs up user/ (skipping backups/, browser/, chrome/) before any change, pulls with `git pull --ff-only` or extracts the latest release zip (never into user/, .venv/ or .git/), reinstalls, then runs migrations recorded in user/migrations.json. `apply`'s release lookup is skipped when AUTOAPPLY_LOCAL_NO_UPDATE_CHECK is set; the offline suite sets it.
+
 ## Câu hỏi của người thực thi
 
 Không có câu hỏi chặn trong phạm vi triển khai offline.

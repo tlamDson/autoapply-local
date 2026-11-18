@@ -422,6 +422,18 @@ def status(*, root):
     }
 
 
+def update(*, root):
+    from . import update as updater
+
+    return updater.update(root=root)
+
+
+def release_notice():
+    from . import update as updater
+
+    return updater.release_notice()
+
+
 def services():
     return {
         name: globals()[name]
@@ -438,5 +450,7 @@ def services():
             "review",
             "submitted",
             "status",
+            "update",
+            "release_notice",
         )
     }

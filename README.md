@@ -399,6 +399,12 @@ Submit capability; you review each held tab and submit it yourself.
   tracker row and frees the held-tab slot without touching the browser or an
   engine; the tab stays open until you close it.
 - `status`: list held forms, counts and unresolved applications without an engine.
+- `update`: copy `user/` (except `backups/` and Chrome profiles) to
+  `user/backups/<date-time>/`, then `git pull --ff-only` (no git: download the
+  latest release zip, which never writes `user/` or `.venv/`), reinstall with
+  `pip install -e .`, run each pending data migration once and print what changed.
+  `apply` prints one line on stderr when a newer release exists; set
+  `AUTOAPPLY_LOCAL_NO_UPDATE_CHECK=1` to skip that lookup.
 
 For account creation, sign-in, CAPTCHA, MFA or unsupported dynamic controls,
 complete the requested interaction in the held clean Chrome tab and resume.
