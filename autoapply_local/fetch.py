@@ -58,10 +58,10 @@ class Fetcher:
     ):
         if not 0 < timeout <= 60 or not 0 <= retries <= 5:
             raise ValueError("Bound timeout to 60 seconds and retries to five")
+        # Injected transports (tests) never wait unless a sleep is injected too.
+        self.sleep = sleep or (time.sleep if transport is None else no_sleep)
         self.transport, self.timeout, self.retries = transport or Transport(), timeout, retries
         self.today = today or date.today()
-        # Injected transports (tests) never wait unless a sleep is injected too.
-        self.sleep = sleep or (time.sleep if isinstance(self.transport, Transport) else no_sleep)
         self.random, self.clock = random or _random.random, clock or time.monotonic
         self.gate = gate
 
