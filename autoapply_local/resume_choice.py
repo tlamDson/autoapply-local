@@ -6,9 +6,13 @@ Configuration (``config["resumes"]``): ``main_pdf`` with optional ``main_tags``,
 Order is main first, then alternatives, then mapped-only paths.
 
 Rules: a resume whose tag is a whole-word match in the job title is a match;
+common role abbreviations (``_ALIASES``) also match their long form and back,
+and an abbreviation reached through an alias must be upper case in the title;
 several matches -> highest JD keyword coverage (no model), equal or unknown ->
 configuration order. No match and several resumes -> ask once per role and
-remember the answer in a small JSON file; one resume alone needs no question.
+remember the answer in a small JSON file; one resume alone needs no question;
+with no way to ask (``fallback``, no terminal) the main resume is used and the
+reason says so, nothing remembered.
 Nothing here opens a form or touches a facts file.
 """
 
@@ -80,12 +84,37 @@ def candidates(config):
     return [Candidate(item_id, path, tuple(tags)) for item_id, path, tags in items]
 
 
+# Abbreviation -> long forms that mean the same role (already reduced by ``_words``).
+_ALIASES = {
+    "swe": ("software engineer", "software engineering"),
+    "sde": ("software development engineer",),
+    "ml": ("machine learning",),
+    "ai": ("artificial intelligence",),
+    "fe": ("frontend", "front end"),
+    "be": ("backend", "back end"),
+}
+
+
+def _forms(words):
+    """(phrase, upper_only) pairs a tag matches: itself, then its aliases."""
+    yield words, False
+    for short, longs in _ALIASES.items():
+        if words == short:
+            yield from ((phrase, False) for phrase in longs)
+        elif words in longs:
+            yield short, True
+
+
 def _matching_tag(tags, role):
     padded = f" {_words(role)} "
+    upper = {token.casefold() for token in re.findall(r"[A-Za-z0-9+#]+", str(role or "")) if token.isupper()}
     for tag in tags:
         words = _words(tag)
-        if words and f" {words} " in padded:
-            return tag
+        if not words:
+            continue
+        for phrase, upper_only in _forms(words):
+            if f" {phrase} " in padded and (not upper_only or phrase in upper):
+                return tag
     return None
 
 
@@ -150,8 +179,11 @@ def _answer(answer, options):
     raise ValueError("The answer must be one of the configured resumes")
 
 
-def choose(config, job, *, memory=None, ask=None, text_of=None):
-    """Pick the resume for one job. ``ask(role, options)`` returns an id or path, or None."""
+def choose(config, job, *, memory=None, ask=None, text_of=None, fallback=False):
+    """Pick the resume for one job. ``ask(role, options)`` returns an id or path, or None.
+
+    ``fallback``: with no ``ask`` (no terminal), use the first configured resume (the main
+    one) instead of raising; a declined question still raises."""
     found = candidates(config)
     if not found:
         raise ValueError("Select a main PDF or a role-mapped alternative in the intake")
@@ -170,6 +202,8 @@ def choose(config, job, *, memory=None, ask=None, text_of=None):
     remembered = memory.get(role) if memory else None
     if remembered and any(item.path == remembered for item in found):
         return Choice(remembered, "remembered", None, None)
+    if fallback and ask is None:
+        return Choice(found[0].path, "no_terminal", None, None)
     options = [{"id": item.id, "path": item.path, "tags": list(item.tags)} for item in found]
     answer = ask(role, options) if ask else None
     if not answer:

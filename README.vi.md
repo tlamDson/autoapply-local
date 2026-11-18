@@ -210,10 +210,14 @@ Không có N thì điền đúng số job mỗi lượt đã chọn trong setup.
 2. Fetch job mới từ các board đang bật.
 3. Lọc theo bộ lọc đã xác nhận và bỏ job đã có trong tracker hoặc trong lịch sử
    Gmail/file nhập (cùng công ty và role).
-4. Chọn resume: PDF có tag role trùng nguyên từ với tiêu đề job; nhiều PDF khớp →
+4. Chọn resume: PDF có tag role trùng nguyên từ với tiêu đề job (từ viết tắt phổ
+   biến khớp cả hai chiều: SWE = software engineer/engineering, SDE = software
+   development engineer, ML = machine learning, AI = artificial intelligence,
+   FE/BE = frontend/backend); nhiều PDF khớp →
    PDF nêu nhiều từ khóa công nghệ của mô tả job nhất (không dùng model; hòa thì giữ
    thứ tự cấu hình); không PDF nào khớp và bạn có hơn một PDF → `apply` hỏi một lần
-   cho mỗi role trong terminal và nhớ ở `user/resume-choices.json`. Mỗi lựa chọn và
+   cho mỗi role trong terminal và nhớ ở `user/resume-choices.json` (không có
+   terminal thì dùng resume chính và in lý do). Mỗi lựa chọn và
    lý do được in ra trước khi điền.
 5. Điền bằng script driver của ATS: Greenhouse, Workday, Rippling, Ashby, Lever và
    Workable (job Ashby, Lever và Workable chưa được lấy về). Workday đăng nhập bằng tài khoản lưu cho site Workday đó trong
