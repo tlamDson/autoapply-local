@@ -13,7 +13,7 @@ import math
 from pathlib import Path
 from uuid import uuid4
 
-from . import guided_catalog, guided_quick, intake
+from . import guided_catalog, guided_quick, guided_skip, intake
 from .storage import atomic_write_json, lock
 
 
@@ -147,8 +147,10 @@ def _seed(root):
         guided_quick.prefill(root, document)
         state["quick_baseline"] = guided_quick.baseline(document["groups"])
         quick = guided_quick.steps(root, document)
-        state["queue"] = conflicts + quick + [_descriptor(q) for q in top[:3]]
-        state["walk_skips"] = guided_quick.walk_skips(quick)
+        # Terminal setup already asked language, engine and resumes.
+        answered = set(guided_skip.terminal(root))
+        state["queue"] = conflicts + quick + [_descriptor(q) for q in top[:3] if q["id"] not in answered]
+        state["walk_skips"] = sorted(set(guided_quick.walk_skips(quick)) | answered)
     _new_batch(state)
     return state
 
@@ -191,10 +193,23 @@ def _advance(state):
     top = guided_catalog.questions()
     skips = set(state.get("walk_skips", ()))
     # Quick setup already asked some catalog questions; the advanced walk skips them.
+    # A question whose gate answer turns it off, or whose fact was already asked, is left out.
+    groups = state["document"]["groups"]
     while not state["queue"] and state["cursor"] < len(top):
         cursor = state["cursor"]
-        state["queue"] = [_descriptor(q) for q in top[cursor:cursor + 3] if q["id"] not in skips]
-        state["cursor"] = min(cursor + 3, len(top))
+        end = min(cursor + 3, len(top))
+        batch = []
+        for index in range(cursor, end):
+            field = top[index]["id"]
+            if field in skips or guided_skip.skipped(groups, field):
+                continue
+            batch.append(_descriptor(top[index]))
+            if field in guided_skip.GATES:
+                # The questions a gate turns off never share its popup.
+                end = index + 1
+                break
+        state["queue"] = batch
+        state["cursor"] = end
 
 
 def _active(state):

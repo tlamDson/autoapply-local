@@ -42,6 +42,12 @@ The complete intake is an optional advanced editor/export, not required setup.
 After terminal setup, guided setup first shows resume fact groups, then the facts
 a resume lacks, then job filters derived from explicit answers, each with
 Confirm/Edit; extracted values stay drafts until the saved preview is confirmed.
+The advanced walk then skips what it already has or cannot use: language,
+engine and resumes saved by terminal setup, every tailoring question unless
+the mode includes tailoring, the Gmail account, lookback and permission
+questions unless Gmail is opted in (a gate never shares a popup with the
+questions it turns off), and `international_student.status`, which takes the
+answer to `authorization.current_status` when blank.
 
 Setup then fills an offline demo form (`demo`: a local page with no Submit
 control, in the tool's own Chrome) to prove the stack works, and runs a first

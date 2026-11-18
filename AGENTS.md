@@ -49,6 +49,12 @@ Guided setup after terminal setup begins with quick steps: resume fact groups
 lacks (work authorization, sponsorship, address, EEO, season, roles), then job
 filters derived only from explicit answers for Confirm/Edit. An unknown
 sponsorship answer never produces a sponsorship filter.
+The advanced walk then skips what it already has or cannot use: language,
+engine and resumes saved by terminal setup, every tailoring question unless
+the mode includes tailoring, the Gmail account, lookback and permission
+questions unless Gmail is opted in (a gate never shares a popup with the
+questions it turns off), and `international_student.status`, which takes the
+answer to `authorization.current_status` when blank.
 When changed answers reopen the filter review, a filter the user edited is
 shown and kept as edited; only unedited filters follow the answers.
 The confirmed intake records what the answers derived (`derived_filters`), so a
