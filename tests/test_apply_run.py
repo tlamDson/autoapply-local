@@ -137,7 +137,9 @@ class TableTests(unittest.TestCase):
                                             "1 filtered out (senior 1)."}},
             "by_hand": [{"id": "j3", "company": "Taleo Corp", "role": "SWE Intern",
                          "url": "https://example.taleo.net/j3", "resume": "main.pdf"}],
-            "questions": [{"job_id": "j1", "id": "q1", "label": "Why us?"}],
+            "questions": {"pending": 1, "batch_id": "b1",
+                          "next": "Run questions --ui UI, show its native popup once and pass the user's answers "
+                                  "to questions --answer PATH"},
         }
         text = apply_run.table(report)
         lines = text.splitlines()
@@ -155,11 +157,13 @@ class TableTests(unittest.TestCase):
         by_hand = text[text.index("Submit by hand"):]
         for cell in ("Taleo Corp", "https://example.taleo.net/j3", "main.pdf"):
             self.assertIn(cell, by_hand)
-        self.assertIn("1 question", text)
+        self.assertIn("1 question needs", text)
+        self.assertIn("questions --ui UI", text)
         self.assertIn("Never submitted", text)
 
     def test_empty_run_still_says_nothing_was_opened(self):
-        text = apply_run.table({"rows": [], "track": {}, "skipped": [], "by_hand": [], "questions": []})
+        text = apply_run.table({"rows": [], "track": {}, "skipped": [], "by_hand": [],
+                                 "questions": {"pending": 0, "batch_id": "b0"}})
         self.assertIn("No form was opened", text)
 
 
@@ -273,14 +277,17 @@ class ApplyEndToEndTests(ReleaseCase):
         postings = [gh_job(n, role=f"Backend Software Engineering Intern {n}") for n in (101, 102, 103)]
         report, err = self.run_apply(postings, selection=None)
         # jobs_per_run (2) new forms; the third stays pending for the next run.
-        filled = [row for row in report["rows"] if row["state"] == "filled"]
+        # The fixture has required questions no fact answers: aa-17 holds those tabs for the popup.
+        filled = [row for row in report["rows"] if row["state"] == "needs_manual"]
         self.assertEqual([row["job_id"] for row in filled], ["greenhouse:exampleco:101", "greenhouse:exampleco:102"])
         self.assertEqual(self.store.get("greenhouse:exampleco:103")["state"], "pending")
         self.assertEqual({row["resume"] for row in filled}, {"backend.pdf"})
         self.assertEqual(report["fetch"]["report"]["passed"], 3)
         self.assertEqual([item["id"] for item in report["by_hand"]], ["icims-1"])
         self.assertEqual(report["by_hand"][0]["resume"], "backend.pdf")
-        labels = {item["label"] for item in report["questions"]}
+        labels = {item["label"] for item in report["unanswered"]}
+        self.assertGreaterEqual(report["questions"]["pending"], 1)
+        self.assertIn("Why do you want to join Example Co?", filled[0]["check"])
         self.assertIn("Why do you want to join Example Co?", labels)
         self.assertIn("Fields to check", err)
         self.assertIn("Submit by hand", err)
@@ -298,7 +305,8 @@ class ApplyEndToEndTests(ReleaseCase):
         self.assertGreaterEqual(self.launches, 1)
         self.assertEqual(report["reopened"], ["greenhouse:exampleco:7"])
         record = self.store.get("greenhouse:exampleco:7")
-        self.assertEqual(record["state"], "filled")
+        self.assertEqual(record["state"], "needs_manual")
+        self.assertTrue(record["unanswered"])
         self.assertNotEqual(record["tab_id"], "old-tab")
         self.assertEqual(record["previous_tab_id"], "old-tab")
         self.assertIn(record["url"], [page["url"] for page in self.client.pages])

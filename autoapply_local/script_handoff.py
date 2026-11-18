@@ -35,10 +35,10 @@ def field_request(fields):
     }
 
 
-def script_then_engine(bridge, driver, tab_id, profile, job, pdf):
+def script_then_engine(bridge, driver, tab_id, profile, job, pdf, bank=None):
     """Run the script driver, then hand the engine only its confirmed native-click fields."""
     # Known fields are pure script: they run over DevTools, never as a model turn.
-    report = driver.run(bridge.scripts_for(driver.name), tab_id, profile, job, pdf=pdf)
+    report = driver.run(bridge.scripts_for(driver.name), tab_id, profile, job, pdf=pdf, bank=bank)
     if report["status"] == "needs_manual":
         return report
     receipt = report.get("upload_receipt")

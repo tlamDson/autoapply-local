@@ -173,10 +173,14 @@ def table(report):
         lines += ["", "Submit by hand (no script driver for this ATS; not opened):"]
         lines += [f"  {item.get('company')} | {item.get('role')} | {item.get('url')} | resume: {item.get('resume') or '-'}"
                   for item in report["by_hand"]]
-    count = len(report.get("questions") or [])
+    # The run's batch of unanswered required questions (unanswered.Questions.collect).
+    asked = report.get("questions") or {}
+    count = asked.get("pending") or 0
     if count:
         noun = "1 question needs" if count == 1 else f"{count} questions need"
         lines += ["", f"{noun} your answer before those forms are complete."]
+    if asked.get("next"):
+        lines.append(str(asked["next"]))
     if report.get("reason"):
         lines += ["", "Stopped: " + str(report["reason"])]
     return "\n".join(lines)

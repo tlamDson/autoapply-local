@@ -52,8 +52,8 @@ class WorkableDriver(ScriptDriver):
             return {"value": entries, "status": "confirmed"} if entries else {"value": None, "status": "unknown"}
         return None
 
-    def plan(self, fields, profile, job, pdf=None):
-        result = super().plan(fields, profile, job, pdf=pdf)
+    def plan(self, fields, profile, job, pdf=None, bank=None):
+        result = super().plan(fields, profile, job, pdf=pdf, bank=bank)
         for item in result["unknown"]:
             if item["type"] == "radiogroup" and item["reason"] == "agent_interaction_required":
                 wanted = str(item["value"]).casefold()

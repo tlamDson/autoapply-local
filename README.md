@@ -233,6 +233,29 @@ terminal and remembers the answer in `user/resume-choices.json`; without a
 terminal it stops instead of guessing. `apply` prints each choice and its
 reason before filling.
 
+Required questions no confirmed fact answers (for example "How did you hear
+about this role?") do not stop the run. `apply` fills everything else, holds
+the tab and collects those questions for the whole run; its result shows
+`questions.pending`. Then `python autoapply-local.py questions --ui UI` returns
+one native popup for all of them (the same question from several jobs is asked
+once). Write the user's actual answers to a private file and run `questions
+--answer PATH`: the answers go to the answer bank `user/answer-bank.json` and
+are filled into the held tabs, which are never submitted. The next job that asks
+the same question (same wording, options, country and job type) is filled from
+the bank without asking. Only a question known to be about you alone
+(education, skills, languages, clubs, projects) is reused by another employer.
+Every other question also needs the same employer and start date, and so does
+any required checkbox, yes/no or agree/decline question, question that mentions
+the employer or the role, and question about authorization, sponsorship,
+consent, agreement, contact or data permission, EEO or pay. A refilled question counts only when the tab, read back afresh,
+shows your answer; a wrong or missing value keeps it for `questions --refill`. Skip, timeout or no native
+tool keeps the questions for later; `questions --refill` retries a failed refill.
+The popup is one native call, so it holds as many questions as the host tool
+takes at once (Claude 4, Codex 3); the rest, least shared first, wait for the
+next popup and its `deferred` count says how many. Workday tabs are refilled by
+the engine's native interaction, other tabs by the ATS adapter; a tab that shows
+another application is never written to, and a refill whose fresh readback is
+not clean keeps all its questions for `questions --refill`.
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.
@@ -424,7 +447,8 @@ Submit capability; you review each held tab and submit it yourself.
   Target roles, recruiting season/window and each job's PDF appear on stderr
   before browser work; at the end stderr shows a table (company, role, resume,
   tab, fields to check), the confirmations found, skipped jobs with reasons, the
-  submit-by-hand list and the count of required questions still unanswered.
+  submit-by-hand list and the count of required questions still unanswered
+  (`questions`, see above; each field is listed under `unanswered`).
   Final stdout stays JSON. Named job IDs are not deduplicated. This command never
   submits.
 - `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
