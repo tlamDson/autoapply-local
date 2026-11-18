@@ -211,31 +211,36 @@ def _fits(record, entry, sent, today, tracked):
     )
 
 
-def _may_be_from(record, entry, sent):
-    """Whether an email sent on ``sent`` may be another confirmation of a job already submitted.
+def _could_send(record, entry, sent):
+    """Whether this job, held or already recorded, could be the application an email confirms.
 
-    ATSs often send more than one confirmation. One arriving from the day the
-    job was held (or the day before it was recorded) up to TRACK_DAYS after it
-    was recorded, naming no role or the job's role, may be that job's.
+    Broader than ``_fits`` on purpose: a job that cannot be matched by email
+    (a legacy record, a held job without a tab, one being recorded by hand)
+    still makes an email of its company ambiguous. Only a named other role, an
+    email sent before the form was held, or a submission recorded more than
+    TRACK_DAYS before the email rules a job out.
     """
+    if entry["role"] and not _same_role(record["role"], entry["role"]):
+        return False
+    held = _day(record.get("held_at"))
     confirmation = record.get("confirmation")
-    done = _day(confirmation.get("confirmed_at")) if isinstance(confirmation, dict) else None
+    if not isinstance(confirmation, dict):
+        return sent is None or held is None or sent >= held
+    done = _day(confirmation.get("confirmed_at"))
     if sent is None or done is None:
         return False
-    start = _day(record.get("held_at")) or done - timedelta(days=1)
-    return start <= sent <= done + timedelta(days=TRACK_DAYS) and (
-        not entry["role"] or _same_role(record["role"], entry["role"]))
+    return (held or done - timedelta(days=1)) <= sent <= done + timedelta(days=TRACK_DAYS)
 
 
-def _mail_matches(held, rows, seen, today=None, tracked=(), submitted=()):
-    """{job id: (row, entry)} for each unseen confirmation naming exactly one held job, and held-back keys.
+def _mail_matches(held, rows, seen, today=None, tracked=(), others=()):
+    """{job id: (row, entry)} for each unseen confirmation only one job could have sent, and held-back keys.
 
-    An email is matched only when exactly one job could have sent it: one held
-    job of the same company that it ``_fits``, while no other held job fits and
-    no job of that company submitted (earlier or in this run) ``_may_be_from``
-    it. Any other email naming a held job's company is held back: neither
-    matched nor added to the history, so it cannot mark a second job submitted
-    or become a separate application.
+    ``others`` are the jobs outside ``held`` that may have been submitted. An
+    email is matched only when one held job of its company ``_fits`` it and no
+    other job of that company, held or not, matched or not, ``_could_send`` it.
+    Any other email naming a held job's company is held back: neither matched
+    nor added to the history, so it cannot mark a second job submitted or
+    become a separate application.
     """
     matches, held_back = {}, set()
     for row in rows:
@@ -246,14 +251,36 @@ def _mail_matches(held, rows, seen, today=None, tracked=(), submitted=()):
             continue
         company = [r for r in held if _same_company(r["company"], entry["company"])]
         sent = _day(entry["date"])
-        sources = [r for r in company if _fits(r, entry, sent, today, tracked)]
-        sources += [r for r in submitted if _same_company(r["company"], entry["company"])
-                    and _may_be_from(r, entry, sent)]
-        if len(sources) == 1 and sources[0] in company and sources[0]["id"] not in matches:
-            matches[sources[0]["id"]] = (row, entry)
+        senders = [r for r in [*company, *others]
+                   if _same_company(r["company"], entry["company"]) and _could_send(r, entry, sent)]
+        fits = [r for r in company if _fits(r, entry, sent, today, tracked)]
+        if len(fits) == 1 and senders == fits and fits[0]["id"] not in matches:
+            matches[fits[0]["id"]] = (row, entry)
         elif company:
             held_back.add(entry["key"])
     return matches, held_back
+
+
+def possible_senders(store, held, tracked):
+    """Jobs outside ``held`` that may have been submitted: tracker rows and filled forms without a tab.
+
+    A job in the tracker carries the day it was recorded, from its confirmation
+    or, once its stage changed, from its tracker row.
+    """
+    ids = {record["id"] for record in held}
+    rows = {str(row["id"]): row for row in tracked}
+    senders = []
+    for record in store.jobs():
+        if record["id"] in ids:
+            continue
+        confirmation = record.get("confirmation")
+        if record["id"] in rows or isinstance(confirmation, dict):
+            day = confirmation.get("confirmed_at") if isinstance(confirmation, dict) else None
+            senders.append({**record, "confirmation": {
+                "confirmed_at": day or rows.get(record["id"], {}).get("updated_at")}})
+        elif record["state"] in (*HELD_STATES, "submit_intent", "needs_reconciliation"):
+            senders.append(record)
+    return senders
 
 
 def lookback_days(held, today):
@@ -297,8 +324,8 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
         except (OSError, ValueError, RuntimeError) as error:
             report["gmail"] = f"Gmail unavailable: {error}"
     seen = {event.get("message_id") for event in store.mail_events() if event.get("account") == ACCOUNT}
-    submitted = [r for r in store.jobs() if r["state"] == "submitted"]
-    mails, held_back = _mail_matches(held, rows, seen, today, store.tracker_rows(), submitted)
+    tracked = store.tracker_rows()
+    mails, held_back = _mail_matches(held, rows, seen, today, tracked, possible_senders(store, held, tracked))
     for record in held:
         endpoint = record.get("debug_url") or by_lane.get(str(record.get("lane", 1)))
         tab = _tab(record, tabs[endpoint]) if endpoint in tabs else None

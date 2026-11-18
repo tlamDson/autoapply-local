@@ -362,9 +362,11 @@ tab đang giữ rồi tự nộp.
   bằng chứng được liệt kê kèm URL. Gmail được tìm ngược tới form giữ lâu nhất (ít
   nhất 14 ngày, nhiều nhất sáu tháng); mail xác nhận của công ty khác được thêm vào
   lịch sử một lần, còn mail khác nêu công ty của job đang giữ thì được để lại. Mail
-  có thể thuộc một job đang giữ khác, hoặc là mail xác nhận thứ hai của một job đã
-  nộp trong 14 ngày qua, cũng được để lại. Lệnh chỉ liệt kê tab và đọc dòng Gmail,
-  không chạy script trong tab job, và không đổi gì khi Chrome của tool chưa chạy.
+  chỉ được khớp khi không job nào khác của công ty đó có thể đã gửi nó: một form
+  khác đang giữ hoặc đã điền (kể cả form giữ từ trước khi tool lưu ngày giữ, hoặc
+  form mà tab vừa hiện trang xác nhận) hay một đơn được ghi trong 14 ngày qua, trừ
+  khi mail nêu role khác. Không thì mail được để lại. Lệnh chỉ liệt kê tab và đọc
+  dòng Gmail, không chạy script trong tab job, và không đổi gì khi Chrome của tool chưa chạy.
 - `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
 - `update`: chép `user/` (trừ `backups/` và profile Chrome) vào
   `user/backups/<ngày-giờ>/`, rồi `git pull --ff-only` (không có git: tải zip của

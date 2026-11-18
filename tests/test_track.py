@@ -347,7 +347,7 @@ class TrackTests(ReleaseCase):
         self.store.mark_submitted("n-1", {"status": "confirmed", "job_id": "n-1", "text": "page",
                                           "url": "https://jobs.lever.co/northwind/1/thanks",
                                           "confirmed_at": "2026-11-17T09:30:00+00:00"})
-        self.store.update("n-1", state="interview")
+        self.store.update_tracker_status("n-1", "interview", "2026-11-18T08:00:00+00:00")
         cdp = FakeCDP([self.northwind_form()])
         self.assert_email_held_back(self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")]))
         self.assertEqual(self.tracker_ids(), ["n-1"])
