@@ -102,7 +102,8 @@ python autoapply-local.py setup --terminal
 1. Ngôn ngữ: English hoặc Tiếng Việt.
 2. Engine: Claude Code hoặc Codex. Một lần gọi nhỏ kiểm bạn đã đăng nhập và hiện
    mức quota 5 giờ và quota tuần đã dùng. Chưa đăng nhập: in cách đăng nhập rồi chờ
-   bạn thử lại hoặc thoát.
+   bạn thử lại hoặc thoát. Sau 3 lần kiểm thất bại, nó hiện lỗi của engine và dừng
+   setup, trừ khi bạn gõ r để thử lại.
 3. Phần trăm quota để dừng (mặc định 90): mức dùng quota 5 giờ hoặc quota tuần của
    engine mà tại đó `apply` dừng (xem [Dùng hằng ngày](#dùng-hằng-ngày-apply)).
    Giá trị lưu trong `config.json`.

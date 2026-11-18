@@ -104,7 +104,8 @@ python autoapply-local.py setup --terminal
 1. Language: English or Vietnamese.
 2. Engine: Claude Code or Codex. One small call checks that you are signed in and
    shows the 5-hour and weekly quota used. Not signed in: it prints how to sign in
-   and waits for you to retry or quit.
+   and waits for you to retry or quit. After 3 failed checks it shows the engine's
+   error and stops setup unless you type r to retry.
 3. Quota stop percent (default 90): the share of the engine's 5-hour or weekly
    quota at which `apply` stops (see [Daily use](#daily-use-apply)). It is saved
    in `config.json`.

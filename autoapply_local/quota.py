@@ -4,7 +4,9 @@ Claude reports usage in ``rate_limit_event`` rows of its stream-json output
 (``rate_limit_info.utilization`` 0-1, the other window under ``unifiedWindows``).
 Codex reports ``rate_limits.primary/secondary`` with ``used_percent`` and
 ``window_minutes`` (300 = 5 hours, 10080 = 7 days). Missing numbers stay None:
-unknown usage is never shown as zero. No engine output is kept or echoed.
+unknown usage is never shown as zero. The prompt goes on stdin: Claude Code's
+``--tools`` takes several values and would swallow a trailing prompt argument.
+Engine output is not kept; a failed check keeps only a short ``detail`` line.
 """
 
 import json
@@ -14,6 +16,7 @@ import subprocess
 from .engines import EngineError, resolve_executable
 
 PROMPT = "Reply with the single word OK."
+DETAIL_LIMIT = 300
 WINDOWS = {"five_hour": "five_hour_pct", "seven_day": "seven_day_pct"}
 MINUTES = {300: "five_hour_pct", 10080: "seven_day_pct"}
 LOGIN_TERMS = ("/login", "invalid api key", "codex login", "not logged in", "login required", "sign in",
@@ -93,8 +96,16 @@ def _error_result(text):
     return None
 
 
+def _detail(text):
+    lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+    return (lines[-1] if lines else "")[:DETAIL_LIMIT]
+
+
 def probe(engine, runner=subprocess.run, cwd=None, timeout=120):
-    """Return ``{"engine", "status", "five_hour_pct", "seven_day_pct"}``; status ``ready`` when signed in."""
+    """Return ``{"engine", "status", "five_hour_pct", "seven_day_pct"}``; status ``ready`` when signed in.
+
+    A failed call also returns ``detail``: the engine's last error line, capped at ``DETAIL_LIMIT``.
+    """
     if engine not in HINTS:
         raise ValueError("Select one supported engine")
     report = {"engine": engine, "status": "ready", "five_hour_pct": None, "seven_day_pct": None}
@@ -102,13 +113,15 @@ def probe(engine, runner=subprocess.run, cwd=None, timeout=120):
         prefix = resolve_executable(engine)
     except EngineError as error:
         return {**report, "status": error.category}
+    stdin = {"stdin": subprocess.DEVNULL}
     if engine == "claude":
-        argv = prefix + ["--print", "--output-format", "stream-json", "--verbose", "--tools", "", PROMPT]
+        argv = prefix + ["--print", "--output-format", "stream-json", "--verbose", "--tools", ""]
+        stdin = {"input": PROMPT}
     else:
         argv = prefix + ["exec", "--json", "--skip-git-repo-check", PROMPT]
     try:
         done = runner(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                      shell=False, timeout=timeout, cwd=cwd, stdin=subprocess.DEVNULL)
+                      shell=False, timeout=timeout, cwd=cwd, **stdin)
     except subprocess.TimeoutExpired:
         return {**report, "status": "timeout"}
     except OSError:
@@ -116,5 +129,7 @@ def probe(engine, runner=subprocess.run, cwd=None, timeout=120):
     stdout, stderr = str(done.stdout or ""), str(done.stderr or "")
     failure = _error_result(stdout)
     if done.returncode or failure is not None:
-        return {**report, "status": _category(stderr + " " + (failure if failure is not None else stdout))}
+        text = failure if failure is not None else (stderr if stderr.strip() else stdout)
+        return {**report, "status": _category(stderr + " " + (failure if failure is not None else stdout)),
+                "detail": _detail(text)}
     return {**report, **parse_usage(engine, stdout)}
