@@ -169,25 +169,26 @@ class PacketAndAnswerTests(ReleaseCase):
     def ids(self, packet, label):
         return next(item for item in packet["questions"] if item["label"] == label)
 
-    def test_claude_packet_is_one_popup_split_into_tool_sized_calls(self):
+    def test_claude_packet_is_one_popup_of_tool_size(self):
         packet = self.questions.packet("claude")
         self.assertEqual(packet["status"], "questions")
         self.assertEqual(packet["batch_id"], self.summary["batch_id"])
         self.assertEqual(packet["ui"]["tool"], "AskUserQuestion")
         calls = packet["ui"]["calls"]
-        self.assertEqual([len(call["questions"]) for call in calls], [4, 2])
+        self.assertEqual([len(call["questions"]) for call in calls], [4])
+        self.assertEqual(packet["deferred"], 2)
         for call in calls:
             for item in call["questions"]:
                 self.assertTrue(2 <= len(item["options"]) <= 4)
                 self.assertIn("multiSelect", item)
-        self.assertEqual(len(packet["ui"]["bindings"]), 6)
+        self.assertEqual(len(packet["ui"]["bindings"]), 4)
         hear = self.ids(packet, HEAR)
         self.assertEqual([choice["label"] for choice in hear["choices"]], ["Job board", "Friend", "Skip for now"])
 
     def test_codex_packet_has_at_most_three_questions_per_call(self):
         packet = self.questions.packet("codex")
         self.assertEqual(packet["ui"]["tool"], "request_user_input")
-        self.assertTrue(all(len(call["questions"]) <= 3 for call in packet["ui"]["calls"]))
+        self.assertEqual([len(call["questions"]) for call in packet["ui"]["calls"]], [3])
         self.assertTrue(all(item["id"].startswith("q") for call in packet["ui"]["calls"] for item in call["questions"]))
 
     def test_no_native_tool_keeps_the_batch(self):

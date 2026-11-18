@@ -137,9 +137,9 @@ class NativePacketTests(ReleaseCase):
         for ui, (per_call, per_question) in (("claude", (4, 4)), ("codex", (3, 3)), ("codex-async", (None, None))):
             packet = questions.packet(ui)
             natives = [item for call in packet["ui"]["calls"] for item in call["questions"]]
-            self.assertEqual(len(natives), 7)
-            for call in packet["ui"]["calls"]:
-                self.assertTrue(1 <= len(call["questions"]) <= (per_call or 99))
+            self.assertEqual(len(packet["ui"]["calls"]), 1)
+            self.assertEqual(len(natives), min(7, per_call or 7))
+            self.assertEqual(len(natives) + packet["deferred"], 7)
             for item in natives:
                 labels = item["options"] if ui == "codex-async" else [option["label"] for option in item["options"]]
                 with self.subTest(ui=ui, item=item.get("question", item.get("title"))):
