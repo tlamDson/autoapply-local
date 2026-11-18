@@ -445,7 +445,10 @@ class BrowserBridge:
             return self.script_client
         from . import script_client
 
-        return script_client.CDPScriptClient(self.client.debug_url, resume_input=driver.resume_input)
+        # Bound to each tab's job URL: no script or upload reaches another page shown in a held tab.
+        return script_client.CDPScriptClient(
+            self.client.debug_url, lambda tab_id: self.tabs[str(tab_id)]["url"], resume_input=driver.resume_input
+        )
 
     def _native(self, tab_id):
         pages = self.client.list_pages()

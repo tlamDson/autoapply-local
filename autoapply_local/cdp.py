@@ -19,8 +19,15 @@ _LOOPBACK = ("127.0.0.1", "localhost", "::1")
 _GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
+PAGE_CHANGED = "autoapply-local: the tab left the checked page"
+
+
 class CDPError(RuntimeError):
     """Chrome refused the connection or the evaluated script threw."""
+
+
+class PageChangedError(CDPError):
+    """The tab shows another document than the one the caller is bound to; nothing was run or set."""
 
 
 def _loopback(url, schemes):
@@ -189,19 +196,54 @@ class _Session:
         return result
 
 
-def evaluate(ws_url, expression, timeout=60, connect=socket.create_connection):
-    """Evaluate ``expression`` in the tab, await a promise, and return its JSON value."""
+def _accepted(page, href):
+    if not isinstance(href, str) or not page(href):
+        raise PageChangedError("The tab shows another page than the bound one")
+    return href
+
+
+def evaluate(ws_url, expression, timeout=60, connect=socket.create_connection, page=None):
+    """Evaluate ``expression`` in the tab, await a promise, and return its JSON value.
+
+    With ``page`` (a predicate on the document URL) the expression runs only in
+    a document whose URL ``page`` accepted: the URL is read first, and the
+    expression itself starts by checking the document is still at exactly that
+    URL, so a navigation in between runs nothing.
+    """
     with _Session(ws_url, timeout, connect) as session:
+        if page is not None:
+            read = session.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True})
+            href = _accepted(page, read.get("result", {}).get("value"))
+            expression = (
+                f"(() => {{ if (location.href !== {json.dumps(href)}) throw new Error({json.dumps(PAGE_CHANGED)}); "
+                f"return {expression}; }})()"
+            )
         params = {"expression": expression, "awaitPromise": True, "returnByValue": True}
-        return session.call("Runtime.evaluate", params).get("result", {}).get("value")
+        try:
+            return session.call("Runtime.evaluate", params).get("result", {}).get("value")
+        except CDPError as error:
+            if page is not None and PAGE_CHANGED in str(error):
+                raise PageChangedError("The tab shows another page than the bound one") from error
+            raise
 
 
-def set_file_input(ws_url, selector, path, timeout=60, connect=socket.create_connection):
+# URL of the top-level document an element lives in; null once that document was navigated away.
+_OWN_PAGE = (
+    "function () { const view = this.ownerDocument && this.ownerDocument.defaultView; "
+    "return view && view === view.top && this.isConnected ? view.location.href : null; }"
+)
+
+
+def set_file_input(ws_url, selector, path, timeout=60, connect=socket.create_connection, page=None):
     """Select ``path`` in the one file input ``selector`` names, as a user's file choice would.
 
     DOM.setFileInputFiles is Chrome's native file selection (it fires the
     input's own change events); no attachment is faked in JavaScript. No
-    single matching file input means the user picks the file.
+    single matching file input means the user picks the file. With ``page``
+    (a predicate on the document URL) the file is set only on an input whose
+    own live top-level document is at a URL ``page`` accepts; the check and
+    the selection address the same element, so a navigation cannot move the
+    file to another page.
     """
     expression = (
         f"(() => {{ const found = document.querySelectorAll({json.dumps(selector)}); "
@@ -211,5 +253,11 @@ def set_file_input(ws_url, selector, path, timeout=60, connect=socket.create_con
         handle = session.call("Runtime.evaluate", {"expression": expression, "returnByValue": False}).get("result", {})
         if handle.get("subtype") == "null" or not handle.get("objectId"):
             return {"status": "needs_manual"}
+        if page is not None:
+            own = session.call(
+                "Runtime.callFunctionOn",
+                {"objectId": handle["objectId"], "functionDeclaration": _OWN_PAGE, "returnByValue": True},
+            )
+            _accepted(page, own.get("result", {}).get("value"))
         session.call("DOM.setFileInputFiles", {"files": [str(path)], "objectId": handle["objectId"]})
     return {"status": "uploaded"}
