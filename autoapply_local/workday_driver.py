@@ -4,7 +4,8 @@ Workday splits the application into steps (My Information, My Experience,
 Application Questions, Voluntary Disclosures, ...). On each form step the
 driver scans, plans and fills like every script driver, types the
 React-controlled name boxes with ``insertText`` (the plain setter is ignored
-there), uploads the selected resume on the step that asks for it, and presses
+there), uploads the selected resume on the step that asks for it (counted only
+when the browser reports it and a fresh audit shows the file), and presses
 Next only when no required field is left. It stops on the first step with a
 required unknown field (``needs_engine``), on validation errors after Next, and
 on Review, which it never presses: the user reviews and submits by hand.
@@ -162,6 +163,17 @@ class WorkdayDriver(ScriptDriver):
         if not callable(upload):
             _hold(report, "resume_upload_required", field_id)
             return False
-        upload(tab_id, str(pdf))
+        result = upload(tab_id, str(pdf))
+        if not isinstance(result, dict) or result.get("status") != "uploaded":
+            _hold(report, "resume_upload_failed", field_id)
+            return False
+        # Success is what the page shows: a fresh audit must list the PDF in the field.
+        audited = client.evaluate_script(tab_id, self.script("audit"), operation="audit")
+        fields = audited.get("fields") if isinstance(audited, dict) else None
+        field = next((item for item in fields or [] if item.get("id") == field_id), None)
+        names = [str(file.get("name")) for file in (field or {}).get("files") or [] if isinstance(file, dict)]
+        if PurePath(str(pdf)).name not in [str((field or {}).get("value") or ""), *names]:
+            _hold(report, "resume_upload_not_observed", field_id)
+            return False
         report["uploads"].append({"id": field_id, "path": str(pdf), "status": "uploaded"})
         return True

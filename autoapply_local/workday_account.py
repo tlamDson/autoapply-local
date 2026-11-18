@@ -3,7 +3,10 @@
 From the posting it presses Apply and Apply Manually, signs in with the
 tenant's credential from ``secrets.json`` (``wd_cred``), creates the account
 when sign-in fails, and enters the verification code read from the Gmail tab
-of the tool's own Chrome profile. Scripts run over loopback CDP straight in
+of the tool's own Chrome profile. The credential and the code are typed only
+on the page just checked and only when the tab's host is the job's tenant.
+The tenant's account terms are never accepted for the user: an unticked
+terms box holds the filled create-account form. Scripts run over loopback CDP straight in
 the held tab, so the password never passes through an engine. A result never
 carries the password or the code; error text is masked with ``wd_cred.redact``.
 Anything else (CAPTCHA, a link-only verification mail, an unknown page, a
@@ -18,6 +21,7 @@ from . import wd_cred, workday_steps
 from .cdp import CDPError
 
 SIGNED_IN = ("form", "review")
+WRITES = ("sign_in", "create_account", "verify_code")
 
 
 class TabClosed(ValueError):
@@ -56,6 +60,10 @@ class WorkdayAccount:
         self._attempts = {"sign_in": 0, "create_account": 0, "verify": 0}
         page = None
         try:
+            self._tenant = wd_cred.tenant_name(job.get("url", ""))
+        except ValueError:
+            return self._result("blocked", page, "tenant_mismatch")
+        try:
             for _ in range(self.max_moves + 1):
                 where = self._where()
                 page = where.get("page")
@@ -75,6 +83,9 @@ class WorkdayAccount:
             return self._result("blocked", page, "browser_error", [str(error)])
 
     def _step(self, page, where, job):
+        if page in WRITES and where.get("host") != self._tenant:
+            # The credential and code belong to the job's tenant: never type them on another host.
+            raise _Hold("tenant_mismatch")
         if page == "job":
             return self._press("apply")
         if page == "start":
@@ -102,7 +113,7 @@ class WorkdayAccount:
         credential = self._credential(job)
         self._attempts["sign_in"] += 1
         self._snapshot(job)
-        self._type(credential, confirm=False)
+        self._type(credential, "sign_in")
         self._press("sign_in")
 
     def _create(self, where, job):
@@ -111,7 +122,10 @@ class WorkdayAccount:
         credential = self._credential(job)
         self._attempts["create_account"] += 1
         self._snapshot(job)
-        self._type(credential, confirm=True)
+        typed = self._type(credential, "create_account")
+        if typed.get("terms") not in ("absent", "checked"):
+            # The tenant's terms are the user's to accept: hold the filled form for them.
+            raise _Hold("account_terms_consent_required")
         self._press("create_account")
 
     def _verify(self, job):
@@ -121,7 +135,7 @@ class WorkdayAccount:
         if code is None:
             raise _Hold("verification_code_not_found")
         self._attempts["verify"] += 1
-        typed = self.evaluate(workday_steps.script("code", code))
+        typed = self.evaluate(workday_steps.script("code", {"code": code, "host": self._tenant}))
         if not (isinstance(typed, dict) and typed.get("typed")):
             raise _Hold("verification_field_not_typed")
         self._press("verify")
@@ -132,11 +146,18 @@ class WorkdayAccount:
             raise _Hold("no_workday_credential")
         return credential
 
-    def _type(self, credential, confirm):
-        values = {"email": credential.email, "password": credential.password, "confirm": confirm}
+    def _type(self, credential, page):
+        values = {
+            "email": credential.email,
+            "password": credential.password,
+            "confirm": page == "create_account",
+            "page": page,
+            "host": self._tenant,
+        }
         result = self.evaluate(workday_steps.script("credentials", values))
-        if not isinstance(result, dict) or result.get("failed"):
+        if not isinstance(result, dict) or result.get("refused") or result.get("failed") or not result.get("typed"):
             raise _Hold("credential_fields_not_typed")
+        return result
 
     def _press(self, action):
         result = self.evaluate(workday_steps.press_script(action))

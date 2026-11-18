@@ -57,8 +57,12 @@ selected resume on the step that asks for it and presses Next only through the g
 never on the last step); it stops on Review. Its account step (`workday_account.py`) runs over
 loopback CDP in the held tab, never through an engine: Apply, Apply Manually, sign-in with the
 stored credential, account creation when sign-in fails, and the one-time code read from the
-subject/snippet of Gmail result rows. The code is typed and dropped, never stored or returned.
-CAPTCHA, a link-only verification mail, a rejected code or an unknown page holds the tab.
+subject/snippet of Gmail result rows. The credential and code are typed only on the page just
+checked and only when the tab's host is the job's tenant; the code is typed and dropped, never
+stored or returned. The tenant's account terms box is never ticked: an unticked box holds the
+filled create-account form for the user. A resume upload counts only when the browser reports it
+and a fresh audit shows the file. CAPTCHA, a link-only verification mail, a rejected code, another
+host or an unknown page holds the tab.
 
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,

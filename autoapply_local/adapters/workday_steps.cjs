@@ -5,7 +5,9 @@
 // Every click of the apply flow goes through press(): it clicks only the
 // control of a fixed action whose text matches that action, never a control
 // whose text or label says Submit, and Next only on a form step before Review.
-// Typed values (credentials, code, names) are never returned.
+// Typed values (credentials, code, names) are never returned, and the
+// credential and code are typed only on the page and tenant host the caller
+// checked. The tenant's account terms box is never ticked.
 (function install(root) {
   const base = typeof module !== 'undefined' && module.exports ? require('./workday.cjs') : root.AutoApplyWorkday;
   if (!base) throw new Error('Load workday.cjs before workday_steps.cjs');
@@ -69,6 +71,7 @@
       page,
       step: current,
       errors,
+      host: hostOf(document),
       create_link: has('createAccountLink'),
       sign_in_with_email: has('SignInWithEmailButton') && !has('signInSubmitButton'),
     };
@@ -154,29 +157,48 @@
     return { typed, failed };
   }
 
-  function credentials(document, { email, password, confirm = false }) {
-    const typed = [],
-      failed = [];
-    const put = (id, value) => {
-      const el = byAutomation(document, id);
-      const ok = typable(el) && (insert(document, el, value) || setter(document, el, value));
-      (ok ? typed : failed).push(id);
-    };
-    put('email', String(email));
-    put('password', String(password));
-    if (confirm) {
-      put('verifyPassword', String(password));
-      const box = byAutomation(document, 'createAccountCheckbox');
-      if (box && box.type === 'checkbox' && !box.checked) box.click();
-      (box && box.checked ? typed : failed).push('createAccountCheckbox');
-    }
-    return { typed, failed };
+  const hostOf = document =>
+    String(document.location?.hostname || (typeof location !== 'undefined' ? location.hostname : '') || '').toLowerCase();
+
+  // A write is bound to the page and tenant the caller checked: the tab must
+  // still show that page on that host, or nothing is typed.
+  function bound(document, page, host) {
+    if (where(document).page !== page) return 'wrong_page';
+    if (!host || hostOf(document) !== String(host).toLowerCase()) return 'wrong_host';
+    return null;
   }
 
-  function code(document, value) {
+  // Types the stored credential; never ticks the tenant's terms box (the user
+  // accepts those), only reports whether it is checked.
+  function credentials(document, { email, password, confirm = false, page, host }) {
+    const refused = bound(document, confirm ? 'create_account' : 'sign_in', host);
+    if (refused || page !== (confirm ? 'create_account' : 'sign_in')) return { typed: [], failed: [], refused: refused || 'wrong_page' };
+    const wanted = [
+      ['email', String(email), el => ['text', 'email'].includes(el.type)],
+      ['password', String(password), el => el.type === 'password'],
+      ...(confirm ? [['verifyPassword', String(password), el => el.type === 'password']] : []),
+    ];
+    const targets = wanted.map(([id, value, kind]) => [id, value, byAutomation(document, id), kind]);
+    const wrong = targets.filter(([, , el, kind]) => !(typable(el) && kind(el))).map(([id]) => id);
+    if (wrong.length) return { typed: [], failed: wrong, refused: 'unexpected_field' };
+    const typed = [],
+      failed = [];
+    for (const [id, value, el] of targets) (insert(document, el, value) || setter(document, el, value) ? typed : failed).push(id);
+    const result = { typed, failed };
+    if (confirm) {
+      const box = byAutomation(document, 'createAccountCheckbox');
+      result.terms = !box ? 'absent' : box.checked ? 'checked' : 'unchecked';
+    }
+    return result;
+  }
+
+  function code(document, { code: value, host } = {}) {
+    const refused = bound(document, 'verify_code', host);
+    if (refused) return { typed: false, refused };
     const el = codeInput(document);
     const text = String(value);
-    return { typed: Boolean(typable(el) && (insert(document, el, text) || setter(document, el, text))) };
+    if (!(typable(el) && ['text', 'tel', 'number'].includes(el.type))) return { typed: false, refused: 'unexpected_field' };
+    return { typed: Boolean(insert(document, el, text) || setter(document, el, text)) };
   }
 
   async function navigate(document, direction) {
