@@ -48,8 +48,10 @@ def form_fields(**values):
 class FakeForm:
     """Answers adapter calls the way the page would, and records their order."""
 
-    def __init__(self, ready_after=1, formsy=True, location=None, keep_empty=()):
+    def __init__(self, ready_after=1, formsy=True, location=None, keep_empty=(), late_parse=0):
         self.calls, self.ready_polls, self.ready_after = [], 0, ready_after
+        # How many fills a slow parse still overwrites afterwards (-1: every fill).
+        self.late_parse = late_parse
         self.formsy, self.location_result, self.keep_empty = formsy, location, set(keep_empty)
         self.values = {"resume": []}
         self.client = Mock(spec=["evaluate_script", "upload_file", "list_pages"])
@@ -90,7 +92,14 @@ class FakeForm:
             filled = [key for key in payload if key not in self.keep_empty]
             for key in filled:
                 self.values[key] = payload[key]["value"]
+            if self.late_parse:
+                self.late_parse -= 1
+                self.values["linkedin_link"] = "https://parsed.example/wrong"
             return fill(filled)
+        if name == "modelCheck":
+            same = [key for key in payload if self.values.get(key) == payload[key]["value"]]
+            changed = [{"id": key, "reason": "value_changed"} for key in payload if key not in same]
+            return fill(same, changed)
         if name == "location":
             if self.location_result:
                 return fill(blocked=[{"id": "location", "reason": self.location_result}])
@@ -236,6 +245,32 @@ class DriverTests(Base):
         self.assertIn(HEARD, {item["id"] for item in result["unknown"]})
         self.assertTrue(result["form_valid"])
 
+    def test_ready_poll_names_the_uploaded_file(self):
+        form = FakeForm()
+        self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
+        ready = [call[1] for call in form.calls if call[0] == "modelReady"]
+        self.assertEqual(ready, [{"name": self.pdf.name}])
+
+    def test_late_parse_overwrite_is_rewritten_and_checked_again(self):
+        form = FakeForm(late_parse=1)
+        result = self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
+        self.assertEqual(form.values["linkedin_link"], "https://www.linkedin.com/in/alex-rivera-example")
+        fills = [call[1] for call in form.calls if call[0] == "modelFill"]
+        self.assertEqual(len(fills), 2)
+        self.assertEqual(set(fills[1]), {"linkedin_link"}, "only the overwritten field is written again")
+        names = form.names()
+        self.assertEqual(names[-2:], ["modelCheck", "modelScan"], "the last check passes before the final scan")
+        self.assertEqual(result["status"], "filled")
+        self.assertEqual(result["blocked"], [])
+
+    def test_parse_that_keeps_overwriting_a_fact_holds_the_tab(self):
+        form = FakeForm(late_parse=-1)
+        result = self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
+        self.assertEqual(result["status"], "needs_manual")
+        self.assertIn({"id": "linkedin_link", "reason": "value_overwritten"}, result["blocked"])
+        self.assertNotIn("linkedin_link", result["filled"])
+        self.assertLessEqual(form.names().count("modelFill"), 3, "rewrites are bounded")
+
     def test_parse_that_never_finishes_holds_the_tab_for_the_user(self):
         form = FakeForm(ready_after=99)
         result = self.driver(form, parse_wait_s=2, poll_s=0.5).fill("tab-1", self.profile, self.job, pdf=self.pdf)
@@ -281,7 +316,7 @@ class DriverTests(Base):
     def test_driver_only_calls_fill_side_adapter_actions(self):
         form = FakeForm()
         self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
-        allowed = {"upload", "modelReady", "modelScan", "modelFill", "location"}
+        allowed = {"upload", "modelReady", "modelScan", "modelFill", "modelCheck", "location"}
         self.assertTrue(set(form.names()) <= allowed, form.names())
         for call in form.client.evaluate_script.call_args_list:
             self.assertNotRegex(call.args[1][-300:], r"(?i)submit")

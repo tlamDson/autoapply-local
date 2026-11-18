@@ -28,6 +28,7 @@ class Node {
     this.clicks = 0;
     this.value = '';
     this.listeners = {};
+    this.parentElement = null;
   }
   get type() {
     return this.attributes.type || this.tagName.toLowerCase();
@@ -61,6 +62,12 @@ class Node {
     this.listeners[event.type]?.(event);
     return true;
   }
+}
+
+// Puts `child` under `parent` in the synthetic DOM tree and returns the child.
+function nest(parent, child) {
+  child.parentElement = parent;
+  return child;
 }
 
 function setPath(model, name, value) {
@@ -361,4 +368,109 @@ test('rippling: every fill-side action returns an MCP fill readback', async () =
 
 test('rippling: the adapter exposes no submit or navigation action', () => {
   for (const name of Object.keys(rippling)) assert.doesNotMatch(name, /submit|navigate|apply/i);
+});
+
+test('rippling: modelReady waits for the resume the driver uploaded, not an earlier one', () => {
+  const model = { first_name: 'Alex', resume: [{ name: 'old.pdf', url: 'u', progress: 100 }] };
+  const stale = rippling.modelReady(formsyForm({ model }).document, { name: 'alex.pdf' });
+  assertShape('fill', stale);
+  assert.equal(reasonOf(stale), 'resume_parse_pending');
+  model.resume = [{ name: 'alex.pdf', url: 'u', progress: 100 }];
+  assert.deepEqual(rippling.modelReady(formsyForm({ model }).document, { name: 'alex.pdf' }).filled, ['resume']);
+});
+
+test('rippling: modelCheck reports confirmed values the parse overwrote', async () => {
+  const state = formsyForm({ model: { customQuestions: { ccc333: { answer: [] } } } });
+  const answers = {
+    first_name: confirmed('Alex'),
+    linkedin_link: confirmed('https://www.linkedin.com/in/alex-rivera-example'),
+    'customQuestions.bbb222.answer': confirmed('No'),
+    'customQuestions.ccc333.answer': confirmed('Platform'),
+  };
+  await rippling.modelFill(state.document, answers);
+  const clean = await rippling.modelCheck(state.document, answers);
+  assertShape('fill', clean);
+  assert.deepEqual(clean.filled.sort(), Object.keys(answers).sort());
+  assert.deepEqual(clean.blocked, []);
+  // A late parse writes what it read from the PDF on top of the user's facts.
+  state.model.linkedin_link = 'https://parsed.example/wrong';
+  state.model.customQuestions.bbb222.answer = 'opt-yes';
+  const writes = state.writes.length;
+  const dirty = await rippling.modelCheck(state.document, answers);
+  assertShape('fill', dirty);
+  assert.deepEqual(dirty.filled.sort(), ['customQuestions.ccc333.answer', 'first_name']);
+  assert.deepEqual(
+    dirty.blocked.sort((a, b) => a.id.localeCompare(b.id)),
+    [
+      { id: 'customQuestions.bbb222.answer', reason: 'value_changed' },
+      { id: 'linkedin_link', reason: 'value_changed' },
+    ],
+  );
+  assert.equal(state.writes.length, writes, 'checking never writes');
+});
+
+test('rippling: location never clicks a suggestion inside a control that activates', async () => {
+  for (const tag of ['button', 'a', 'label', 'summary']) {
+    const state = formsyForm();
+    const control = new Node(tag, tag === 'button' ? { type: 'submit' } : {}, 'Apply');
+    const wrapper = nest(control, new Node('div'));
+    const trap = nest(wrapper, suggestion('Example City, CA, USA', state.model, 'place-1'));
+    state.locationInput.listeners.input = () => {
+      state.document.options = [trap];
+    };
+    const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 2, waitMs: 1 });
+    assert.equal(reasonOf(result), 'unsafe_control', tag);
+    assert.deepEqual(trap.events, [], tag);
+    assert.equal(state.model.externalPlaceId, undefined, tag);
+  }
+  const state = formsyForm();
+  const listbox = new Node('ul', { role: 'listbox' });
+  const safe = nest(listbox, suggestion('Example City, CA, USA', state.model, 'place-1'));
+  state.locationInput.listeners.input = () => {
+    state.document.options = [safe];
+  };
+  const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 2, waitMs: 1 });
+  assert.deepEqual(result.filled, ['location']);
+});
+
+test('rippling: a suggestion picked on mousedown gets no click at all', async () => {
+  const state = formsyForm();
+  const option = new Node('li', { role: 'option' }, 'Example City, CA, USA');
+  option.listeners.mousedown = () => {
+    state.model.location = 'Example City, CA, USA';
+    state.model.externalPlaceId = 'place-1';
+  };
+  state.locationInput.listeners.input = () => {
+    state.document.options = [option];
+  };
+  const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
+  assert.deepEqual(result.filled, ['location']);
+  assert.ok(!option.events.includes('click'), option.events.join(','));
+});
+
+test('rippling: an earlier place id never passes for a new pick', async () => {
+  const dead = model => {
+    const option = new Node('li', { role: 'option' }, 'Example City, CA, USA');
+    option.listeners.click = () => {};
+    return option;
+  };
+  // The click does nothing; the old place id from an earlier fill is still in the model.
+  const state = formsyForm({ model: { location: 'Old Town, NY, USA', externalPlaceId: 'old-place' } });
+  state.locationInput.listeners.input = () => {
+    state.document.options = [dead(state.model)];
+  };
+  const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
+  assertShape('fill', result);
+  assert.equal(reasonOf(result), 'place_not_selected');
+  // The place id changes but the location text is still the old one.
+  const other = formsyForm({ model: { location: 'Old Town, NY, USA', externalPlaceId: 'old-place' } });
+  const half = new Node('li', { role: 'option' }, 'Example City, CA, USA');
+  half.listeners.click = () => {
+    other.model.externalPlaceId = 'place-9';
+  };
+  other.locationInput.listeners.input = () => {
+    other.document.options = [half];
+  };
+  const partial = await rippling.location(other.document, { query: 'Example City, CA', tries: 3, waitMs: 1 });
+  assert.equal(reasonOf(partial), 'place_not_selected');
 });
