@@ -1,0 +1,159 @@
+"""Offline demo form (plan aa-09, flow 3.3 step 5).
+
+Setup fills a local Greenhouse-style demo page in the tool's own Chrome with the
+Greenhouse script driver, to prove Chrome, the adapter and the driver work
+before any real job. The page has no Submit control, loads nothing from the
+network and stays open. The browser is a fake CDP module; the candidate is invented.
+"""
+
+import io
+import json
+import re
+from importlib.resources import files
+from unittest.mock import Mock
+
+from test_support import ReleaseCase, fact
+
+DEBUG_URL = "http://127.0.0.1:9333"
+
+
+def spec():
+    return json.loads(files("autoapply_local").joinpath("data/demo_form.json").read_text(encoding="utf-8"))
+
+
+def candidate():
+    return {
+        "schema_version": 1,
+        "revision": 1,
+        "contact": {
+            "first_name": fact("Alex"),
+            "last_name": fact("Rivera"),
+            "application_email": fact("alex.rivera@example.com"),
+            "phone": fact("+1 555 0100"),
+            "linkedin": fact("https://www.linkedin.com/in/alex-rivera-example"),
+            "portfolio": fact(None, status="unknown"),
+        },
+    }
+
+
+def recorded_scan():
+    """The Greenhouse adapter's scan of the demo page (adapters.test.cjs asserts the same shape)."""
+    fields = []
+    for item in spec()["fields"]:
+        label = item["label"]
+        fields.append({
+            "id": item["attrs"]["id"],
+            "label": label.rstrip("*").strip(),
+            "type": item["attrs"].get("type", item["tag"]),
+            "required": label.endswith("*"),
+            "value": "",
+            "options": [],
+        })
+    return {"fields": fields}
+
+
+class FakeCDP:
+    def __init__(self):
+        self.opened, self.expressions, self.fill_result = [], [], None
+
+    def open_page(self, debug_url, url):
+        self.opened.append((debug_url, url))
+        self.page = {"id": "T1", "url": url, "ws": "ws://127.0.0.1:9333/devtools/page/T1"}
+        return dict(self.page)
+
+    def pages(self, debug_url):
+        return [dict(self.page)] if self.opened else []
+
+    def evaluate(self, ws, expression, timeout=60):
+        self.expressions.append(expression)
+        if "AutoApplyGreenhouse.audit" in expression:
+            return recorded_scan()
+        filled = [key for key in ("first_name", "last_name", "email", "phone", "question_1") if f'"{key}"' in expression]
+        return self.fill_result or {"filled": filled, "blocked": [], "uploads": []}
+
+
+class DemoPageTests(ReleaseCase):
+    def test_spec_is_a_greenhouse_style_form_with_standard_ids(self):
+        ids = [item["attrs"]["id"] for item in spec()["fields"]]
+        for expected in ("first_name", "last_name", "email", "phone", "resume"):
+            self.assertIn(expected, ids)
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertFalse(any(item["attrs"].get("type") == "submit" for item in spec()["fields"]))
+
+    def test_rendered_page_is_offline_and_has_no_submit_control(self):
+        page = self.module("demo_form").render()
+        for item in spec()["fields"]:
+            with self.subTest(field=item["attrs"]["id"]):
+                self.assertIn(f'<label for="{item["attrs"]["id"]}">', page)
+                self.assertIn(f'id="{item["attrs"]["id"]}"', page)
+        self.assertNotRegex(page, re.compile(r"<button|type=\"submit\"|<script|action=|https?://", re.I))
+        self.assertIn('onsubmit="return false"', page)
+
+    def test_render_escapes_labels(self):
+        demo = self.module("demo_form")
+        page = demo.render({"title": "T", "fields": [{"tag": "input", "attrs": {"id": "q", "type": "text"},
+                                                       "label": "<b>Name</b> & co"}]})
+        self.assertIn("&lt;b&gt;Name&lt;/b&gt; &amp; co", page)
+
+    def test_write_puts_the_page_inside_the_runtime_root(self):
+        path = self.module("demo_form").write(self.root)
+        self.assertEqual(path, self.root / "demo" / "demo-form.html")
+        self.assertEqual(path.read_text(encoding="utf-8"), self.module("demo_form").render())
+
+
+class DemoRunTests(ReleaseCase):
+    def test_run_opens_the_local_page_and_fills_it_from_confirmed_facts(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        result = demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        page = self.root / "demo" / "demo-form.html"
+        self.assertEqual(cdp.opened, [(DEBUG_URL, page.as_uri())])
+        self.assertEqual(len(cdp.expressions), 2)
+        audit, fill = cdp.expressions
+        self.assertIn("AutoApplyGreenhouse.audit", audit)
+        for value in ("Alex", "Rivera", "alex.rivera@example.com", "+1 555 0100", "alex-rivera-example"):
+            self.assertIn(value, fill)
+        for expression in cdp.expressions:
+            self.assertNotRegex(expression, r"\.click\s*\(|requestSubmit|\.submit\s*\(")
+        self.assertEqual(result["status"], "filled")
+        self.assertIs(result["ok"], True)
+        self.assertEqual(result["filled"], ["first_name", "last_name", "email", "phone", "question_1"])
+        self.assertEqual([item["id"] for item in result["unknown"]], ["question_2", "question_3"])
+        self.assertEqual(result["resume_field"], "resume")
+        self.assertEqual((result["tab_id"], result["url"]), ("T1", page.as_uri()))
+
+    def test_nothing_filled_is_not_ok(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        cdp.fill_result = {"filled": [], "blocked": [], "uploads": []}
+        result = demo.run(self.root, DEBUG_URL, {"schema_version": 1, "revision": 1, "contact": {}}, cdp=cdp)
+        self.assertIs(result["ok"], False)
+
+    def test_run_refuses_a_non_loopback_browser(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        for url in ("http://example.com:9222", "http://127.0.0.1", "ws://127.0.0.1:9222"):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                demo.run(self.root, url, candidate(), cdp=cdp)
+        self.assertEqual(cdp.opened, [])
+
+    def test_runtime_demo_uses_the_tools_own_chrome_and_saved_profile(self):
+        self.write_json("config.json", {"runtime": {}, "resources": {"lanes": 1}})
+        self.write_json("profile.json", candidate())
+        launcher = Mock(return_value=[{"lane": 1, "debug_url": DEBUG_URL, "profile_dir": "x"}])
+        cdp = FakeCDP()
+        result = self.module("runtime").demo(root=self.root, launcher=launcher, cdp=cdp)
+        self.assertEqual(launcher.call_args.args, (self.root,))
+        self.assertEqual(launcher.call_args.kwargs["lanes"], 1)
+        self.assertEqual(result["filled"][0], "first_name")
+        self.assertEqual(cdp.opened[0][0], DEBUG_URL)
+
+    def test_runtime_demo_needs_setup_first(self):
+        with self.assertRaises(ValueError):
+            self.module("runtime").demo(root=self.root, launcher=Mock(), cdp=FakeCDP())
+
+
+class DemoCliTests(ReleaseCase):
+    def test_demo_command_dispatches_the_service(self):
+        services = {"demo": Mock(return_value={"status": "filled"})}
+        out, err = io.StringIO(), io.StringIO()
+        code = self.module("cli").main(["--user-dir", str(self.root), "demo"], services=services, stdout=out, stderr=err)
+        self.assertEqual(code, 0, err.getvalue())
+        services["demo"].assert_called_once_with(root=self.root)
