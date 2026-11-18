@@ -56,6 +56,7 @@ class WorkflowTests(ReleaseCase):
         self.browser.close.assert_not_called()
         self.assertEqual(runner.store.tracker_rows(), [])
         self.assertEqual(runner.status()["held_tabs"][0]["job_id"], "synthetic-1")
+        self.assertEqual(runner.store.get("synthetic-1")["held_at"], NOW, "track compares email dates to this")
 
     def test_engine_override_isolated_and_quick_never_tailors(self):
         runner = self.prepared()

@@ -44,15 +44,18 @@ class TrackTests(ReleaseCase):
         self.track = self.module("track")
         self.write_json("browser/active-lanes.json", [{"lane": 1, "debug_url": LANE}])
 
-    def held(self, job_id, url, company="Example Labs", role="Backend Software Engineering Intern", state="filled"):
+    def held(self, job_id, url, company="Example Labs", role="Backend Software Engineering Intern", state="filled",
+             held_at="2026-11-17T09:00:00+00:00"):
         self.store.enqueue(job(job_id, url=url, company=company, role=role))
-        self.store.update(job_id, state=state, tab_id="tab-" + job_id, debug_url=LANE, lane="1")
+        fields = {"held_at": held_at} if held_at else {}
+        self.store.update(job_id, state=state, tab_id="tab-" + job_id, debug_url=LANE, lane="1", **fields)
 
     def reconcile(self, cdp, rows=()):
         self.gmail_calls = []
 
-        def gmail(debug_url):
+        def gmail(debug_url, days):
             self.gmail_calls.append(debug_url)
+            self.gmail_days = days
             return list(rows)
 
         return self.track.run(self.root, cdp=cdp, gmail=gmail, clock=lambda: "2026-11-18T10:00:00+00:00")
@@ -142,9 +145,10 @@ class TrackTests(ReleaseCase):
         report = self.reconcile(cdp, rows)
         self.assertEqual(report["submitted"], [])
         self.assertEqual(self.store.get("wk-1")["state"], "filled")
-        self.assertEqual(report["history"]["added"], 2)
+        self.assertEqual(report["history"]["added"], 1, "an email naming a held job's company is held back")
         companies = sorted(row["company"] for row in self.store.tracker_rows())
-        self.assertEqual(companies, ["Acme Robotics", "Northwind Analytics"])
+        self.assertEqual(companies, ["Northwind Analytics"])
+        self.assertEqual(report["held_back_emails"], 1)
         self.assertEqual([item["job_id"] for item in report["waiting"]], ["wk-1"])
 
     def test_company_only_email_matches_a_single_held_job_of_that_company(self):
@@ -163,8 +167,95 @@ class TrackTests(ReleaseCase):
         self.assertEqual(self.store.get("c-1")["state"], "filled")
         self.assertEqual(self.store.get("c-2")["state"], "filled")
         self.assertEqual(report["history"]["added"], 0, "an ambiguous email is not added as a separate application")
-        self.assertEqual(report["ambiguous_emails"], 1)
+        self.assertEqual(report["held_back_emails"], 1)
         self.assertEqual(self.tracker_ids(), [])
+
+    def test_tab_id_now_on_another_jobs_confirmation_page_is_not_this_job(self):
+        self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
+        cdp = FakeCDP([{"id": "tab-gh-1", "url": "https://job-boards.greenhouse.io/acme/jobs/2/confirmation"}])
+        report = self.reconcile(cdp)
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual([item["job_id"] for item in report["gone"]], ["gh-1"])
+        self.assertEqual(self.store.get("gh-1")["state"], "filled")
+        self.assertEqual(self.tracker_ids(), [])
+        self.assertEqual(cdp.closed, [])
+
+    def test_tab_id_on_a_job_neutral_confirmation_page_of_the_same_site_is_this_job(self):
+        self.held("wd-1", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1/apply")
+        done = "https://acme.wd5.myworkdayjobs.com/en-US/Ext/jobTasks/completed/application"
+        report = self.reconcile(FakeCDP([{"id": "tab-wd-1", "url": done}]))
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["wd-1"])
+        other = "https://other.wd1.myworkdayjobs.com/en-US/Ext/jobTasks/completed/application"
+        self.held("wd-2", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R2/apply")
+        report = self.reconcile(FakeCDP([{"id": "tab-wd-2", "url": other}]))
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual(self.store.get("wd-2")["state"], "filled")
+
+    def test_email_older_than_the_held_form_does_not_match(self):
+        self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",
+                  role="Software Engineer Intern", held_at="2026-11-17T09:00:00+00:00")
+        cdp = FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/1/application"}])
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern", date="Nov 10, 2026")])
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual(report["history"]["added"], 0)
+        self.assertEqual(self.store.get("ab-1")["state"], "filled")
+
+    def test_email_without_a_date_or_job_without_held_time_does_not_match(self):
+        self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",
+                  role="Software Engineer Intern", held_at=None)
+        cdp = FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/1/application"}])
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern")])
+        self.assertEqual(report["submitted"], [])
+        self.held("ab-2", "https://jobs.ashbyhq.com/acme/2/application", company="Bolt Freight", role="Data Intern")
+        cdp = FakeCDP([{"id": "tab-ab-2", "url": "https://jobs.ashbyhq.com/acme/2/application"}])
+        report = self.reconcile(cdp, [mail("Bolt Freight", "Data Intern", thread="th-b", date="sometime")])
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual(self.store.get("ab-2")["state"], "filled")
+
+    def test_partial_company_or_role_names_do_not_match(self):
+        self.held("m-1", "https://jobs.lever.co/meta/1/apply", company="Meta", role="Software Engineer Intern")
+        self.held("m-2", "https://jobs.lever.co/acme/2/apply", company="Acme Robotics", role="Software Engineer Intern")
+        cdp = FakeCDP([{"id": "tab-m-1", "url": "https://jobs.lever.co/meta/1/apply"},
+                       {"id": "tab-m-2", "url": "https://jobs.lever.co/acme/2/apply"}])
+        rows = [mail("Metadata Systems", "Software Engineer Intern", thread="th-1"),
+                mail("Acme Robotics", "Intern", thread="th-2")]
+        report = self.reconcile(cdp, rows)
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual(self.store.get("m-1")["state"], "filled")
+        self.assertEqual(self.store.get("m-2")["state"], "filled")
+
+    def test_company_suffixes_and_case_still_match(self):
+        self.held("s-1", "https://jobs.lever.co/acme/1/apply", company="Acme Robotics, Inc.",
+                  role="Software Engineer Intern")
+        cdp = FakeCDP([{"id": "tab-s-1", "url": "https://jobs.lever.co/acme/1/apply"}])
+        report = self.reconcile(cdp, [mail("ACME Robotics", "software engineer intern")])
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["s-1"])
+
+    def test_gmail_lookback_covers_the_oldest_held_form(self):
+        self.reconcile(FakeCDP([]))
+        self.assertEqual(self.gmail_days, self.track.TRACK_DAYS)
+        self.held("old-1", "https://jobs.lever.co/acme/1/apply", held_at="2026-10-09T23:00:00+00:00")
+        self.held("new-1", "https://jobs.lever.co/acme/2/apply", held_at="2026-11-17T09:00:00+00:00")
+        self.reconcile(FakeCDP([]))
+        self.assertEqual(self.gmail_days, 41, "clock 2026-11-18 minus held 2026-10-09, plus one day")
+        self.held("ancient", "https://jobs.lever.co/acme/3/apply", held_at="2025-01-01T00:00:00+00:00")
+        self.reconcile(FakeCDP([]))
+        self.assertEqual(self.gmail_days, self.module("mail_history").HISTORY_DAYS)
+
+    def test_default_gmail_reader_pages_the_whole_lookback(self):
+        calls = []
+
+        class Tab:
+            def __init__(self, debug_url):
+                calls.append(debug_url)
+
+            def history(self, days, max_pages):
+                calls.append((days, max_pages))
+                return []
+
+        with patch("autoapply_local.gmail_tab.GmailTab", Tab):
+            self.assertEqual(self.track._gmail_rows(LANE, 41), [])
+        self.assertEqual(calls, [LANE, (41, self.module("gmail_tab").MAX_PAGES)])
 
     def test_chrome_not_running_changes_nothing(self):
         self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
@@ -180,7 +271,7 @@ class TrackTests(ReleaseCase):
         self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
         cdp = FakeCDP([{"id": "tab-gh-1", "url": "https://job-boards.greenhouse.io/acme/jobs/1/confirmation"}])
 
-        def broken(debug_url):
+        def broken(debug_url, days):
             raise RuntimeError("Gmail is not signed in")
 
         report = self.track.run(self.root, cdp=cdp, gmail=broken, clock=lambda: "2026-11-18")
