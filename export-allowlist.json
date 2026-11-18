@@ -167,6 +167,7 @@
   "tests/test_guided_quick.py",
   "tests/test_job_filters.py",
   "tests/test_resume_facts.py",
+  "tests/test_resume_experience_layout.py",
   "tests/gmail.test.cjs",
   "tests/test_gmail_tab.py",
   "tests/test_mail_history.py",
