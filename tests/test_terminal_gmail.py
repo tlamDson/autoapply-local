@@ -111,3 +111,13 @@ class GmailStep(Base):
     def test_without_a_gmail_session_the_step_is_skipped(self):
         self.wizard(["1", "1", "", str(self.pdf("cv.pdf")), "SWE", "n", ""])
         self.assertNotIn("gmail", self.config())
+
+    def test_runtime_terminal_setup_passes_a_gmail_session_for_its_root(self):
+        from unittest.mock import patch
+
+        runtime, seen = self.module("runtime"), {}
+        with patch.object(self.ts, "run", lambda root, **kwargs: seen.update(kwargs) or {"status": "ready"}):
+            runtime.setup(root=self.root, terminal=True, launch=False)
+        session = seen["gmail"]
+        self.assertIsInstance(session, self.module("gmail_tab").GmailSession)
+        self.assertEqual(session.root, self.root.resolve())

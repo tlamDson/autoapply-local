@@ -26,7 +26,7 @@ REJECT = mail("18c0a5", "Litware Recruiting", "talent@litware.example", "Your ap
               "Thank you for applying. Unfortunately we decided to move forward with other candidates.")
 STARTED = mail("18c0a6", "Tailspin Careers", "careers@tailspin.example", "Your application step was started",
                "Continue your application.")
-ATS_ONLY = mail("18c0a7", "Notifications", "no-reply@us.greenhouse-mail.io", "Thank you for your application",
+ATS_ONLY = mail("18c0a7", "Notifications", "no-reply@us.greenhouse-mail.example", "Thank you for your application",
                 "We received it.")
 
 

@@ -81,7 +81,7 @@ function row({ thread, name, email, subject, snippet, date, unread = false }) {
 function mailbox(pages) {
   const document = new Node('html');
   const hidden = document.add(new Node('div', { attrs: { role: 'main' }, hidden: true }));
-  hidden.add(row({ thread: 'stale', name: 'Hidden', email: 'x@example.test', subject: 'Old view', snippet: '', date: '' }));
+  hidden.add(row({ thread: 'stale', name: 'Hidden', email: 'x@hidden.example', subject: 'Old view', snippet: '', date: '' }));
   const main = document.add(new Node('div', { attrs: { role: 'main' } }));
   const show = list => {
     main.children = [];
@@ -143,24 +143,6 @@ test('rows reads the visible list only, with thread id, sender, subject, snippet
   });
   assert.equal(rows[1].unread, true);
   assert.equal(gmail.isEmpty(win.document), false);
-});
-
-test('query covers six months of confirmation subjects in every folder', () => {
-  const q = gmail.query({ kind: 'confirm', days: 183 });
-  assert.match(q, /^in:anywhere newer_than:183d /);
-  assert.match(q, /subject:application/);
-  assert.match(q, /"received your application"/);
-  assert.doesNotMatch(q, /from:/);
-});
-
-test('query for one company names it as phrase and sender word', () => {
-  const q = gmail.query({ kind: 'confirm', company: "Fabrikam's Goods", days: 7 });
-  assert.match(q, /newer_than:7d/);
-  assert.match(q, /"Fabrikam's Goods"/);
-  assert.match(q, /from:fabrikamsgoods/);
-  const verify = gmail.query({ kind: 'verify', company: 'Contoso', days: 1 });
-  assert.match(verify, /subject:verify/);
-  assert.match(verify, /"security code"/);
 });
 
 test('searchHash encodes the query and the result page', () => {

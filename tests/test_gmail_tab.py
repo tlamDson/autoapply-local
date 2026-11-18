@@ -136,6 +136,29 @@ class Tab(ReleaseCase):
         self.assertIsNone(self.tab(cdp).find_confirmation("Northwind Labs"))
 
 
+class Query(ReleaseCase):
+    def setUp(self):
+        super().setUp()
+        self.gt = self.module("gmail_tab")
+
+    def test_history_query_covers_confirmation_subjects_in_every_folder(self):
+        q = self.gt.search_query("confirm", days=183)
+        self.assertTrue(q.startswith("in:anywhere newer_than:183d "))
+        self.assertIn("subject:application", q)
+        self.assertIn('"received your application"', q)
+        self.assertNotIn("from:", q)
+
+    def test_company_query_names_it_as_phrase_and_sender_word(self):
+        q = self.gt.search_query("confirm", "Fabrikam's Goods", days=7)
+        self.assertIn("newer_than:7d", q)
+        self.assertIn("\"Fabrikam's Goods\"", q)
+        self.assertIn("from:fabrikamsgoods", q)
+        verify = self.gt.search_query("verify", "Contoso", days=1)
+        self.assertIn("subject:verify", verify)
+        self.assertIn('"security code"', verify)
+        self.assertIn("from:contoso", verify)
+
+
 class Session(ReleaseCase):
     def setUp(self):
         super().setUp()
