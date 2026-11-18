@@ -186,11 +186,24 @@ def walk_skips(questions):
 
 
 def refresh(state, question):
-    """Recompute the filter review from the current draft answers, just before it is shown."""
+    """Recompute the filter review from the current draft answers, just before it is shown.
+
+    A filter the user edited (its saved value differs from what the answers last
+    derived) is shown and written as edited; only unedited filters follow the answers.
+    """
     if question.get("quick_step") != "filters":
         return
-    derived = job_filters.derive(state["document"]["groups"])
-    question["_draft"] = job_filters.intake_values(derived)
+    groups = state["document"]["groups"]
+    derived = job_filters.derive(groups)
+    draft = job_filters.intake_values(derived)
+    question["_derived"] = {field: copy.deepcopy(draft[field]) for field in SYNCED}
+    reference = (state.get("quick_filters") or {}).get("derived") or state.get("quick_baseline") or {}
+    for field in SYNCED:
+        current = job_filters.raw(_value(groups, field))
+        if field in reference and isinstance(current, list) and current != reference[field]:
+            draft[field] = copy.deepcopy(current)
+            derived[field.split(".")[1]] = list(current)
+    question["_draft"] = draft
     question["prompt"] = {lang: job_filters.summary(derived, lang) + (
         " Xác nhận hay sửa?" if lang == "vi" else " Confirm these filters, or edit them?") for lang in ("en", "vi")}
 
@@ -205,7 +218,8 @@ def _put(state, field, value):
 SYNCED = ("filters.jd_exclude", "filters.title_include", "filters.title_exclude")
 
 
-def _synced(groups):
+def baseline(groups):
+    """What the answers derive for the synced filters; a saved filter that differs was edited."""
     values = job_filters.intake_values(job_filters.derive(groups))
     return {field: values[field] for field in SYNCED}
 
@@ -218,7 +232,7 @@ def sync_filters(state):
     if not record:
         return
     groups = state["document"]["groups"]
-    derived = _synced(groups)
+    derived = baseline(groups)
     if derived == record["derived"]:
         return
     for field, old in record["derived"].items():
@@ -242,7 +256,9 @@ def apply(state, question, status, value):
         for field, draft in question["_draft"].items():
             _put(state, field, draft)
         if question["quick_step"] == "filters":
-            state["quick_filters"] = {"derived": {field: copy.deepcopy(question["_draft"][field]) for field in SYNCED}}
+            # Record what the answers derived, not the draft: an edited filter stays an edit.
+            state["quick_filters"] = {"derived": copy.deepcopy(question.get("_derived") or {
+                field: question["_draft"][field] for field in SYNCED})}
         if value == "edit":
             for field, draft in question["_draft"].items():
                 word = ("Suggested", "Gợi ý") if question["quick_step"] == "filters" else ("Resume shows", "Resume ghi")

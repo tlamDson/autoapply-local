@@ -33,6 +33,8 @@ Guided setup after terminal setup begins with quick steps: resume fact groups
 lacks (work authorization, sponsorship, address, EEO, season, roles), then job
 filters derived only from explicit answers for Confirm/Edit. An unknown
 sponsorship answer never produces a sponsorship filter.
+When changed answers reopen the filter review, a filter the user edited is
+shown and kept as edited; only unedited filters follow the answers.
 
 If setup becomes stale, use the native Reload latest confirmed profile / Keep
 current draft popup. Run `setup --restart --ui UI` only after explicit Reload;

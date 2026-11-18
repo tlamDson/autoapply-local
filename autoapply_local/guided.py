@@ -145,6 +145,7 @@ def _seed(root):
     }
     if guided_quick.enabled(root):
         guided_quick.prefill(root, document)
+        state["quick_baseline"] = guided_quick.baseline(document["groups"])
         quick = guided_quick.steps(root, document)
         state["queue"] = conflicts + quick + [_descriptor(q) for q in top[:3]]
         state["walk_skips"] = guided_quick.walk_skips(quick)
