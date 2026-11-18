@@ -5,6 +5,13 @@ this runtime root. The launcher selects its own root before the subcommand,
 regardless of AUTOAPPLY_LOCAL_HOME. Use only the user's selected engine with its
 normal approvals; never switch engines as fallback or change global settings.
 
+The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
+engine opens: language, engine with one small login/quota probe call, quota stop
+percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
+saved to `config.json`. It then hands the terminal to the selected engine with
+`/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
+interview subprocess. Inside an engine, never run `setup --terminal`.
+
 For first setup, including a plain setup request, follow the native loop in
 `.claude/commands/setup.md` or `.codex/skills/autoapply-local/SKILL.md`. Discover
 the actual question tool in this top-level host, run `setup --guided --ui UI`

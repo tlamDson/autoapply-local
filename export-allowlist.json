@@ -76,6 +76,7 @@
   "tests/test_cleanup.py",
   "tests/test_cli_unicode.py",
   "tests/test_document_folders.py",
+  "tests/test_engine_quota.py",
   "tests/test_fetch.py",
   "tests/test_fetch_pagination.py",
   "tests/test_fetch_sponsorship_scope.py",
@@ -122,5 +123,9 @@
   "autoapply_local/extraction.py",
   "tests/test_quick_apply_scope.py",
   "autoapply_local/manual_submission.py",
-  "tests/test_manual_submission.py"
+  "autoapply_local/quota.py",
+  "autoapply_local/terminal_setup.py",
+  "autoapply_local/terminal_text.py",
+  "tests/test_manual_submission.py",
+  "tests/test_terminal_setup.py"
 ]
