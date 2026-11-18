@@ -12,7 +12,7 @@ import json
 import re
 import sys
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePath
 from unittest.mock import Mock
 
 RELEASE = Path(__file__).resolve().parents[1]
@@ -81,12 +81,14 @@ def page(name):
 class FakeWorkday:
     """A held Workday tab that answers the driver's scripts and moves on Next."""
 
-    def __init__(self, pages=None, typed=True, next_errors=None, upload=True):
+    def __init__(self, pages=None, typed=True, next_errors=None, upload=True, upload_result=None, lands=True):
         self.pages = pages if pages is not None else steps() + [{"where": page("review"), "fields": []}]
         self.index = 0
         self.typed = typed
         self.next_errors = next_errors or {}
         self.calls, self.fills, self.uploads, self.order = [], [], [], []
+        self.upload_result = {"status": "uploaded"} if upload_result is None else upload_result
+        self.lands = lands
         if upload:
             self.upload_file = self._upload
 
@@ -97,6 +99,11 @@ class FakeWorkday:
     def _upload(self, tab_id, path):
         self.uploads.append((tab_id, path))
         self.order.append(("upload", self.current["where"]["step"]["title"]))
+        if self.lands:
+            for item in self.current["fields"]:
+                if item["type"] == "file":
+                    item["value"] = PurePath(path).name
+        return copy.deepcopy(self.upload_result)
 
     def evaluate_script(self, tab_id, script, operation="audit"):
         self.calls.append(operation)
@@ -246,9 +253,28 @@ class WorkdayRunTests(unittest.TestCase):
         report = WorkdayDriver().run(tab, "tab-1", profile(), JOB, pdf=PDF)
         self.assertEqual(tab.uploads, [("tab-1", PDF)])
         at = tab.order.index(("upload", "My Experience"))
-        self.assertEqual(tab.order[at + 1], ("press", "next"))
+        # The upload counts only once a fresh audit shows the file in the field.
+        self.assertEqual(tab.order[at + 1 : at + 3], [("audit",), ("press", "next")])
         self.assertEqual(report["uploads"], [{"id": "autoapply-field-1", "path": PDF, "status": "uploaded"}])
         self.assertEqual(report["resume_field"], "autoapply-field-1")
+
+    def test_an_upload_the_browser_reports_as_failed_holds_the_tab(self):
+        for result in ({"status": "needs_manual"}, {"status": "error"}, "uploaded", False):
+            with self.subTest(result=result):
+                tab = FakeWorkday(upload_result=result)
+                report = WorkdayDriver().run(tab, "tab-1", profile(), JOB, pdf=PDF)
+                self.assertEqual(report["status"], "needs_manual")
+                self.assertIn({"id": "autoapply-field-1", "reason": "resume_upload_failed"}, report["blocked"])
+                self.assertEqual(report["uploads"], [])
+                self.assertEqual(tab.index, 1)
+
+    def test_an_upload_the_page_does_not_show_holds_the_tab(self):
+        tab = FakeWorkday(lands=False)
+        report = WorkdayDriver().run(tab, "tab-1", profile(), JOB, pdf=PDF)
+        self.assertEqual(report["status"], "needs_manual")
+        self.assertIn({"id": "autoapply-field-1", "reason": "resume_upload_not_observed"}, report["blocked"])
+        self.assertEqual(report["uploads"], [])
+        self.assertEqual(tab.index, 1)
 
     def test_the_same_resume_already_attached_is_not_uploaded_again(self):
         pages = steps() + [{"where": page("review"), "fields": []}]

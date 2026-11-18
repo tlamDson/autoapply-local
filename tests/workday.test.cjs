@@ -212,56 +212,136 @@ test('workday steps: Next that raises validation errors reports them and does no
   assert.deepEqual(result.where.errors, ['Error: City is required']);
 });
 
-test('workday steps: sign-in credentials are typed and only field IDs come back', () => {
+const HOST = 'exampleco.wd5.myworkdayjobs.com';
+
+function signInPage(host = HOST) {
+  const result = page();
+  result.document.location = { hostname: host };
+  result.email = input(result.form, 'email');
+  result.password = input(result.form, 'password', { type: 'password' });
+  result.button = button(result.form, 'signInSubmitButton', 'Sign In');
+  return result;
+}
+
+function createPage(terms) {
+  const result = page();
+  result.document.location = { hostname: HOST };
+  result.email = input(result.form, 'email');
+  result.password = input(result.form, 'password', { type: 'password' });
+  result.verify = input(result.form, 'verifyPassword', { type: 'password' });
+  if (terms !== undefined) {
+    result.terms = result.form.appendChild(new Input({ type: 'checkbox', 'data-automation-id': 'createAccountCheckbox' }));
+    result.terms.checked = terms;
+  }
+  button(result.form, 'createAccountSubmitButton', 'Create Account');
+  return result;
+}
+
+test('workday steps: where() reports the tab host the writes are bound to', () => {
   const steps = load('workday_steps');
-  const { document, form } = page();
+  assert.equal(steps.where(signInPage('ExampleCo.wd5.myworkdayjobs.com').document).host, HOST);
+});
+
+test('workday steps: sign-in credentials are typed on the checked page and host; only field IDs come back', () => {
+  const steps = load('workday_steps');
+  const { document, email, password } = signInPage();
   typing(document);
-  const email = input(form, 'email');
-  const password = input(form, 'password', { type: 'password' });
-  const result = steps.credentials(document, { email: EMAIL, password: PASSWORD });
+  const result = steps.credentials(document, { email: EMAIL, password: PASSWORD, page: 'sign_in', host: HOST });
   assert.deepEqual(result, { typed: ['email', 'password'], failed: [] });
   assert.equal(email.value, EMAIL);
   assert.equal(password.value, PASSWORD);
   assert.ok(!JSON.stringify(result).includes(PASSWORD));
 });
 
-test('workday steps: create-account credentials fill the confirmation and tick the terms box', () => {
+test('workday steps: credentials are refused on another page, another host or another expected page', () => {
   const steps = load('workday_steps');
-  const { document, form } = page();
-  const email = input(form, 'email');
-  const password = input(form, 'password', { type: 'password' });
-  const verify = input(form, 'verifyPassword', { type: 'password' });
-  const terms = form.appendChild(new Input({ type: 'checkbox', 'data-automation-id': 'createAccountCheckbox' }));
-  terms.onClick = () => {
-    terms.checked = !terms.checked;
-  };
-  const result = steps.credentials(document, { email: EMAIL, password: PASSWORD, confirm: true });
-  assert.deepEqual(result, { typed: ['email', 'password', 'verifyPassword', 'createAccountCheckbox'], failed: [] });
-  assert.deepEqual([email.value, password.value, verify.value, terms.checked], [EMAIL, PASSWORD, PASSWORD, true]);
-  // A box that is already ticked is not clicked again (that would untick it).
-  steps.credentials(document, { email: EMAIL, password: PASSWORD, confirm: true });
-  assert.equal(terms.clicks, 1);
-  assert.equal(terms.checked, true);
+  const cases = [
+    ['wrong_host', signInPage('evil.example.invalid'), { page: 'sign_in', host: HOST }],
+    ['wrong_host', signInPage(), { page: 'sign_in', host: '' }],
+    ['wrong_page', signInPage(), { page: 'create_account', host: HOST, confirm: true }],
+    ['wrong_page', signInPage(), { page: 'create_account', host: HOST }],
+  ];
+  const form = page();
+  form.document.location = { hostname: HOST };
+  form.email = input(form.form, 'email');
+  form.password = input(form.form, 'password', { type: 'password' });
+  progress(form.form, 'current step 2 of 6 My Information');
+  cases.push(['wrong_page', form, { page: 'sign_in', host: HOST }]);
+  for (const [reason, built, options] of cases) {
+    const result = steps.credentials(built.document, { email: EMAIL, password: PASSWORD, ...options });
+    assert.deepEqual(result, { typed: [], failed: [], refused: reason }, JSON.stringify(options));
+    assert.equal(built.email.nativeWrites, 0);
+    assert.equal(built.password.value, '');
+  }
 });
 
-test('workday steps: a missing credential field is reported, not invented', () => {
+test('workday steps: a password box that is not type=password gets nothing typed at all', () => {
   const steps = load('workday_steps');
-  const { document, form } = page();
-  input(form, 'email');
-  assert.deepEqual(steps.credentials(document, { email: EMAIL, password: PASSWORD }), {
-    typed: ['email'],
+  const built = page();
+  built.document.location = { hostname: HOST };
+  const email = input(built.form, 'email');
+  const password = input(built.form, 'password');
+  button(built.form, 'signInSubmitButton', 'Sign In');
+  const result = steps.credentials(built.document, { email: EMAIL, password: PASSWORD, page: 'sign_in', host: HOST });
+  assert.deepEqual(result, { typed: [], failed: ['password'], refused: 'unexpected_field' });
+  assert.deepEqual([email.value, password.value], ['', '']);
+});
+
+test('workday steps: a missing credential field is reported and nothing is typed', () => {
+  const steps = load('workday_steps');
+  const built = page();
+  built.document.location = { hostname: HOST };
+  const email = input(built.form, 'email');
+  button(built.form, 'signInSubmitButton', 'Sign In');
+  assert.deepEqual(steps.credentials(built.document, { email: EMAIL, password: PASSWORD, page: 'sign_in', host: HOST }), {
+    typed: [],
     failed: ['password'],
+    refused: 'unexpected_field',
   });
+  assert.equal(email.value, '');
 });
 
-test('workday steps: the verification code goes into the code field', () => {
+test('workday steps: create-account credentials fill the confirmation and never tick the terms box', () => {
   const steps = load('workday_steps');
-  const { document, form } = page();
-  const box = input(form, 'otp', { 'aria-label': 'Enter verification code' });
-  assert.deepEqual(steps.code(document, '482913'), { typed: true });
+  for (const [terms, state] of [
+    [false, 'unchecked'],
+    [true, 'checked'],
+    [undefined, 'absent'],
+  ]) {
+    const built = createPage(terms);
+    const options = { email: EMAIL, password: PASSWORD, confirm: true, page: 'create_account', host: HOST };
+    const result = steps.credentials(built.document, options);
+    assert.deepEqual(result, { typed: ['email', 'password', 'verifyPassword'], failed: [], terms: state });
+    assert.deepEqual([built.email.value, built.password.value, built.verify.value], [EMAIL, PASSWORD, PASSWORD]);
+    if (built.terms) {
+      assert.equal(built.terms.clicks, 0);
+      assert.equal(built.terms.checked, terms);
+    }
+  }
+  const source = fs.readFileSync(path.join(ADAPTER_ROOT, 'workday_steps.cjs'), 'utf8');
+  assert.doesNotMatch(source, /createAccountCheckbox[^\n]*\.click\s*\(|box\.click\s*\(/);
+});
+
+test('workday steps: the verification code is typed only on the code page of the checked host', () => {
+  const steps = load('workday_steps');
+  const built = page();
+  built.document.location = { hostname: HOST };
+  const box = input(built.form, 'otp', { 'aria-label': 'Enter verification code' });
+  assert.deepEqual(steps.code(built.document, { code: '482913', host: 'evil.example.invalid' }), {
+    typed: false,
+    refused: 'wrong_host',
+  });
+  assert.equal(box.value, '');
+  assert.deepEqual(steps.code(built.document, { code: '482913', host: HOST }), { typed: true });
   assert.equal(box.value, '482913');
-  const { document: empty } = page();
-  assert.deepEqual(steps.code(empty, '482913'), { typed: false });
+  const other = signInPage();
+  assert.deepEqual(steps.code(other.document, { code: '482913', host: HOST }), { typed: false, refused: 'wrong_page' });
+  assert.equal(other.email.value, '');
+  const hidden = page();
+  hidden.document.location = { hostname: HOST };
+  const secret = input(hidden.form, 'verificationCode', { type: 'password' });
+  assert.deepEqual(steps.code(hidden.document, { code: '482913', host: HOST }), { typed: false, refused: 'unexpected_field' });
+  assert.equal(secret.value, '');
 });
 
 test('workday steps: typeText types only with insertText and reports what did not take', () => {

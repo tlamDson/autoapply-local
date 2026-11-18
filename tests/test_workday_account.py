@@ -30,6 +30,7 @@ JOB = {
     "url": "https://exampleco.wd5.myworkdayjobs.com/en-US/careers/job/Software-Engineer-Intern_R-0001",
     "company": "Example Co",
 }
+TENANT = "exampleco.wd5.myworkdayjobs.com"
 STEP_CALL = re.compile(r"\nreturn await globalThis\.AutoApplyWorkdaySteps\.(\w+)\(document(?:, (.*))?\);\n\}$", re.S)
 
 
@@ -42,10 +43,16 @@ def page(name):
 class FakeAccountTab:
     """Pages move on press; ``moves`` maps an action to the pages it leads to, one per press."""
 
-    def __init__(self, start, moves):
-        self.where = page(start)
+    def __init__(self, start, moves, host=TENANT, terms="absent"):
+        self.host, self.terms = host, terms
+        self.where = self.at(start)
         self.moves = {key: list(value) for key, value in moves.items()}
         self.log, self.secrets_seen = [], []
+
+    def at(self, name):
+        where = page(name)
+        where["host"] = self.host
+        return where
 
     def __call__(self, script):
         found = STEP_CALL.search(script)
@@ -58,16 +65,22 @@ class FakeAccountTab:
         if name == "press":
             self.log.append(("press", args[0]))
             target = self.moves[args[0]].pop(0)
-            self.where = page(target)
+            self.where = self.at(target)
             return {"pressed": True, "moved": True, "where": copy.deepcopy(self.where)}
         if name == "credentials":
             values = args[0]
+            expected = "create_account" if values.get("confirm") else "sign_in"
+            if (values.get("page"), values.get("host")) != (expected, TENANT) or self.where["page"] != expected:
+                raise AssertionError("credentials must be bound to the checked page and tenant host")
             self.secrets_seen.append(values["password"])
             self.log.append(("credentials", values["email"], bool(values.get("confirm"))))
-            ids = ["email", "password"] + (["verifyPassword", "createAccountCheckbox"] if values.get("confirm") else [])
-            return {"typed": ids, "failed": []}
+            if values.get("confirm"):
+                return {"typed": ["email", "password", "verifyPassword"], "failed": [], "terms": self.terms}
+            return {"typed": ["email", "password"], "failed": []}
         if name == "code":
-            self.log.append(("code", args[0]))
+            if args[0].get("host") != TENANT or self.where["page"] != "verify_code":
+                raise AssertionError("the code must be bound to the code page and tenant host")
+            self.log.append(("code", args[0]["code"]))
             return {"typed": True}
         raise AssertionError(f"unexpected call {name}")
 
@@ -179,7 +192,7 @@ class SignInTests(AccountCase):
         def tab(script):
             name = STEP_CALL.search(script).group(1)
             if name == "where":
-                return page("job")
+                return {**page("job"), "host": TENANT}
             return {"pressed": False, "reason": "submit_control"}
 
         result = self.account(tab).ensure_signed_in(JOB)
@@ -192,6 +205,30 @@ class SignInTests(AccountCase):
         self.assertEqual(result["reason"], "too_many_moves")
         self.assertEqual(len(tab.actions()), 5)
 
+    def test_a_tab_on_another_host_gets_no_credential(self):
+        self.save()
+        for start in ("sign_in", "create_account", "verify_code"):
+            with self.subTest(start=start):
+                tab = FakeAccountTab(start, {}, host="evil.example.invalid")
+                result = self.account(tab, FakeGmail([CODE])).ensure_signed_in(JOB)
+                self.assertEqual((result["status"], result["reason"]), ("blocked", "tenant_mismatch"))
+                self.assertEqual(tab.actions(), [])
+                self.assertEqual(tab.secrets_seen, [])
+
+    def test_credentials_refused_by_the_page_hold_the_tab_without_pressing(self):
+        self.save()
+
+        def tab(script):
+            name = STEP_CALL.search(script).group(1)
+            if name == "where":
+                return {**page("sign_in"), "host": TENANT}
+            if name == "credentials":
+                return {"typed": [], "failed": [], "refused": "wrong_page"}
+            raise AssertionError("no press after a refused write")
+
+        result = self.account(tab).ensure_signed_in(JOB)
+        self.assertEqual((result["status"], result["reason"]), ("blocked", "credential_fields_not_typed"))
+
     def test_a_browser_error_is_reported_with_the_password_masked(self):
         self.save()
         from autoapply_local.cdp import CDPError
@@ -199,7 +236,7 @@ class SignInTests(AccountCase):
         def tab(script):
             name = STEP_CALL.search(script).group(1)
             if name == "where":
-                return page("sign_in")
+                return {**page("sign_in"), "host": TENANT}
             raise CDPError(f"TypeError while typing {PASSWORD}")
 
         result = self.account(tab).ensure_signed_in(JOB)
@@ -242,6 +279,22 @@ class CreateAccountTests(AccountCase):
         self.sleep.assert_called_with(10)
         self.assertEqual(result["moves"], ["sign_in", "create_account_link", "create_account", "verify"])
         self.assert_private(result)
+
+    def test_unchecked_tenant_terms_hold_the_tab_for_the_user(self):
+        self.save()
+        tab = FakeAccountTab("create_account", {}, terms="unchecked")
+        result = self.account(tab, FakeGmail()).ensure_signed_in(JOB)
+        self.assertEqual((result["status"], result["reason"]), ("blocked", "account_terms_consent_required"))
+        self.assertEqual(tab.actions(), [("credentials", EMAIL, True)])
+        self.assertNotIn("create_account", result["moves"])
+        self.assert_private(result)
+
+    def test_terms_already_ticked_by_the_user_let_the_account_be_created(self):
+        self.save()
+        tab = FakeAccountTab("create_account", {"create_account": ["sign_in"], "sign_in": ["form"]}, terms="checked")
+        result = self.account(tab, FakeGmail()).ensure_signed_in(JOB)
+        self.assertEqual(result["status"], "signed_in")
+        self.assertIn(("press", "create_account"), tab.actions())
 
     def test_a_create_account_page_reached_first_creates_the_account(self):
         self.save()
