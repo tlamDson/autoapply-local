@@ -79,9 +79,6 @@ jobs:
         run: |
           ./install.sh
           ./install.sh --no-setup
-      - name: Report available memory as the browser gate measures it
-        shell: bash
-        run: python -c "from autoapply_local.browser import available_memory_mb; print('available_memory_mb', available_memory_mb())"
       - name: Doctor, scripted setup and demo fill
         shell: bash
         run: python scripts/ci_smoke.py --work-dir "$RUNNER_TEMP/autoapply-smoke"

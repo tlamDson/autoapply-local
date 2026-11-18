@@ -153,6 +153,21 @@ def check_demo(result):
         raise SmokeError("demo fill missed: " + ", ".join(missing))
 
 
+MEMORY_PROBE = ("from autoapply_local.browser import available_memory_mb; "
+                "print('available_memory_mb', available_memory_mb())")
+
+
+def report_memory(run, python, repo, env, out):
+    """Print the RAM the browser gate will see; informational, so a failed probe never fails the smoke."""
+    done = run([str(python), "-c", MEMORY_PROBE], cwd=str(repo), env=dict(env), capture_output=True, text=True,
+               encoding="utf-8", errors="replace", timeout=60)
+    if done.returncode == 0:
+        print(str(done.stdout or "").strip(), file=out, flush=True)
+    else:
+        tail = "\n".join(str(done.stderr or "").splitlines()[-5:])
+        print(f"memory report exited {done.returncode}: {tail}", file=out, flush=True)
+
+
 def _kill(pid):
     if os.name == "nt":
         subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, check=False)
@@ -236,6 +251,7 @@ def main(argv=None, *, run=subprocess.run, kill=_kill, out=None):
                           encoding="utf-8")
         if cli("profile", "update", str(intake), "--confirm").get("applied") is not True:
             raise SmokeError("profile update did not apply the confirmed facts")
+        report_memory(run, python, repo, env, out)
         chrome_before, demo_started = _owner_pid(root), True
         result = cli("demo")
         check_demo(result)
