@@ -1,0 +1,46 @@
+{
+  "note": "Synthetic Greenhouse job-board form. form builds the DOM in adapters.test.cjs; scan is the adapter's recorded scan of it (asserted there) that test_greenhouse_driver.py plans from; answers is what the driver plans and the adapter fills. Invented employer and candidate.",
+  "form": [
+    {"tag": "input", "attrs": {"id": "first_name", "type": "text", "aria-required": "true"}, "label": "First Name*"},
+    {"tag": "input", "attrs": {"id": "last_name", "type": "text", "aria-required": "true"}, "label": "Last Name*"},
+    {"tag": "input", "attrs": {"id": "preferred_name", "type": "text"}, "label": "Preferred First Name"},
+    {"tag": "input", "attrs": {"id": "email", "type": "email", "aria-required": "true"}, "label": "Email*"},
+    {"tag": "input", "attrs": {"id": "phone", "type": "tel"}, "label": "Phone *"},
+    {"tag": "input", "widget": true, "attrs": {"id": "candidate-location", "type": "text", "role": "combobox", "aria-required": "true"}, "label": "Location (City)*"},
+    {"tag": "input", "attrs": {"id": "resume", "type": "file", "aria-required": "true"}, "label": "Resume/CV*"},
+    {"tag": "input", "attrs": {"id": "cover_letter", "type": "file"}, "label": "Cover Letter"},
+    {"tag": "input", "attrs": {"id": "question_1001", "type": "text"}, "label": "LinkedIn Profile"},
+    {"tag": "input", "attrs": {"id": "question_1002", "type": "text"}, "label": "Website"},
+    {"tag": "select", "attrs": {"id": "question_1003", "aria-required": "true"}, "label": "Are you legally authorized to work in the United States?*", "options": [["", "Select..."], ["1", "Yes"], ["0", "No"]]},
+    {"tag": "select", "attrs": {"id": "question_1004", "aria-required": "true"}, "label": "Will you now or in the future require sponsorship for employment visa status?*", "options": [["", "Select..."], ["1", "Yes"], ["0", "No"]]},
+    {"tag": "textarea", "attrs": {"id": "question_1005", "aria-required": "true"}, "label": "Why do you want to join Example Co?*"},
+    {"tag": "input", "widget": true, "attrs": {"id": "gender", "type": "text", "role": "combobox"}, "label": "Gender"},
+    {"tag": "input", "attrs": {"id": "gdpr_consent", "type": "checkbox"}, "label": "I have read the privacy notice"}
+  ],
+  "scan": [
+    {"id": "first_name", "label": "First Name", "type": "text", "required": true, "value": "", "options": []},
+    {"id": "last_name", "label": "Last Name", "type": "text", "required": true, "value": "", "options": []},
+    {"id": "preferred_name", "label": "Preferred First Name", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "email", "label": "Email", "type": "email", "required": true, "value": "", "options": []},
+    {"id": "phone", "label": "Phone", "type": "tel", "required": true, "value": "", "options": []},
+    {"id": "candidate-location", "label": "Location (City)", "type": "combobox", "required": true, "value": "", "options": []},
+    {"id": "resume", "label": "Resume/CV", "type": "file", "required": true, "value": "", "options": []},
+    {"id": "cover_letter", "label": "Cover Letter", "type": "file", "required": false, "value": "", "options": []},
+    {"id": "question_1001", "label": "LinkedIn Profile", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "question_1002", "label": "Website", "type": "text", "required": false, "value": "", "options": []},
+    {"id": "question_1003", "label": "Are you legally authorized to work in the United States?", "type": "select", "required": true, "value": "", "options": [{"value": "", "label": "Select..."}, {"value": "1", "label": "Yes"}, {"value": "0", "label": "No"}]},
+    {"id": "question_1004", "label": "Will you now or in the future require sponsorship for employment visa status?", "type": "select", "required": true, "value": "", "options": [{"value": "", "label": "Select..."}, {"value": "1", "label": "Yes"}, {"value": "0", "label": "No"}]},
+    {"id": "question_1005", "label": "Why do you want to join Example Co?", "type": "textarea", "required": true, "value": "", "options": []},
+    {"id": "gender", "label": "Gender", "type": "combobox", "required": false, "value": "", "options": []},
+    {"id": "gdpr_consent", "label": "I have read the privacy notice", "type": "checkbox", "required": false, "value": false, "options": []}
+  ],
+  "answers": {
+    "first_name": "Alex",
+    "last_name": "Rivera",
+    "email": "alex.rivera@example.com",
+    "phone": "+1 555 0100",
+    "question_1001": "https://www.linkedin.com/in/alex-rivera-example",
+    "question_1002": "https://alex-rivera.example",
+    "question_1003": "1"
+  }
+}

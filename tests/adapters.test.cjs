@@ -844,3 +844,76 @@ test('workday: static Review derives fresh label/value evidence without editable
   );
   assert.equal(submit.clicks, 0);
 });
+
+/* Greenhouse script driver: tests/greenhouse_form.json holds the synthetic DOM
+ * (form), the adapter's recorded scan of it that the Python driver plans from
+ * (scan) and the answers the driver plans (answers). These tests prove the
+ * adapter still produces that scan and fills those answers.
+ */
+const GREENHOUSE = JSON.parse(
+  require('node:fs').readFileSync(path.resolve(__dirname, 'greenhouse_form.json'), 'utf8'),
+);
+
+function greenhouseForm() {
+  const result = makeDocument();
+  result.submit.setAttribute('id', 'submit_app');
+  result.fields = {};
+  result.widgets = {};
+  for (const spec of GREENHOUSE.form) {
+    const parent = spec.widget
+      ? result.form.appendChild(new Element('div', { class: 'select__container' }))
+      : result.form;
+    const el =
+      spec.tag === 'select'
+        ? new Select(spec.attrs, spec.options)
+        : spec.tag === 'textarea'
+          ? new TextArea(spec.attrs)
+          : new Input(spec.attrs);
+    result.fields[spec.attrs.id] = addField(parent, el, spec.label);
+    if (spec.widget)
+      result.widgets[spec.attrs.id] = parent.appendChild(new Element('div', { class: 'select__single-value' }, ''));
+  }
+  return result;
+}
+
+const allElements = node => [node, ...node.children.flatMap(allElements)];
+
+test('greenhouse: scan of the DOM fixture matches the recorded scan the Python driver plans from', () => {
+  const adapter = load('greenhouse');
+  const { document } = greenhouseForm();
+  assert.deepEqual(adapter.scan(document).fields, GREENHOUSE.scan);
+});
+
+test('greenhouse: fill sets every planned field, holds widgets for the engine and never clicks', async () => {
+  const adapter = load('greenhouse');
+  const { document, fields, submit } = greenhouseForm();
+  const planned = GREENHOUSE.answers;
+  const result = await adapter.fill(document, { ...planned, 'candidate-location': 'Springfield' });
+  assert.deepEqual([...result.filled].sort(), Object.keys(planned).sort());
+  for (const [id, value] of Object.entries(planned)) assert.equal(fields[id].value, value, id);
+  assert.deepEqual(result.blocked, [{ id: 'candidate-location', reason: 'agent_interaction_required' }]);
+  assert.equal(fields['candidate-location'].nativeWrites, 0);
+  assert.equal(submit.clicks, 0);
+  assert.ok(allElements(document).every(el => el.clicks === 0));
+});
+
+test('greenhouse: the Submit control can never be targeted by a fill', async () => {
+  const adapter = load('greenhouse');
+  const { document, submit } = greenhouseForm();
+  const result = await adapter.fill(document, { submit_app: 'Submit application' });
+  assert.deepEqual(result.filled, []);
+  assert.deepEqual(result.blocked, [{ id: 'submit_app', reason: 'field_not_found' }]);
+  assert.equal(submit.clicks, 0);
+});
+
+test('greenhouse: audit reads react-select values and asterisk-only required labels', () => {
+  const adapter = load('greenhouse');
+  const { document, widgets } = greenhouseForm();
+  widgets['candidate-location'].textContent = 'Springfield, Illinois, United States';
+  const audit = adapter.audit(document);
+  const location = audit.fields.find(field => field.id === 'candidate-location');
+  assert.equal(location.value, 'Springfield, Illinois, United States');
+  assert.ok(!audit.required_unknown.includes('candidate-location'));
+  assert.ok(audit.required_unknown.includes('phone'));
+  assert.ok(!audit.required_unknown.includes('gender'));
+});
