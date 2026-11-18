@@ -170,6 +170,7 @@
   "tests/test_job_filters.py",
   "tests/test_resume_facts.py",
   "tests/test_resume_experience_layout.py",
+  "tests/test_resume_skills_groups.py",
   "tests/gmail.test.cjs",
   "tests/test_gmail_tab.py",
   "tests/test_mail_history.py",
