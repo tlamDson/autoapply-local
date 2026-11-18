@@ -2,8 +2,12 @@
 
 Run on a clean runner after the installer built ``.venv``. It drives the
 installed launcher (``.venv`` Python + ``autoapply-local.py``) exactly as a user
-would:
+would, but in a fresh runtime of its own (``<work-dir>/runtime``, or an empty
+``--user-dir``). It only reads ``<repo>/user/config.json`` to confirm the
+installer started setup; it never writes an existing runtime, and it stops only
+the Chrome its own demo started, never one that may hold application forms.
 
+0. ``setup`` creates the smoke's runtime, as the installer does.
 1. ``doctor`` finds Chrome, Node and npx.
 2. ``setup --terminal --no-launch`` with scripted stdin. An offline fake
    ``claude`` CLI on PATH answers the login/quota probe, so no engine account
@@ -159,33 +163,52 @@ def _kill(pid):
             pass
 
 
-def _stop_chrome(root, kill):
+def _owner_pid(root):
     owner = Path(root) / "chrome/lane-1/autoapply-owner.json"
     try:
         pid = json.loads(owner.read_text(encoding="utf-8")).get("pid")
-    except (OSError, ValueError):
-        return
-    if isinstance(pid, int):
+    except (OSError, ValueError, AttributeError):
+        return None
+    return pid if isinstance(pid, int) else None
+
+
+def _stop_chrome(root, kill, before):
+    """Stop the Chrome the demo started; a Chrome already running before it (``before``) may hold forms."""
+    pid = _owner_pid(root)
+    if pid is not None and pid != before:
         kill(pid)
+
+
+def _is_empty(folder):
+    return not folder.exists() or (folder.is_dir() and not any(folder.iterdir()))
 
 
 def main(argv=None, *, run=subprocess.run, kill=_kill, out=None):
     out = out if out is not None else sys.stdout
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", type=Path, default=ROOT, help="installed checkout (default: this one)")
-    parser.add_argument("--user-dir", type=Path, help="runtime root (default: <repo>/user, as the installer uses)")
-    parser.add_argument("--work-dir", type=Path, help="scratch folder for the fake engine, resume and intake")
+    parser.add_argument("--user-dir", type=Path,
+                        help="new, empty runtime root for the smoke (default: <work-dir>/runtime)")
+    parser.add_argument("--work-dir", type=Path,
+                        help="new, empty scratch folder for the runtime, fake engine, resume and intake")
     args = parser.parse_args(argv)
     repo = args.repo.resolve()
-    root = (args.user_dir or repo / "user").resolve()
     work = (args.work_dir or Path(tempfile.mkdtemp(prefix="autoapply-smoke-"))).resolve()
+    root = (args.user_dir or work / "runtime").resolve()
+    installed = repo / "user"
     python, launcher = venv_python(repo), repo / "autoapply-local.py"
     if not python.is_file() or not launcher.is_file():
         print(f"No installed .venv in {repo}; run install.ps1 / install.sh first.", file=out)
         return 1
-    if not (root / "config.json").is_file():
-        print(f"No runtime in {root}: the installer did not start setup.", file=out)
+    if not (installed / "config.json").is_file():
+        print(f"No runtime in {installed}: the installer did not start setup.", file=out)
         return 1
+    # The smoke writes a config, a profile and a Chrome profile: never into a runtime that holds anything.
+    for label, folder in (("--work-dir", work), ("--user-dir", root)):
+        if not _is_empty(folder):
+            print(f"{label} {folder} must be a new, empty folder; the smoke never touches an existing runtime.",
+                  file=out)
+            return 2
     work.mkdir(parents=True, exist_ok=True)
     env = {key: value for key, value in os.environ.items() if key.upper() not in {"PYTHONHOME", "PYTHONPATH"}}
     env.update(PYTHONIOENCODING="utf-8", AUTOAPPLY_LOCAL_NO_UPDATE_CHECK="1")
@@ -199,7 +222,9 @@ def main(argv=None, *, run=subprocess.run, kill=_kill, out=None):
             raise SmokeError(f"{command[0]} exited {done.returncode}: {tail}")
         return last_json(str(done.stdout or ""))
 
+    chrome_before, demo_started = None, False
     try:
+        cli("setup")  # the same first setup the installer starts, in the smoke's own runtime
         check_doctor(cli("doctor"))
         fake_engine(work / "engine")
         env["PATH"] = str(work / "engine") + os.pathsep + env.get("PATH", "")
@@ -211,6 +236,7 @@ def main(argv=None, *, run=subprocess.run, kill=_kill, out=None):
                           encoding="utf-8")
         if cli("profile", "update", str(intake), "--confirm").get("applied") is not True:
             raise SmokeError("profile update did not apply the confirmed facts")
+        chrome_before, demo_started = _owner_pid(root), True
         result = cli("demo")
         check_demo(result)
         print("Demo filled: " + ", ".join(result["filled"]), file=out)
@@ -218,7 +244,8 @@ def main(argv=None, *, run=subprocess.run, kill=_kill, out=None):
         print(f"Smoke failed: {error}", file=out)
         return 1
     finally:
-        _stop_chrome(root, kill)
+        if demo_started:
+            _stop_chrome(root, kill, before=chrome_before)
     print("Install smoke passed.", file=out)
     return 0
 

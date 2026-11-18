@@ -156,15 +156,24 @@ class ChecksTests(TempCase):
 
 
 class MainTests(TempCase):
-    """``main`` with a fake process runner: order of commands, scripted stdin, no submit, Chrome stopped."""
+    """``main`` with a fake process runner: a fresh runtime of its own, scripted stdin, no submit, own Chrome only."""
 
-    def fake_runner(self, root, calls):
+    INTAKE = "```json\n" + json.dumps({"schema_version": 1, "groups": {"contact": {}}}) + "\n```\n"
+
+    def fake_runner(self, calls, owner_pid=4242):
         def run(argv, **kwargs):
-            command = argv[2 + argv.index("--user-dir"):] if "--user-dir" in argv else argv[2:]
-            calls.append((command, kwargs))
-            if command[:1] == ["doctor"]:
-                result = {"chrome": "c", "node": "n", "npx": "x", "engine": "claude" if len(calls) > 1 else None,
-                          "executable_status": "resolved" if len(calls) > 1 else "not_selected"}
+            root = Path(argv[argv.index("--user-dir") + 1])
+            command = argv[2 + argv.index("--user-dir"):]
+            calls.append((command, kwargs, root))
+            doctored = sum(1 for call in calls if call[0][:1] == ["doctor"])
+            if command == ["setup"]:
+                (root / "user").mkdir(parents=True, exist_ok=True)
+                (root / "user/profile-intake.md").write_text(self.INTAKE, encoding="utf-8")
+                (root / "config.json").write_text("{}", encoding="utf-8")
+                result = {"status": "ready"}
+            elif command[:1] == ["doctor"]:
+                result = {"chrome": "c", "node": "n", "npx": "x", "engine": "claude" if doctored > 1 else None,
+                          "executable_status": "resolved" if doctored > 1 else "not_selected"}
             elif command[:1] == ["setup"]:
                 copied = root / "resumes/Alex_Rivera_Resume.pdf"
                 copied.parent.mkdir(parents=True, exist_ok=True)
@@ -183,49 +192,107 @@ class MainTests(TempCase):
             elif command[:1] == ["demo"]:
                 lane = root / "chrome/lane-1"
                 lane.mkdir(parents=True, exist_ok=True)
-                (lane / "autoapply-owner.json").write_text(json.dumps({"pid": 4242}), encoding="utf-8")
+                (lane / "autoapply-owner.json").write_text(json.dumps({"pid": owner_pid}), encoding="utf-8")
                 result = {"status": "filled", "ok": True, "filled": ["first_name", "last_name", "email", "phone"]}
             else:
                 raise AssertionError(f"unexpected command {command}")
             return subprocess.CompletedProcess(argv, 0, json.dumps(result), "")
         return run
 
-    def test_main_runs_doctor_setup_profile_and_demo_then_stops_chrome(self):
+    def installed_repo(self):
+        """A checkout the installer set up: .venv, launcher and a user runtime with someone's held state."""
         repo = self.tmp / "repo"
         python = self.smoke.venv_python(repo)
         python.parent.mkdir(parents=True)
         python.write_bytes(b"")
         (repo / "autoapply-local.py").write_text("", encoding="utf-8")
-        root = repo / "user"
-        root.mkdir()
-        (root / "user").mkdir()
-        (root / "config.json").write_text("{}", encoding="utf-8")
-        (root / "user/profile-intake.md").write_text(
-            "```json\n" + json.dumps({"schema_version": 1, "groups": {"contact": {}}}) + "\n```\n", encoding="utf-8")
+        user = repo / "user"
+        (user / "chrome/lane-1").mkdir(parents=True)
+        (user / "config.json").write_text('{"runtime": {"apply_engine": "codex"}}', encoding="utf-8")
+        (user / "profile.json").write_text('{"revision": 7}', encoding="utf-8")
+        (user / "chrome/lane-1/autoapply-owner.json").write_text('{"pid": 1111}', encoding="utf-8")
+        return repo
+
+    def snapshot(self, folder):
+        return {path.relative_to(folder).as_posix(): path.read_bytes() for path in folder.rglob("*") if path.is_file()}
+
+    def test_main_runs_in_a_fresh_runtime_of_its_own_then_stops_only_its_chrome(self):
+        repo = self.installed_repo()
+        before = self.snapshot(repo / "user")
         calls, killed = [], []
-        code = self.smoke.main(["--repo", str(repo), "--work-dir", str(self.tmp / "work")],
-                               run=self.fake_runner(root, calls), kill=killed.append, out=io.StringIO())
+        work = self.tmp / "work"
+        code = self.smoke.main(["--repo", str(repo), "--work-dir", str(work)],
+                               run=self.fake_runner(calls), kill=killed.append, out=io.StringIO())
         self.assertEqual(code, 0)
-        commands = [command for command, _ in calls]
-        self.assertEqual([command[0] for command in commands], ["doctor", "setup", "doctor", "profile", "demo"])
-        self.assertEqual(commands[1], ["setup", "--terminal", "--no-launch"])
-        self.assertIn("--confirm", commands[3])
+        self.assertEqual(self.snapshot(repo / "user"), before, "the installed user runtime is never written")
+        roots = {root for _, _, root in calls}
+        self.assertEqual(len(roots), 1)
+        runtime = roots.pop()
+        self.assertTrue(runtime.is_relative_to(work), runtime)
+        commands = [command for command, _, _ in calls]
+        self.assertEqual([command[0] for command in commands],
+                         ["setup", "doctor", "setup", "doctor", "profile", "demo"])
+        self.assertEqual(commands[0], ["setup"])
+        self.assertEqual(commands[2], ["setup", "--terminal", "--no-launch"])
+        self.assertIn("--confirm", commands[4])
         self.assertTrue(all("submit" not in part.casefold() for command in commands for part in command))
-        setup_kwargs = calls[1][1]
+        setup_kwargs = calls[2][1]
         self.assertIn("Alex_Rivera_Resume.pdf", setup_kwargs["input"])
-        self.assertTrue(setup_kwargs["env"]["PATH"].startswith(str((self.tmp / "work").resolve())))  # macOS: /var is /private/var
-        for _, kwargs in calls:
-            self.assertEqual(Path(kwargs["cwd"]), repo.resolve())
-        self.assertEqual(calls[0][0], ["doctor"])
-        self.assertTrue(all(call[0] is not None for call in calls))
-        self.assertEqual(killed, [4242])
+        self.assertTrue(setup_kwargs["env"]["PATH"].startswith(str(work)))
+        for _, kwargs, _ in calls:
+            self.assertEqual(Path(kwargs["cwd"]), repo)
+        self.assertEqual(killed, [4242], "only the Chrome the demo started; never the user's lane (1111)")
+
+    def test_main_refuses_a_user_dir_that_holds_anything(self):
+        repo = self.installed_repo()
+        before = self.snapshot(repo / "user")
+        (self.tmp / "other").mkdir()
+        (self.tmp / "other/tracker.xlsx").write_bytes(b"x")
+        for user_dir in (repo / "user", self.tmp / "other"):
+            with self.subTest(user_dir=user_dir):
+                calls, killed, out = [], [], io.StringIO()
+                code = self.smoke.main(["--repo", str(repo), "--user-dir", str(user_dir),
+                                        "--work-dir", str(self.tmp / "work")],
+                                       run=lambda argv, **kwargs: calls.append(argv), kill=killed.append, out=out)
+                self.assertEqual(code, 2)
+                self.assertEqual((calls, killed), ([], []))
+                self.assertIn("empty", out.getvalue())
+        self.assertEqual(self.snapshot(repo / "user"), before)
+
+    def test_main_accepts_an_empty_user_dir(self):
+        repo, user_dir = self.installed_repo(), self.tmp / "empty-runtime"
+        user_dir.mkdir()
+        calls, killed = [], []
+        code = self.smoke.main(["--repo", str(repo), "--user-dir", str(user_dir),
+                                "--work-dir", str(self.tmp / "work")],
+                               run=self.fake_runner(calls), kill=killed.append, out=io.StringIO())
+        self.assertEqual(code, 0)
+        self.assertEqual({root for _, _, root in calls}, {user_dir})
+
+    def test_main_refuses_a_work_dir_that_holds_anything(self):
+        repo, work = self.installed_repo(), self.tmp / "work"
+        work.mkdir()
+        (work / "notes.txt").write_text("keep", encoding="utf-8")
+        calls, out = [], io.StringIO()
+        code = self.smoke.main(["--repo", str(repo), "--work-dir", str(work)],
+                               run=lambda argv, **kwargs: calls.append(argv), kill=lambda pid: None, out=out)
+        self.assertEqual(code, 2)
+        self.assertEqual(calls, [])
+        self.assertEqual((work / "notes.txt").read_text(encoding="utf-8"), "keep")
+
+    def test_chrome_already_running_before_the_demo_is_never_stopped(self):
+        root = self.tmp / "runtime"
+        (root / "chrome/lane-1").mkdir(parents=True)
+        (root / "chrome/lane-1/autoapply-owner.json").write_text('{"pid": 1111}', encoding="utf-8")
+        killed = []
+        self.smoke._stop_chrome(root, killed.append, before=1111)
+        self.assertEqual(killed, [])
+        self.smoke._stop_chrome(root, killed.append, before=None)
+        self.assertEqual(killed, [1111])
 
     def test_main_fails_when_the_installer_did_not_start_setup(self):
-        repo = self.tmp / "repo"
-        python = self.smoke.venv_python(repo)
-        python.parent.mkdir(parents=True)
-        python.write_bytes(b"")
-        (repo / "autoapply-local.py").write_text("", encoding="utf-8")
+        repo = self.installed_repo()
+        (repo / "user/config.json").unlink()
         calls, out = [], io.StringIO()
         code = self.smoke.main(["--repo", str(repo), "--work-dir", str(self.tmp / "work")],
                                run=lambda argv, **kwargs: calls.append(argv), kill=lambda pid: None, out=out)
