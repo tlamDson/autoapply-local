@@ -18,6 +18,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import urlopen
 
+from .script_handoff import FIELD_FILL_SCHEMA, FIELD_FILL_TOOLS, field_request, script_then_engine
 from .storage import atomic_write_json, lock, read_json
 
 
@@ -395,6 +396,16 @@ class EngineMCPClient:
             ],
         )
 
+    def interact_fields(self, tab_id, fields):
+        """Set only the listed fields to their confirmed values; no upload, script or other field."""
+        return self._run(
+            "field_fill",
+            {"tab_id": tab_id, **field_request(fields)},
+            copy.deepcopy(FIELD_FILL_SCHEMA),
+            ["filled", "blocked", "status"],
+            list(FIELD_FILL_TOOLS),
+        )
+
     def close_page(self, tab_id):
         raise ValueError("Filled tabs are preserved for the user to review and submit by hand")
 
@@ -416,10 +427,28 @@ class BrowserBridge:
         self.tabs, self.uploads = {}, {}
         self.observed_uploads = {}
         self.restore_errors = {}
+        # Injected DevTools client for script-first drivers; built per driver when None.
+        self.script_client = None
 
     @property
     def native_uploads(self):
         return isinstance(self.client, EngineMCPClient)
+
+    def scripts_for(self, ats):
+        """The client that runs this ATS's driver scripts: DevTools for script-first drivers, else ``client``."""
+        from .script_driver import driver_for
+
+        driver = driver_for(ats)
+        if not isinstance(self.client, EngineMCPClient) or driver is None or not driver.runs_before_engine:
+            return self.client
+        if self.script_client is not None:
+            return self.script_client
+        from . import script_client
+
+        # Bound to each tab's job URL: no script or upload reaches another page shown in a held tab.
+        return script_client.CDPScriptClient(
+            self.client.debug_url, lambda tab_id: self.tabs[str(tab_id)]["url"], resume_input=driver.resume_input
+        )
 
     def _native(self, tab_id):
         pages = self.client.list_pages()
@@ -448,21 +477,15 @@ class BrowserBridge:
         self.tabs.setdefault(str(tab_id), {"url": job["url"]}).update(job=copy.deepcopy(job))
         self._native(tab_id)
         if isinstance(self.client, EngineMCPClient):
+            from .script_driver import driver_for
+
+            driver = driver_for(job.get("ats", "greenhouse"))
+            if driver is not None and driver.runs_before_engine:
+                return script_then_engine(self, driver, tab_id, profile, job, pdf)
             # One engine-assisted fill operation owns scan, native interactions
             # and persisted Review readback; no duplicate pre-fill LLM pass.
             result = self.client.interact(tab_id, profile, job, [], pdf=pdf)
-            if result.get("status") == "filled" and pdf is not None:
-                path = Path(pdf)
-                receipt = result.get("upload_receipt")
-                expected = {
-                    "name": path.name,
-                    "size": path.stat().st_size,
-                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                }
-                if not isinstance(receipt, dict) or any(receipt.get(key) != val for key, val in expected.items()):
-                    raise ValueError("Observed Resume upload receipt is missing or differs from selected PDF")
-                self.uploads[str(tab_id)] = copy.deepcopy(receipt)
-                self.observed_uploads[str(tab_id)] = copy.deepcopy(receipt)
+            self._prove_engine_upload(tab_id, result, pdf)
             return result
         # A script driver fills every field a confirmed fact covers and reports
         # the rest as unknown; only those need the engine.
@@ -490,6 +513,20 @@ class BrowserBridge:
         )
         return result
 
+    def _prove_engine_upload(self, tab_id, result, pdf):
+        if result.get("status") == "filled" and pdf is not None:
+            path = Path(pdf)
+            receipt = result.get("upload_receipt")
+            expected = {
+                "name": path.name,
+                "size": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            if not isinstance(receipt, dict) or any(receipt.get(key) != val for key, val in expected.items()):
+                raise ValueError("Observed Resume upload receipt is missing or differs from selected PDF")
+            self.uploads[str(tab_id)] = copy.deepcopy(receipt)
+            self.observed_uploads[str(tab_id)] = copy.deepcopy(receipt)
+
     def upload_file(self, tab_id, path):
         path = Path(path).resolve()
         if not path.is_file() or not path.read_bytes().startswith(b"%PDF-"):
@@ -513,9 +550,8 @@ class BrowserBridge:
             raise ValueError("Restore the held job binding before reading browser proof")
         if _url_identity(native["url"]) != _url_identity(binding["url"]):
             raise ValueError("Native current URL belongs to another application")
-        live = self.client.evaluate_script(
-            tab_id, self._script("audit", binding.get("job", {}).get("ats", "greenhouse")), operation="audit"
-        )
+        ats = binding.get("job", {}).get("ats", "greenhouse")
+        live = self.scripts_for(ats).evaluate_script(tab_id, self._script("audit", ats), operation="audit")
         if not isinstance(live, dict) or not isinstance(live.get("fields"), list):
             raise ValueError("Live form readback unavailable")
         if _url_identity(self._native(tab_id)["url"]) != _url_identity(native["url"]):
