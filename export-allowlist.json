@@ -94,6 +94,7 @@
   "tests/test_cdp_ready.py",
   "tests/test_cleanup.py",
   "tests/test_cli_unicode.py",
+  "tests/test_docs_quick_apply.py",
   "tests/test_document_folders.py",
   "tests/test_engine_quota.py",
   "tests/test_fetch.py",
