@@ -120,6 +120,10 @@ class ChecksTests(TempCase):
         text = 'Language [1]: \n{ not json\n{\n  "status": "ready",\n  "nested": {"a": 1}\n}\n'
         self.assertEqual(self.smoke.last_json(text), {"status": "ready", "nested": {"a": 1}})
 
+    def test_last_json_reads_a_result_printed_right_after_a_prompt(self):
+        text = 'Connect Gmail now? [Y/n]: {\n  "status": "ready",\n  "gmail": "skipped"\n}\n'
+        self.assertEqual(self.smoke.last_json(text), {"status": "ready", "gmail": "skipped"})
+
     def test_last_json_without_a_result_fails(self):
         with self.assertRaises(self.smoke.SmokeError):
             self.smoke.last_json("Language [1]: \n")
@@ -195,6 +199,7 @@ class MainTests(TempCase):
         root = repo / "user"
         root.mkdir()
         (root / "user").mkdir()
+        (root / "config.json").write_text("{}", encoding="utf-8")
         (root / "user/profile-intake.md").write_text(
             "```json\n" + json.dumps({"schema_version": 1, "groups": {"contact": {}}}) + "\n```\n", encoding="utf-8")
         calls, killed = [], []
@@ -214,6 +219,19 @@ class MainTests(TempCase):
         self.assertEqual(calls[0][0], ["doctor"])
         self.assertTrue(all(call[0] is not None for call in calls))
         self.assertEqual(killed, [4242])
+
+    def test_main_fails_when_the_installer_did_not_start_setup(self):
+        repo = self.tmp / "repo"
+        python = self.smoke.venv_python(repo)
+        python.parent.mkdir(parents=True)
+        python.write_bytes(b"")
+        (repo / "autoapply-local.py").write_text("", encoding="utf-8")
+        calls, out = [], io.StringIO()
+        code = self.smoke.main(["--repo", str(repo), "--work-dir", str(self.tmp / "work")],
+                               run=lambda argv, **kwargs: calls.append(argv), kill=lambda pid: None, out=out)
+        self.assertEqual(code, 1)
+        self.assertEqual(calls, [])
+        self.assertIn("setup", out.getvalue())
 
     def test_main_fails_before_any_command_without_the_installed_venv(self):
         calls = []

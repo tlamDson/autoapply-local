@@ -476,6 +476,9 @@ This is an experimental public prerelease; check
 [Actions](https://github.com/tlamDson/autoapply-local/actions) for recorded CI results.
 Local checks reported here were run on Windows; the workflow defines Windows/macOS jobs with Python
 3.11 and 3.12, without claiming a remote CI run or macOS hardware validation.
+A second job, install-smoke, runs install.ps1 (Windows) or install.sh (macOS) on a clean runner,
+then scripts/ci_smoke.py: doctor, terminal setup with scripted answers and an offline stand-in for the
+engine CLI, a confirmed profile for an invented candidate, and the offline demo form fill.
 
 `pyproject.toml` is the source of the project name, current version, dependencies
 and wheel package-data patterns. Artifact filenames and metadata must match that

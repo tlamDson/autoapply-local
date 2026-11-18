@@ -415,6 +415,9 @@ credential hay build output. Repo public chứa source test tổng hợp đã qu
 [Actions](https://github.com/tlamDson/autoapply-local/actions).
 Các kiểm tra cục bộ được ghi nhận ở đây chạy trên Windows; workflow khai báo Windows/macOS với Python 3.11 và 3.12,
 chưa khẳng định CI remote đã chạy hay đã kiểm phần cứng macOS.
+Job thứ hai, install-smoke, chạy install.ps1 (Windows) hoặc install.sh (macOS) trên runner sạch,
+rồi scripts/ci_smoke.py: doctor, setup terminal với câu trả lời định sẵn và một bản thay thế offline cho
+CLI engine, profile đã xác nhận của một ứng viên giả, và điền form demo offline.
 
 `pyproject.toml` là nguồn chuẩn cho tên project, version hiện tại, dependencies và
 glob package-data của wheel. Tên artifact và metadata phải khớp version đó.
