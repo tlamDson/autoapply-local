@@ -371,7 +371,10 @@ Submit capability; you review each held tab and submit it yourself.
 - `setup`: bootstrap local state safely and show the guided next step.
 - `setup --terminal [--no-launch]`: terminal questions (language, engine login and
   quota check, quota stop percent, resume PDFs with role tags, jobs per run) saved
-  to `config.json`, then the selected engine opens with `/setup`.
+  to `config.json`; then the tool's own clean Chrome profile (`chrome/lane-1` in the
+  runtime root) opens on Gmail for you to sign in, and six months of
+  application-confirmation emails are added to the tracker once each; then the
+  selected engine opens with `/setup`.
 - `setup --guided [--edit QUESTION_ID] --ui UI`: start/resume native questions or
   edit a catalog/issued record question; output is a host tool packet, not a popup.
 - `setup --answer PATH --ui UI`: validate a private, batch-bound response and
@@ -416,8 +419,12 @@ before advancing. Review needs fresh observed label/value text and an attachment
 that matches the browser-observed upload receipt; an expected local hash alone
 is insufficient. Missing evidence leaves the form held for manual inspection.
 
-This release ships no Gmail command; it never scrapes Gmail in the browser or
-uses custom OAuth. Analysis disables external tools; browser operations use the
+There is no Gmail command and no OAuth. The only Gmail access is the Gmail tab
+of the tool's own Chrome profile, where you signed in yourself: setup searches it
+for application confirmations of the last 183 days and reads the result rows
+(sender, subject, snippet, date). It never opens, sends, drafts, archives or
+labels a message, verification emails are skipped, and nothing but the
+confirmation subject, company, role and date is stored. Analysis disables external tools; browser operations use the
 selected lane's connector and operation tools. Ordinary runtime approvals still
 apply.
 
@@ -432,7 +439,7 @@ From this release directory run:
 
 ```text
 python -m unittest discover -s tests -p "test_*.py" -v
-node --test tests/adapters.test.cjs
+node --test tests/adapters.test.cjs tests/gmail.test.cjs
 python scripts/check_release.py
 ```
 

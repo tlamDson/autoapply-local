@@ -24,6 +24,7 @@
   "autoapply_local/adapters/greenhouse.cjs",
   "autoapply_local/adapters/rippling.cjs",
   "autoapply_local/adapters/workday.cjs",
+  "autoapply_local/adapters/gmail.cjs",
   "autoapply_local/browser.py",
   "autoapply_local/boards.py",
   "autoapply_local/bootstrap.py",
@@ -126,6 +127,13 @@
   "autoapply_local/quota.py",
   "autoapply_local/terminal_setup.py",
   "autoapply_local/terminal_text.py",
+  "autoapply_local/cdp.py",
+  "autoapply_local/gmail_tab.py",
+  "autoapply_local/mail_history.py",
   "tests/test_manual_submission.py",
-  "tests/test_terminal_setup.py"
+  "tests/test_terminal_setup.py",
+  "tests/gmail.test.cjs",
+  "tests/test_gmail_tab.py",
+  "tests/test_mail_history.py",
+  "tests/test_terminal_gmail.py"
 ]
