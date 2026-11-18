@@ -307,10 +307,16 @@ class EngineMCPClient:
             matches = [page for page in self.list_pages() if str(page["id"]) == str(payload["tab_id"])]
             if len(matches) != 1:
                 raise ValueError("Native Chrome target disappeared")
+            expected = payload.get("expected_url")
+            # A write carries the application it was verified for; the tab may
+            # have navigated since that check, so compare again at dispatch.
+            if expected is not None and _url_identity(matches[0]["url"]) != _url_identity(expected):
+                raise ValueError("Native current URL belongs to another application")
             payload = {
                 **payload,
                 "target_url": matches[0]["url"],
-                "target_instructions": "Match this native target URL against MCP list_pages, select its existing page ID, and fail if ambiguous. The native tab_id is a Chrome target ID, not a numeric MCP page index.",
+                "target_instructions": "Match this native target URL against MCP list_pages, select its existing page ID, and fail if ambiguous. The native tab_id is a Chrome target ID, not a numeric MCP page index."
+                + (" Before writing anything, confirm the selected page still shows expected_url; if it shows another URL, write nothing and fail." if expected is not None else ""),
             }
         return self.engine.run(
             {
@@ -349,12 +355,13 @@ class EngineMCPClient:
         # its ID rather than lose the only tab opened by this operation.
         return new[0]
 
-    def evaluate_script(self, tab_id, function, *, operation="audit"):
+    def evaluate_script(self, tab_id, function, *, operation="audit", expected_url=None):
         if operation not in EVALUATE_SCHEMAS:
             raise ValueError("Unsupported evaluate readback operation")
         return self._run(
             "evaluate",
-            {"tab_id": tab_id, "function": function, "readback": operation, "response_contract": EVALUATE_CONTRACT},
+            {"tab_id": tab_id, "function": function, "readback": operation, "response_contract": EVALUATE_CONTRACT,
+             **({"expected_url": expected_url} if expected_url is not None else {})},
             {"result": copy.deepcopy(EVALUATE_SCHEMAS[operation])},
             ["result"],
             ["list_pages", "select_page", "evaluate_script"],
@@ -421,6 +428,7 @@ class EngineMCPClient:
             "native_refill",
             {
                 "tab_id": tab_id,
+                "expected_url": job["url"],
                 "job": {name: job.get(name) for name in ("id", "ats", "company", "role", "url")},
                 "answers": answers,
                 "instructions": REFILL_RULE,
@@ -555,7 +563,9 @@ class BrowserBridge:
             raise ValueError("Native current URL belongs to another application")
         if native:
             return self.client.refill(tab_id, job, answers)
-        return self.client.evaluate_script(tab_id, script, operation="fill")
+        # The engine client re-checks this verified URL when it dispatches the write.
+        extra = {"expected_url": job["url"]} if isinstance(self.client, EngineMCPClient) else {}
+        return self.client.evaluate_script(tab_id, script, operation="fill", **extra)
 
     def upload_file(self, tab_id, path):
         path = Path(path).resolve()

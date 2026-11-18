@@ -23,6 +23,8 @@ FILE = "user/answer-bank.json"
 JOB_SCOPE = ("country", "level", "company", "start_date")
 SENSITIVE = re.compile(
     r"authori[sz]|sponsor|visa|citizen|immigra|work permit|right to work|clearance|export|itar|consent|"
+    # Work eligibility: any wording of being legally allowed to work, or a status that grants it.
+    r"eligib|\blegal|lawful|permitted to work|allowed to work|entitled to work|permanent resident|green card|"
     r"criminal|convict|background check|gender|race|ethnic|hispanic|veteran|disab|pronoun|sexual|"
     # Pay: any wording of salary, wage, rate or money amount keeps the full scope.
     r"salar|compensat|remunerat|\bpay|wage|stipend|hourly|\brates?\b|per (?:hour|year|annum|month|week)|"

@@ -222,3 +222,64 @@ class ReadbackRetryTests(ReleaseCase):
         bank.confirm(unknown("question_1", HEAR), record, "Friend", source_id="s")
         plan = self.module("unanswered").Questions(self.root).refill_plan([record])
         self.assertEqual(plan, {"synthetic-1": {"question_1": "12"}})
+
+
+class DispatchIdentityTests(ReleaseCase):
+    """The tab can navigate between the bridge's URL check and the engine dispatch."""
+
+    def moving_bridge(self, ats):
+        from autoapply_local.browser import BrowserBridge, EngineMCPClient
+
+        engine = Mock(spec=["run"])
+        engine.run.return_value = {"filled": ["question_1"], "blocked": [], "status": "filled"}
+        client = EngineMCPClient(engine, ENDPOINT)
+        reads = []
+
+        def pages():
+            reads.append(1)
+            url = job(ats=ats)["url"] if len(reads) == 1 else job("synthetic-2", ats=ats)["url"]
+            return [{"id": "tab-1", "url": url}]
+
+        client.list_pages = Mock(side_effect=pages)
+        return BrowserBridge(client), engine
+
+    def test_native_refill_rejects_a_tab_that_moved_after_the_check(self):
+        bridge, engine = self.moving_bridge("workday")
+        with self.assertRaisesRegex(ValueError, "another application"):
+            bridge.refill("tab-1", job=job(ats="workday"), answers={"question_1": "12"})
+        engine.run.assert_not_called()
+
+    def test_script_refill_rejects_a_tab_that_moved_after_the_check(self):
+        bridge, engine = self.moving_bridge("greenhouse")
+        with self.assertRaisesRegex(ValueError, "another application"):
+            bridge.refill("tab-1", job=job(), answers={"question_2": "Robotics Society"})
+        engine.run.assert_not_called()
+
+    def test_the_write_carries_the_verified_application_url(self):
+        for ats, answers in (("workday", {"question_1": "12"}), ("greenhouse", {"question_2": "Robotics Society"})):
+            bridge, engine = engine_bridge({"filled": [], "blocked": [], "status": "filled", "result": {}},
+                                           url=job(ats=ats)["url"])
+            bridge.refill("tab-1", job=job(ats=ats), answers=answers)
+            _, payload = task_payload(engine)
+            with self.subTest(ats=ats):
+                self.assertEqual(payload["expected_url"], job(ats=ats)["url"])
+                self.assertIn("expected_url", payload["target_instructions"])
+
+
+class WorkEligibilityScopeTests(ReleaseCase):
+    def test_work_eligibility_answers_keep_employer_and_start_date(self):
+        bank = self.module("answer_bank").AnswerBank(self.root)
+        yes_no = [{"value": "1", "label": "Yes"}, {"value": "0", "label": "No"}]
+        may = {**job(), "start_date": "2030-05-01"}
+        for label in ("Are you legally eligible to work in the United States?",
+                      "Are you eligible to work in the US without restriction?",
+                      "Are you lawfully permitted to work in this country?",
+                      "Are you a U.S. citizen or permanent resident?"):
+            field = {"label": label, "type": "select", "options": yes_no}
+            bank.confirm(field, may, "Yes", source_id="s")
+            with self.subTest(label=label):
+                self.assertEqual(bank.lookup(field, {**may, "id": "again"})["value"], "Yes")
+                for other in ({**may, "company": "Another Co"}, {**may, "start_date": "2030-08-01"},
+                              {**may, "company": "Another Co", "start_date": "2030-08-01"}):
+                    self.assertIsNone(bank.lookup(field, other))
+                    self.assertNotIn(label, [item["question"] for item in bank.entries_for(other)])
