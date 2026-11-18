@@ -80,6 +80,96 @@ class TagMatch(Base):
         self.assertEqual(self.choose(config, "SWE Intern").path, self.paths["main"])
 
 
+class RoleAliases(Base):
+    """Common role abbreviations match their long form both ways; every other tag stays whole-word."""
+
+    def test_swe_tag_matches_software_engineering_titles(self):
+        config = self.config(main_tags=["SWE"], alternatives=[self.alt("ai", "ai")])
+        for role in (
+            "Software Engineering Intern-Information Systems (Summer 2027)",
+            "Software Engineer Intern",
+            "SWE Intern",
+        ):
+            with self.subTest(role=role):
+                got = self.choose(config, role)
+                self.assertEqual((got.path, got.reason, got.tag), (self.paths["main"], "role_tag", "SWE"))
+
+    def test_each_abbreviation_matches_its_long_form(self):
+        pairs = (
+            ("ml", "Machine Learning Intern"),
+            ("SDE", "Software Development Engineer Intern"),
+            ("FE", "Front-End Developer Intern"),
+            ("fe", "Frontend Engineer Intern"),
+            ("BE", "Back End Engineer Intern"),
+            ("be", "Backend Developer Intern"),
+            ("AI", "Artificial Intelligence Research Intern"),
+        )
+        for tag, role in pairs:
+            with self.subTest(tag=tag, role=role):
+                config = self.config(alternatives=[self.alt("devops", "devops"), self.alt("ai", tag)])
+                self.assertEqual(self.choose(config, role).path, self.paths["ai"])
+
+    def test_long_form_tag_matches_the_abbreviation_in_the_title(self):
+        pairs = (
+            ("software engineering", "SWE Intern"),
+            ("Software Engineer", "SWE II"),
+            ("machine learning", "ML Engineer Intern"),
+            ("software development engineer", "SDE Intern"),
+            ("frontend", "FE Engineer Intern"),
+            ("back-end", "BE Engineer Intern"),
+            ("artificial intelligence", "AI/ML Intern"),
+        )
+        for tag, role in pairs:
+            with self.subTest(tag=tag, role=role):
+                config = self.config(alternatives=[self.alt("devops", "devops"), self.alt("ai", tag)])
+                self.assertEqual(self.choose(config, role).path, self.paths["ai"])
+
+    def test_abbreviation_reached_through_an_alias_must_be_uppercase_in_the_title(self):
+        config = self.config(alternatives=[self.alt("backend", "backend"), self.alt("devops", "devops")])
+        with self.assertRaises(self.rc.ResumeChoiceNeeded):
+            self.choose(config, "Intern - may be remote")
+
+    def test_aliases_stay_whole_word(self):
+        config = self.config(alternatives=[self.alt("ai", "swe", "ml"), self.alt("devops", "devops")])
+        for role in ("Software Engineeringly Intern", "Machine Learnings Intern", "Hardware Engineer Intern"):
+            with self.subTest(role=role), self.assertRaises(self.rc.ResumeChoiceNeeded):
+                self.choose(config, role)
+
+    def test_alias_match_reports_the_users_own_tag(self):
+        config = self.config(alternatives=[self.alt("ai", "ML"), self.alt("devops", "devops")])
+        self.assertEqual(self.choose(config, "Machine Learning Intern").tag, "ML")
+
+
+class NoTerminalFallback(Base):
+    def setUp(self):
+        super().setUp()
+        self.cfg = self.config(alternatives=[self.alt("backend", "backend"), self.alt("ai", "ai")])
+
+    def test_without_a_terminal_the_main_resume_is_used_with_a_reason(self):
+        memory = self.memory()
+        got = self.choose(self.cfg, "Quant Research Intern", memory=memory, fallback=True)
+        self.assertEqual((got.path, got.reason), (self.paths["main"], "no_terminal"))
+        self.assertFalse((self.root / "user/resume-choices.json").exists())
+
+    def test_fallback_never_overrides_a_tag_match_or_a_remembered_answer(self):
+        memory = self.memory()
+        memory.set("Quant Research Intern", self.paths["ai"])
+        self.assertEqual(self.choose(self.cfg, "Backend Intern", fallback=True).path, self.paths["backend"])
+        got = self.choose(self.cfg, "Quant Research Intern", memory=memory, fallback=True)
+        self.assertEqual((got.path, got.reason), (self.paths["ai"], "remembered"))
+
+    def test_a_declined_question_still_stops_even_with_fallback(self):
+        with self.assertRaises(self.rc.ResumeChoiceNeeded):
+            self.choose(self.cfg, "Quant Research Intern", ask=lambda role, options: None, fallback=True)
+
+    def test_described_fallback_says_why(self):
+        runtime = self.module("runtime")
+        line = runtime.describe_choice(self.choose(self.cfg, "Quant Research Intern", fallback=True))
+        self.assertIn(str(self.paths["main"]), line)
+        self.assertIn("main resume", line)
+        self.assertIn("no terminal", line)
+
+
 class KeywordTieBreak(Base):
     def setUp(self):
         super().setUp()
@@ -307,11 +397,13 @@ class ApplyPreflight(Base):
         self.assertEqual(self.store.get("q-2")["state"], "pending")
         self.assertNotIn("Apply preflight", output)
 
-    def test_non_interactive_apply_without_an_answer_does_not_guess(self):
+    def test_non_interactive_apply_falls_back_to_the_main_resume_with_a_printed_reason(self):
         with patch("sys.stdin", io.StringIO("")):
-            _, error = self.run_apply()
-        self.assertIsInstance(error, self.module("resume_choice").ResumeChoiceNeeded)
-        self.assertEqual(self.store.get("q-1")["state"], "pending")
+            output, error = self.run_apply()
+        self.assertNotIsInstance(error, self.module("resume_choice").ResumeChoiceNeeded)
+        self.assertIn("Apply preflight", output)
+        self.assertEqual(output.count(f"{self.paths['main']} (main resume: no terminal"), 2)
+        self.assertFalse((self.root / "user/resume-choices.json").exists())
 
     def test_terminal_prompt_maps_a_number_to_the_resume_and_blank_to_none(self):
         options = [{"id": "main", "path": "a.pdf", "tags": []}, {"id": "backend", "path": "b.pdf", "tags": []}]
