@@ -37,25 +37,45 @@ cd autoapply-local
 
 ## Cài đặt và khởi tạo
 
-Cần Python 3.11+, Chrome, Node.js/npm và CLI engine đã chọn. Từ thư mục mã nguồn
-release, cài package rồi tạo runtime bên trong source root. Windows PowerShell:
+Một dòng. Windows PowerShell:
+
+```text
+irm https://raw.githubusercontent.com/tlamDson/autoapply-local/main/install.ps1 | iex
+```
+
+macOS:
+
+```text
+curl -fsSL https://raw.githubusercontent.com/tlamDson/autoapply-local/main/install.sh | bash
+```
+
+Script clone kho mã vào `./autoapply-local` (hoặc dùng checkout chứa nó; trong bản
+clone chạy `./install.ps1` hoặc `./install.sh`). Script kiểm Python 3.11+, git,
+Node.js/npm và Google Chrome. Thiếu thứ nào thì in đúng lệnh `winget install ...`
+hoặc `brew install ...` rồi thoát với mã 3; script không bao giờ tự cài phần mềm hệ
+thống. Đủ hết thì tạo `.venv` trong kho mã, chạy `pip install -e .` rồi tự mở setup.
+Chạy lại an toàn: `.venv` có sẵn được dùng lại và setup giữ nguyên mọi file bạn đã
+sửa. Thêm `--no-setup` để chỉ cài. Mọi dữ liệu của bạn nằm trong `<repo>/user/`
+(đã gitignore).
+
+Cài thủ công, Windows PowerShell:
 
 ```powershell
-python -m venv ../autoapply-venv
-& ../autoapply-venv/Scripts/Activate.ps1
+python -m venv .venv
+& .venv/Scripts/Activate.ps1
 python -m pip install .
-python -m autoapply_local --user-dir ./.autoapply-local setup
-Set-Location .autoapply-local
+python -m autoapply_local --user-dir ./user setup
+Set-Location user
 ```
 
 macOS:
 
 ```bash
-python3 -m venv ../autoapply-venv
-source ../autoapply-venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install .
-python -m autoapply_local --user-dir ./.autoapply-local setup
-cd .autoapply-local
+python -m autoapply_local --user-dir ./user setup
+cd user
 ```
 
 Nếu tải wheel, thay `python -m pip install .` bằng
@@ -70,17 +90,18 @@ Browser MCP ghim chrome-devtools-mcp 0.14.0; npm có thể tải phiên bản đ
 đầu bạn phê duyệt connector. Không dùng profile Chrome cá nhân thường ngày.
 
 Trong checkout hoặc ZIP source đã giải nén, chạy `python autoapply-local.py`
-không có đối số để setup tại `<source>/.autoapply-local`. Launcher nguồn chọn theo
+không có đối số để setup tại `<source>/user`. Launcher nguồn chọn theo
 vị trí của chính nó, kể cả khi gọi từ thư mục khác. Cũng có thể chạy
 `python -m autoapply_local setup` từ source root hoặc thư mục con.
 Nhận diện source cần `pyproject.toml` có tên project `autoapply-local`, package
 và `export-allowlist.json`; không cần metadata Git.
 
 Với lệnh module, thứ tự chọn runtime là `--user-dir PATH`, rồi
-`AUTOAPPLY_LOCAL_HOME`, rồi `.autoapply-local` trong source đã nhận diện, cuối cùng
+`AUTOAPPLY_LOCAL_HOME`, rồi `user` trong source đã nhận diện, cuối cùng
 `~/.autoapply-local` khi ngoài source (kể cả bản cài wheel). Root tường minh và
-biến môi trường cũng ưu tiên hơn mặc định của launcher nguồn. Runtime cũ không
-tự di chuyển hoặc migrate.
+biến môi trường cũng ưu tiên hơn mặc định của launcher nguồn. Runtime cũ (kể cả
+`<source>/.autoapply-local` trước đây) không tự di chuyển hoặc migrate; dùng
+`--user-dir` để tiếp tục dùng nó.
 
 Mở chính thư mục runtime vừa tạo trong engine đã chọn, với virtual environment
 vẫn kích hoạt. Setup cài command, skill, file hỗ trợ và launcher runtime

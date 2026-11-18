@@ -24,7 +24,8 @@ from unittest.mock import Mock, patch
 from test_support import RELEASE, ReleaseCase
 
 
-RUNTIME = ".autoapply-local"
+RUNTIME = "user"
+HOME_RUNTIME = ".autoapply-local"
 LAUNCHER = "autoapply-local.py"
 
 
@@ -87,7 +88,7 @@ class SetupRootCase(ReleaseCase):
             )
         self.assertEqual(code, 0, errors.getvalue())
         service.assert_called_once_with(root=expected.resolve())
-        self.assertFalse((self.home / RUNTIME).exists(), "A spy must never create a real runtime")
+        self.assertFalse((self.home / HOME_RUNTIME).exists(), "A spy must never create a real runtime")
 
     def real_setup(self, source):
         output, errors = io.StringIO(), io.StringIO()
@@ -102,7 +103,7 @@ class SetupRootCase(ReleaseCase):
         self.assertEqual(code, 0, errors.getvalue())
         runtime = source / RUNTIME
         self.assertTrue((runtime / "user/profile-intake.md").is_file(), output.getvalue())
-        self.assertFalse((self.home / RUNTIME).exists(), "Source setup must not use home")
+        self.assertFalse((self.home / HOME_RUNTIME).exists(), "Source setup must not use home")
         self.assertFalse((source.parent / RUNTIME).exists(), "Source setup must not use a sibling")
         return runtime
 
@@ -194,14 +195,14 @@ class SourceRootResolutionTests(SetupRootCase):
     def test_outside_source_uses_home_fallback(self):
         for command in ("setup", "status"):
             with self.subTest(command=command):
-                self.invoke(self.root, [command], self.home / RUNTIME)
+                self.invoke(self.root, [command], self.home / HOME_RUNTIME)
 
     def test_unrelated_git_root_does_not_override_home(self):
         unrelated = self.root / "unrelated"
         (unrelated / ".git").mkdir(parents=True)
         nested = unrelated / "nested"
         nested.mkdir()
-        self.invoke(nested, ["setup"], self.home / RUNTIME)
+        self.invoke(nested, ["setup"], self.home / HOME_RUNTIME)
 
     def test_product_markers_are_all_required(self):
         for missing in ("pyproject.toml", "autoapply_local", "export-allowlist.json"):
@@ -213,14 +214,14 @@ class SourceRootResolutionTests(SetupRootCase):
                 else:
                     marker.unlink()
                 (source / ".git").mkdir()
-                self.invoke(source, ["setup"], self.home / RUNTIME)
+                self.invoke(source, ["setup"], self.home / HOME_RUNTIME)
 
     def test_other_project_name_with_similar_files_is_not_product_source(self):
         source, _ = self.source()
         (source / "pyproject.toml").write_text(
             '[project]\nname = "unrelated-product"\n', encoding="utf-8"
         )
-        self.invoke(source, ["setup"], self.home / RUNTIME)
+        self.invoke(source, ["setup"], self.home / HOME_RUNTIME)
 
     def test_product_source_inside_unrelated_parent_repo_uses_product_root(self):
         (self.root / ".git").mkdir()
@@ -367,6 +368,21 @@ class SourceSetupIntegrationTests(SetupRootCase):
                 self.assertIn(relative, [item["path"] for item in report["violations"]])
                 path.unlink()
 
+    def test_release_checker_skips_installer_venv_and_runtime_at_source_root(self):
+        source, _ = self.source(public_copy=True)
+        for relative in (".venv/pyvenv.cfg", "user/user/profile-intake.md", ".autoapply-local/note.txt"):
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("Synthetic local state" + chr(10), encoding="utf-8")
+        code, output = self.check(self.checker(source))
+        self.assertEqual(code, 0, output)
+        nested = source / "nested/.venv/pyvenv.cfg"
+        nested.parent.mkdir(parents=True)
+        nested.write_text("Synthetic" + chr(10), encoding="utf-8")
+        code, output = self.check(self.checker(source))
+        self.assertEqual(code, 1, output)
+        self.assertIn("nested/.venv/pyvenv.cfg", [item["path"] for item in json.loads(output)["violations"]])
+
     def test_release_checker_only_exempts_runtime_tree_at_source_root(self):
         source, _ = self.source(public_copy=True)
         relative = "nested/.autoapply-local/note.txt"
@@ -461,7 +477,7 @@ class ManagedRuntimePrivacyTests(SetupRootCase):
             with self.subTest(document=document):
                 text = (RELEASE / document).read_text(encoding="utf-8")
                 self.assertTrue(
-                    "python -m autoapply_local --user-dir ./.autoapply-local setup" in text,
+                    "python -m autoapply_local --user-dir ./user setup" in text,
                     document + " must keep the explicit source-local setup example",
                 )
                 self.assertIn(LAUNCHER, text)
@@ -470,6 +486,6 @@ class ManagedRuntimePrivacyTests(SetupRootCase):
                     quickstarts = [block for block in blocks if "-m pip install ." in block]
                     self.assertTrue(quickstarts, document + " needs a " + language + " quickstart")
                     self.assertTrue(any(
-                        re.search(r"(?:^|\n)" + enter + r"\s+(?:\./)?\.autoapply-local\s*(?:\n|$)", block)
+                        re.search(r"(?:^|\n)" + enter + r"\s+(?:\./)?user\s*(?:\n|$)", block)
                         for block in quickstarts
                     ), document + " must enter the source-local runtime after setup")
