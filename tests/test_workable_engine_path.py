@@ -172,7 +172,13 @@ class WorkableEnginePathTests(PdfCase):
         with patch("autoapply_local.script_client.CDPScriptClient") as factory:
             factory.return_value.evaluate_script.return_value = {"blocked": [{"id": "page", "reason": "captcha"}]}
             result = bridge.fill("tab-1", profile(), JOB, pdf=str(self.pdf))
-        factory.assert_called_once_with("http://127.0.0.1:9222", resume_input='[data-ui="resume"] input[type="file"]')
+        (endpoint, bound), options = factory.call_args
+        self.assertEqual(endpoint, "http://127.0.0.1:9222")
+        self.assertEqual(options, {"resume_input": '[data-ui="resume"] input[type="file"]'})
+        # The DevTools client is bound to each held tab's own job URL.
+        self.assertEqual(bound("tab-1"), JOB["url"])
+        with self.assertRaises(KeyError):
+            bound("tab-9")
         client.engine.run.assert_not_called()
         self.assertEqual(result["status"], "needs_manual")
 

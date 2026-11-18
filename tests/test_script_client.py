@@ -119,32 +119,108 @@ class SetFileInputTests(unittest.TestCase):
         self.assertEqual(chrome.sent[0]["params"]["returnByValue"], True)
 
 
+FORM_URL = "https://apply.workable.com/acme/j/1/apply/"
+OTHER_URL = "https://apply.workable.com/acme/j/2/apply/"
+
+
+def page_at(href, script=None):
+    """A tab whose document is at ``href``; the resume input is obj-7 of that document."""
+
+    def handler(method, params):
+        if method == "Runtime.callFunctionOn":
+            value = {"type": "string", "value": href} if href else {"type": "object", "subtype": "null"}
+            return {"result": {"result": value}}
+        if method == "Runtime.evaluate" and params["expression"] == "location.href":
+            return {"result": {"result": {"type": "string", "value": href}}}
+        if method == "Runtime.evaluate" and script is not None:
+            return script(params)
+        return found_input(method, params)
+
+    return handler
+
+
+class PageBoundTests(unittest.TestCase):
+    """With ``page``, a script or file reaches only the document of the accepted URL."""
+
+    def accepts(self, href):
+        return href == FORM_URL
+
+    def test_the_file_is_set_only_after_the_input_document_is_the_bound_page(self):
+        chrome = FakeChrome(page_at(FORM_URL))
+        status = cdp.set_file_input(WS, "input", PDF_PATH, connect=chrome, page=self.accepts)
+        self.assertEqual(status, {"status": "uploaded"})
+        self.assertEqual(
+            [item["method"] for item in chrome.sent],
+            ["Runtime.evaluate", "Runtime.callFunctionOn", "DOM.setFileInputFiles"],
+        )
+        check = chrome.sent[1]["params"]
+        self.assertEqual(check["objectId"], "obj-7")
+        self.assertIn("ownerDocument", check["functionDeclaration"])
+        self.assertEqual(chrome.sent[2]["params"]["objectId"], "obj-7")
+
+    def test_an_input_on_another_page_of_the_tab_gets_no_file(self):
+        for href in (OTHER_URL, None):
+            with self.subTest(href=href):
+                chrome = FakeChrome(page_at(href))
+                with self.assertRaises(cdp.PageChangedError):
+                    cdp.set_file_input(WS, "input", PDF_PATH, connect=chrome, page=self.accepts)
+                self.assertNotIn("DOM.setFileInputFiles", [item["method"] for item in chrome.sent])
+
+    def test_a_script_is_not_sent_to_another_page_of_the_tab(self):
+        chrome = FakeChrome(page_at(OTHER_URL))
+        with self.assertRaises(cdp.PageChangedError):
+            cdp.evaluate(WS, "(() => 1)()", connect=chrome, page=self.accepts)
+        self.assertEqual([item["params"]["expression"] for item in chrome.sent], ["location.href"])
+
+    def test_a_script_runs_only_while_the_document_is_still_the_checked_page(self):
+        chrome = FakeChrome(page_at(FORM_URL, lambda params: {"result": {"result": {"type": "number", "value": 1}}}))
+        self.assertEqual(cdp.evaluate(WS, "(() => 1)()", connect=chrome, page=self.accepts), 1)
+        guarded = chrome.sent[1]["params"]["expression"]
+        self.assertIn("location.href !== " + json.dumps(FORM_URL), guarded)
+        self.assertLess(guarded.index("location.href !=="), guarded.index("(() => 1)()"))
+
+    def test_a_navigation_between_the_check_and_the_script_is_a_page_change(self):
+        def moved(params):
+            text = "Error: " + cdp.PAGE_CHANGED
+            return {"result": {"result": {"type": "object"}, "exceptionDetails": {"exception": {"description": text}}}}
+
+        with self.assertRaises(cdp.PageChangedError):
+            cdp.evaluate(WS, "(() => 1)()", connect=FakeChrome(page_at(FORM_URL, moved)), page=self.accepts)
+
+
 class FakeCDP:
     """The cdp module seen by the script client."""
 
     def __init__(self, pages):
-        self.listed, self.evaluated, self.files = pages, [], []
+        self.listed, self.evaluated, self.files, self.href = pages, [], [], FORM_URL
 
     def pages(self, debug_url):
         self.debug_url = debug_url
         return list(self.listed)
 
-    def evaluate(self, ws, expression, timeout=60):
+    def evaluate(self, ws, expression, timeout=60, page=None):
+        self.accepts = page
+        if not page(self.href):
+            raise cdp.PageChangedError("moved")
         self.evaluated.append((ws, expression))
         return {"fields": []}
 
-    def set_file_input(self, ws, selector, path, timeout=60):
+    def set_file_input(self, ws, selector, path, timeout=60, page=None):
+        self.accepts = page
+        if not page(self.href):
+            raise cdp.PageChangedError("moved")
         self.files.append((ws, selector, path))
         return {"status": "uploaded"}
 
 
-TAB = {"id": "tab-1", "url": "https://apply.workable.com/acme/j/1/apply/", "ws": WS}
+TAB = {"id": "tab-1", "url": FORM_URL, "ws": WS}
+BOUND = {"tab-1": "https://apply.workable.com/acme/j/1/apply"}
 
 
 class CDPScriptClientTests(unittest.TestCase):
     def client(self, pages=(TAB,), **options):
         self.cdp = FakeCDP(list(pages))
-        return CDPScriptClient("http://127.0.0.1:9333", cdp=self.cdp, **options)
+        return CDPScriptClient("http://127.0.0.1:9333", BOUND.__getitem__, cdp=self.cdp, **options)
 
     def pdf(self, data=b"%PDF-1.4\n% synthetic\n"):
         directory = tempfile.TemporaryDirectory()
@@ -190,7 +266,39 @@ class CDPScriptClientTests(unittest.TestCase):
 
     def test_only_the_local_chrome_is_accepted(self):
         with self.assertRaises(ValueError):
-            CDPScriptClient("http://192.0.2.4:9333", cdp=FakeCDP([TAB]))
+            CDPScriptClient("http://192.0.2.4:9333", BOUND.__getitem__, cdp=FakeCDP([TAB]))
+
+    def test_the_bound_page_is_the_job_application_url(self):
+        client = self.client()
+        client.evaluate_script("tab-1", "() => 1", operation="audit")
+        self.assertTrue(self.cdp.accepts(FORM_URL))
+        self.assertTrue(self.cdp.accepts("https://apply.workable.com/acme/j/1/apply"))
+        for href in (OTHER_URL, "https://apply.workable.com/acme/", "about:blank", "", None):
+            with self.subTest(href=href):
+                self.assertFalse(self.cdp.accepts(href))
+
+    def test_the_resume_is_not_uploaded_to_another_page_in_the_held_tab(self):
+        path = self.pdf()
+        client = self.client()
+        self.cdp.href = OTHER_URL
+        with self.assertRaisesRegex(ValueError, "another page"):
+            client.upload_file("tab-1", str(path))
+        self.assertEqual(self.cdp.files, [])
+
+    def test_scripts_do_not_run_on_another_page_in_the_held_tab(self):
+        client = self.client()
+        self.cdp.href = OTHER_URL
+        for operation in ("audit", "fill"):
+            with self.subTest(operation=operation):
+                with self.assertRaisesRegex(ValueError, "another page"):
+                    client.evaluate_script("tab-1", "() => 1", operation=operation)
+        self.assertEqual(self.cdp.evaluated, [])
+
+    def test_a_tab_without_a_job_binding_is_refused(self):
+        client = CDPScriptClient("http://127.0.0.1:9333", {}.__getitem__, cdp=FakeCDP([TAB]))
+        with self.assertRaisesRegex(ValueError, "binding"):
+            client.upload_file("tab-1", str(self.pdf()))
+        self.assertEqual(client.cdp.files, [])
 
 
 if __name__ == "__main__":
