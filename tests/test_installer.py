@@ -183,6 +183,13 @@ class SourceDefaultsTests(unittest.TestCase):
         self.assertIn(".venv/", lines)
         self.assertIn("user/", lines)
 
+    def test_sdist_manifest_carries_root_installers(self):
+        words = set()
+        for line in (RELEASE / "MANIFEST.in").read_text(encoding="utf-8").splitlines():
+            if line.split()[:1] == ["include"]:
+                words.update(line.split()[1:])
+        self.assertTrue({"install.ps1", "install.sh"} <= words, "the sdist audit requires both installers")
+
     def test_installer_files_are_allowlisted(self):
         import json
 
