@@ -14,7 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 TESTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TESTS.parent))
@@ -39,9 +39,14 @@ class Recorder:
         self.fill = fill or {"filled": list(answers()), "blocked": [], "uploads": []}
         self.client = Mock(spec=browser.EngineMCPClient if engine else ["list_pages", "evaluate_script", "upload_file"])
         self.client.list_pages.return_value = [{"id": "tab-1", "url": JOB["url"]}]
-        self.client.evaluate_script.side_effect = self.evaluate
-        self.client.upload_file.side_effect = lambda tab, path: self.calls.append(("upload", path)) or upload
+        # In production the script pass runs over Chrome DevTools, never through
+        # the engine: the engine client's own script and upload tools stay unused.
+        self.scripts = Mock(spec=["evaluate_script", "upload_file"]) if engine else self.client
+        self.scripts.evaluate_script.side_effect = self.evaluate
+        self.scripts.upload_file.side_effect = lambda tab, path: self.calls.append(("upload", path)) or upload
         if engine:
+            self.client.evaluate_script.side_effect = AssertionError("the model ran a script pass")
+            self.client.upload_file.side_effect = AssertionError("the model uploaded the resume")
             self.client.interact.side_effect = self.interact
             self.client.interact_fields = Mock(side_effect=self.interact_fields)
         self.engine_result = {"filled": ["QA_100", "QA_102", "education"], "blocked": [], "status": "filled"}
@@ -126,6 +131,7 @@ class WorkableEnginePathTests(PdfCase):
 
     def bridge(self, recorder):
         bridge = browser.BrowserBridge(recorder.client)
+        bridge.script_client = recorder.scripts
         bridge.tabs["tab-1"] = {"url": JOB["url"]}
         return bridge
 
@@ -149,6 +155,35 @@ class WorkableEnginePathTests(PdfCase):
         self.assertEqual(result["upload_receipt"], self.receipt)
         self.assertEqual(bridge.uploads["tab-1"], self.receipt)
         self.assertEqual(bridge.observed_uploads["tab-1"], self.receipt)
+
+    def test_the_known_field_script_pass_never_invokes_the_model(self):
+        recorder = Recorder([{"fields": scan()}, self.uploaded_scan()], engine=True)
+        self.bridge(recorder).fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        self.assertEqual([call[0] for call in recorder.calls], ["audit", "upload", "audit", "fill", "interact_fields"])
+        recorder.client.evaluate_script.assert_not_called()
+        recorder.client.upload_file.assert_not_called()
+        recorder.client.interact.assert_not_called()
+
+    def test_production_builds_the_devtools_script_client_from_the_engine_endpoint(self):
+        client = browser.EngineMCPClient(Mock(), "http://127.0.0.1:9222")
+        client.list_pages = Mock(return_value=[{"id": "tab-1", "url": JOB["url"]}])
+        bridge = browser.BrowserBridge(client)
+        bridge.tabs["tab-1"] = {"url": JOB["url"]}
+        with patch("autoapply_local.script_client.CDPScriptClient") as factory:
+            factory.return_value.evaluate_script.return_value = {"blocked": [{"id": "page", "reason": "captcha"}]}
+            result = bridge.fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        factory.assert_called_once_with("http://127.0.0.1:9222", resume_input='[data-ui="resume"] input[type="file"]')
+        client.engine.run.assert_not_called()
+        self.assertEqual(result["status"], "needs_manual")
+
+    def test_snapshot_of_a_workable_tab_reads_back_over_devtools(self):
+        recorder = Recorder([{"fields": scan()}, self.uploaded_scan(), self.uploaded_scan()], engine=True)
+        bridge = self.bridge(recorder)
+        bridge.fill("tab-1", profile(), JOB, pdf=str(self.pdf))
+        live = bridge.snapshot("tab-1", job_id="job-1")
+        self.assertEqual(recorder.calls[-1][0], "audit")
+        recorder.client.evaluate_script.assert_not_called()
+        self.assertEqual(live["resume_sha256"], self.receipt["sha256"])
 
     def test_required_questions_without_a_confirmed_fact_hold_the_tab_instead_of_reaching_the_engine(self):
         recorder = Recorder([{"fields": scan()}, self.uploaded_scan()], engine=True)
