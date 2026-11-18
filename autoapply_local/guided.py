@@ -20,6 +20,7 @@ from .storage import atomic_write_json, lock
 PROGRESS = "user/setup-progress.json"
 DEPENDENCIES = ("user/profile-intake.md", "profile.json", "config.json", "answers.json", "intake-import.json")
 TOOLS = {"codex-async": "request_user_input_async", "codex": "request_user_input", "claude": "AskUserQuestion"}
+PAGED_UIS = ("codex", "claude")  # native tools with a few option slots per question
 STATUSES = {"answered", "unknown", "not_applicable", "declined", "notasked"}
 META = ("schema_version", "session_id", "revision", "batch_id")
 
@@ -226,6 +227,34 @@ def _controls(question):
     return controls
 
 
+def _picked(state, question):
+    try:
+        current = _get(state, question["_path"])
+    except (KeyError, TypeError):
+        return []
+    if isinstance(current, dict) and "status" in current and "value" in current:
+        current = current["value"]
+    return list(current) if isinstance(current, list) else []
+
+
+def _merge_picks(state, question, value):
+    # Paged native choices accumulate until Done; Clear empties them.
+    merged = _picked(state, question)
+    merged.extend(item for item in value if item not in merged)
+    _put(state, question["_path"], merged)
+
+
+def _selected_note(state, question, result):
+    picked = _picked(state, question)
+    if not picked:
+        return
+    labels = {c["value"]: c.get("label", {}) for c in question.get("choices", []) if isinstance(c.get("value"), str)}
+    for language, prefix in (("en", "Selected so far: "), ("vi", "Đã chọn: ")):
+        if language in result["prompt"]:
+            names = [labels.get(item, {}).get(language) or labels.get(item, {}).get("en") or str(item) for item in picked]
+            result["prompt"][language] += " " + prefix + ", ".join(names) + "."
+
+
 def _visible(state, question, ui):
     result = {k: copy.deepcopy(v) for k, v in question.items() if not k.startswith("_")}
     editor = question["kind"] in ("record", "list", "object")
@@ -246,7 +275,9 @@ def _visible(state, question, ui):
         pool = copy.deepcopy(question.get("choices", [])) + _controls(question)
         if question["kind"] == "multi_choice":
             pool.append(_choice(question, "clear", "Clear selected values", "Xóa các mục đã chọn", control=True))
-    repeated = question["kind"] == "multi_choice" and ui in ("codex", "claude")
+    repeated = question["kind"] == "multi_choice" and ui in PAGED_UIS
+    if repeated:
+        _selected_note(state, question, result)
     limit = 3 if ui == "codex" else 4 if ui == "claude" else None
     page = state["pages"].get(question["id"], 0)
     if limit and (len(pool) > limit or repeated):
@@ -502,7 +533,11 @@ def _decode(root, state, question, entry):
             raise ValueError("Choose an option actually issued in this batch")
         selected = [choices[option] for option in ids]
         controls = [c for c in selected if c.get("control")]
-        if controls:
+        facts = [c for c in selected if not c.get("control")]
+        # A native multiselect may carry picks plus one More or Done choice.
+        paged = (question["kind"] == "multi_choice" and facts and len(controls) == 1
+                 and controls[0]["value"] in ("more", "done"))
+        if controls and not paged:
             if len(selected) != 1:
                 raise ValueError("Navigation and factual choices must be answered separately")
             action = controls[0]["value"]
@@ -511,8 +546,10 @@ def _decode(root, state, question, entry):
             return status, None, action
         if question["kind"] != "multi_choice" and len(selected) != 1:
             raise ValueError("Choose exactly one option")
-        value = [c["value"] for c in selected] if question["kind"] == "multi_choice" else selected[0]["value"]
+        value = [c["value"] for c in facts] if question["kind"] == "multi_choice" else selected[0]["value"]
+        action = controls[0]["value"] if paged else None
     else:
+        action = None
         if question["kind"] in ("record", "list", "object"):
             raise ValueError("Use the structured editor, not raw JSON")
         value = entry["value"]
@@ -523,7 +560,7 @@ def _decode(root, state, question, entry):
                 raise ValueError("A factual enum cannot be inferred from free text")
         if question["kind"] == "multi_choice" and isinstance(value, str) and question.get("allow_custom"):
             value = [value]
-    return status, _typed_value(root, question, value), None
+    return status, _typed_value(root, question, value), action
 
 
 def _apply_entry(state, question, status, value, action):
@@ -537,7 +574,7 @@ def _apply_entry(state, question, status, value, action):
         state["field_status"][question_id] = status
         state["queue"] = [q for q in state["queue"] if q["id"] != question_id]
         return
-    if action == "more":
+    if action == "more" and value is None:
         state["pages"][question_id] = state["pages"].get(question_id, 0) + 1
         return
     if question.get("record_picker"):
@@ -568,7 +605,7 @@ def _apply_entry(state, question, status, value, action):
         _put(state, question["_path"], [])
         state["field_status"][question_id] = "answered"
         return
-    if action == "done":
+    if action == "done" and value is None:
         _close_editor(state, question)
         state["field_status"][question_id] = "answered"
     else:
@@ -578,23 +615,15 @@ def _apply_entry(state, question, status, value, action):
             if isinstance(ancestor, dict) and "status" in ancestor and "value" in ancestor:
                 _put(state, question["_fact_path"], copy.deepcopy(ancestor["value"]))
         if status == "answered":
-            repeated = question["kind"] == "multi_choice"
-            if repeated:
-                try:
-                    previous = _get(state, question["_path"])
-                except (KeyError, TypeError):
-                    previous = []
-                # Repeated native single choices accumulate until Done; a
-                # complete typed selection remains compatible with the CLI.
-                if state.get("displayed_ui") == "codex":
-                    merged = list(previous or [])
-                    for item in value:
-                        if item not in merged:
-                            merged.append(item)
-                    _put(state, question["_path"], merged)
+            # Paged native choices accumulate until Done; a complete typed
+            # selection (codex-async, CLI) still replaces the list.
+            if question["kind"] == "multi_choice" and state.get("displayed_ui") in PAGED_UIS:
+                _merge_picks(state, question, value)
+                if action != "done":
                     state["pages"][question_id] = state["pages"].get(question_id, 0) + 1
                     return
-            _put(state, question["_path"], value)
+            else:
+                _put(state, question["_path"], value)
         elif status != "notasked":
             empty = [] if question["value_type"] == "array" else {} if question["value_type"] == "object" else None
             _put(state, question["_path"], empty)
