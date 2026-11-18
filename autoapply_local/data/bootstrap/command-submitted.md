@@ -10,5 +10,6 @@ conflicts. Route related CLI commands through the same launcher.
 This tool never clicks Submit; the user submits held forms by hand. Only record
 IDs the user names; never infer a submission from the page. Recording writes
 the tracker row and frees the held-tab slot; it does not close the tab.
-If recording fails part-way, run the same command again; it resumes.
+If recording fails part-way, run the same command again with the same IDs; it
+resumes, and IDs it already recorded are left unchanged.
 Report the recorded jobs and the remaining held tabs.
