@@ -48,7 +48,10 @@ def form_fields(**values):
 class FakeForm:
     """Answers adapter calls the way the page would, and records their order."""
 
-    def __init__(self, ready_after=1, formsy=True, location=None, keep_empty=(), late_parse=0, scan_overwrite=None, check_overwrite=False):
+    def __init__(
+        self, ready_after=1, formsy=True, location=None, keep_empty=(), late_parse=0, scan_overwrite=None,
+        check_overwrite=False,
+    ):
         self.calls, self.ready_polls, self.ready_after = [], 0, ready_after
         # How many fills a slow parse still overwrites afterwards (-1: every fill).
         self.late_parse = late_parse
@@ -292,7 +295,11 @@ class DriverTests(Base):
         result = self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
         self.assertEqual(form.values["linkedin_link"], "https://www.linkedin.com/in/alex-rivera-example")
         self.assertEqual(result["status"], "filled", result["blocked"])
-        self.assertEqual([call[1] for call in form.calls if call[0] == "modelFill"][1:], [{"linkedin_link": {"value": "https://www.linkedin.com/in/alex-rivera-example", "status": "confirmed"}}])
+        rewrites = [call[1] for call in form.calls if call[0] == "modelFill"][1:]
+        self.assertEqual(
+            [{name: answer["value"] for name, answer in payload.items()} for payload in rewrites],
+            [{"linkedin_link": "https://www.linkedin.com/in/alex-rivera-example"}],
+        )
 
     def test_parse_that_keeps_overwriting_a_fact_holds_the_tab(self):
         form = FakeForm(late_parse=-1)

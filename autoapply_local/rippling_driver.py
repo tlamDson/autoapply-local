@@ -3,8 +3,10 @@
 Rippling parses the uploaded resume and writes what it read (name, links) into
 the form. The driver therefore uploads first, waits for that parse, and only
 then writes confirmed facts, so the user's own facts win over the parse. A
-parse that lands late is caught by reading every written fact back: a changed
-fact is written again a bounded number of times, then reported. A
+parse that lands late is caught by reading every written fact back until two
+checks in a row are clean: a changed fact is written again a bounded number of
+times, then reported. The final scan is the proof: a written fact it does not
+show is reported, never counted as filled. A
 question with no confirmed, exactly scoped answer is left as it is and reported.
 The driver never clicks a button; the user reviews and submits the held tab.
 """
@@ -107,6 +109,32 @@ def _unknown(field):
     return {"id": field["id"], "label": field.get("label", ""), "required": bool(field.get("required"))}
 
 
+def _norm(text):
+    return re.sub(r"[^a-z0-9]+", " ", str(text if text is not None else "").lower()).strip()
+
+
+def _expected(field, supplied):
+    """The model value a written answer must show in a scan, as adapters/rippling.cjs writes it."""
+    value = supplied["value"]
+    options = field.get("options") or []
+    if field.get("type") != "choice" or not options:
+        return str(value)
+    hits = [item for item in options if item.get("value") == value or _norm(item.get("label")) == _norm(value)]
+    if len(hits) != 1:
+        return None
+    return [hits[0]["value"]] if isinstance(field.get("value"), list) else hits[0]["value"]
+
+
+def _differs(fields, written):
+    """Written names the scan does not show with their confirmed value (missing from the scan counts)."""
+    seen = {item.get("id"): item for item in fields}
+    return [
+        name
+        for name, supplied in written.items()
+        if name not in seen or seen[name].get("value") != _expected(seen[name], supplied)
+    ]
+
+
 def _receipt(path):
     data = path.read_bytes()
     return {"name": path.name, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
@@ -115,8 +143,8 @@ def _receipt(path):
 class RipplingDriver:
     """Fill one held Rippling tab through an MCP client with evaluate_script and upload_file."""
 
-    def __init__(self, client, *, sleep=time.sleep, parse_wait_s=15, poll_s=0.5, rewrites=2):
-        self.client, self.sleep, self.rewrites = client, sleep, rewrites
+    def __init__(self, client, *, sleep=time.sleep, parse_wait_s=15, poll_s=0.5, rewrites=2, stable=2):
+        self.client, self.sleep, self.rewrites, self.stable = client, sleep, rewrites, max(1, stable)
         self.polls = max(1, math.ceil(parse_wait_s / poll_s)) if poll_s > 0 else 1
         self.poll_s = poll_s
 
@@ -154,10 +182,12 @@ class RipplingDriver:
         if steps["location"]:
             placed = self.call(tab_id, "location", {"query": steps["location"]})
             blocked.extend(placed.get("blocked", []))
-        overwritten = self.settle(tab_id, {name: steps["answers"][name] for name in filled if name in steps["answers"]})
+        written = {name: steps["answers"][name] for name in filled if name in steps["answers"]}
+        overwritten = self.settle(tab_id, written)
+        after = self.call(tab_id, "modelScan")
+        overwritten += [name for name in _differs(after.get("fields", []), written) if name not in overwritten]
         blocked.extend({"id": name, "reason": "value_overwritten"} for name in overwritten)
         filled = [name for name in filled if name not in overwritten]
-        after = self.call(tab_id, "modelScan")
         for field in after.get("fields", []):
             if field["id"] == "resume" and receipt and receipt["name"] not in (field.get("value") or []):
                 blocked.append({"id": "resume", "reason": "resume_not_attached"})
@@ -168,11 +198,12 @@ class RipplingDriver:
         return self._held(blocked, filled, steps["unknown"], receipt, valid)
 
     def settle(self, tab_id, written):
-        """Names whose confirmed value a late parse still overwrites after the bounded rewrites."""
-        changed = []
-        for attempt in range(self.rewrites + 1):
-            if not written:
-                return []
+        """Names a late parse still overwrites after the bounded rewrites.
+
+        Returns [] once `stable` checks in a row are clean.
+        """
+        clean, rewrites = 0, 0
+        while written:
             self.sleep(self.poll_s)
             check = self.call(tab_id, "modelCheck", written)
             changed = [
@@ -181,10 +212,15 @@ class RipplingDriver:
                 if item.get("reason") == "value_changed" and item.get("id") in written
             ]
             if not changed:
-                return []
-            if attempt < self.rewrites:
-                self.call(tab_id, "modelFill", {name: written[name] for name in changed})
-        return changed
+                clean += 1
+                if clean >= self.stable:
+                    return []
+                continue
+            if rewrites >= self.rewrites:
+                return changed
+            clean, rewrites = 0, rewrites + 1
+            self.call(tab_id, "modelFill", {name: written[name] for name in changed})
+        return []
 
     @staticmethod
     def _held(blocked, filled, unknown, receipt, valid=False):
