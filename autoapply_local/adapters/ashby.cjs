@@ -23,13 +23,15 @@
 
   function isSubmitControl(el) {
     if (!el) return false;
-    // Browsers read the type attribute case-insensitively, and a button whose
-    // type is missing or invalid submits its form.
+    // Browsers match the type attribute ASCII case-insensitively and untrimmed;
+    // a button whose type is missing, padded or invalid submits a form. A button
+    // outside a <form> can still submit one through its form attribute or after
+    // React moves it, so only an explicit type="button" or "reset" is safe.
     const raw = el.getAttribute('type');
-    const type = raw === null ? null : String(raw).trim().toLowerCase();
+    const type = raw === null ? null : String(raw).replace(/[A-Z]+/g, letters => letters.toLowerCase());
     if (type === 'submit') return true;
     if (el.tagName === 'INPUT' && type === 'image') return true;
-    if (el.tagName === 'BUTTON' && type !== 'button' && type !== 'reset' && el.closest('form')) return true;
+    if (el.tagName === 'BUTTON' && type !== 'button' && type !== 'reset') return true;
     if (classes(el).some(name => /submit/i.test(name))) return true;
     return SUBMIT_WORDS.test(clean(el.innerText || el.value));
   }

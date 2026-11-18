@@ -4,7 +4,9 @@ Ashby names its standard inputs ``_systemfield_<name>``; other questions fall
 back to the generic resolver (exact contact labels and question-scoped
 answers), so authorization or sponsorship is never inferred. Yes/No toggles
 with a confirmed answer come back from the adapter as ``native_click_required``
-with the option to click, and are reported as unknown for the engine.
+with the option to click, and are reported as unknown for the engine. An
+option that could submit the form (``submit_control``) never reaches the engine:
+the tab is held as ``needs_manual`` for the user.
 """
 
 from .script_driver import ScriptDriver

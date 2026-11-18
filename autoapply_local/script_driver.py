@@ -152,20 +152,29 @@ class ScriptDriver:
         unknown = list(plan["unknown"])
         listed = {item["id"] for item in unknown}
         described = {field.get("id"): field for field in fields}
+        held = False
         for item in result.get("blocked", []):
+            if item.get("reason") == "submit_control":
+                # The control could submit the form: never hand it to the
+                # engine's native click; the user answers it by hand.
+                held = True
+                unknown = [entry for entry in unknown if entry["id"] != item.get("id")]
+                listed.add(item.get("id"))
+                continue
             if item.get("id") in listed:
                 continue
             field = described.get(item.get("id"), {})
-            unknown.append(
-                {
-                    "id": item.get("id"),
-                    "label": field.get("label"),
-                    "type": field.get("type"),
-                    "required": bool(field.get("required")),
-                    "options": field.get("options") or [],
-                    "reason": item.get("reason"),
-                }
-            )
+            entry = {
+                "id": item.get("id"),
+                "label": field.get("label"),
+                "type": field.get("type"),
+                "required": bool(field.get("required")),
+                "options": field.get("options") or [],
+                "reason": item.get("reason"),
+            }
+            if "option" in item:
+                entry["option"] = item["option"]
+            unknown.append(entry)
             listed.add(item.get("id"))
         return {
             "driver": self.name,
@@ -174,7 +183,11 @@ class ScriptDriver:
             "uploads": list(result.get("uploads", [])),
             "unknown": unknown,
             "resume_field": plan["resume"],
-            "status": "needs_engine" if any(item["required"] for item in unknown) else "filled",
+            "status": "needs_manual"
+            if held
+            else "needs_engine"
+            if any(item["required"] for item in unknown)
+            else "filled",
         }
 
 
