@@ -1,0 +1,155 @@
+"""Rippling script driver: resume first, Rippling's parse, then confirmed facts on top; the form is held.
+
+Rippling parses the uploaded resume and writes what it read (name, links) into
+the form. The driver therefore uploads first, waits for that parse, and only
+then writes confirmed facts, so the user's own facts win over the parse. A
+question with no confirmed, exactly scoped answer is left as it is and reported.
+The driver never clicks a button; the user reviews and submits the held tab.
+"""
+
+import hashlib
+import json
+import math
+import re
+import time
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from .profile import resolve_field
+
+ATS = "rippling"
+ADAPTERS = Path(__file__).with_name("adapters")
+# Rippling's fixed field names -> contact facts, in order of preference.
+CONTACT = {
+    "first_name": ("first_name",),
+    "last_name": ("last_name",),
+    "email": ("application_email",),
+    "phone_number": ("phone",),
+    "nickname": ("preferred_name",),
+    "linkedin_link": ("linkedin",),
+    "website_link": ("portfolio", "github"),
+}
+# Adapter calls the driver may make; none of them clicks a control.
+ACTIONS = ("modelReady", "modelScan", "modelFill", "location")
+APPLY_PATH = re.compile(r"(?:/[A-Za-z]{2}-[A-Za-z]{2})?/[^/]+/jobs/[^/]+(?:/apply)?/?")
+
+
+def matches(url):
+    """True for an ats.rippling.com job or apply URL."""
+    parts = urlsplit(str(url))
+    return parts.scheme == "https" and parts.hostname == "ats.rippling.com" and bool(APPLY_PATH.fullmatch(parts.path))
+
+
+def script(action, payload=None):
+    """One evaluate_script function: common.cjs, rippling.cjs, then a single adapter call."""
+    if action not in ACTIONS:
+        raise ValueError("Unsupported Rippling adapter action")
+    code = "\n".join((ADAPTERS / name).read_text(encoding="utf-8") for name in ("common.cjs", "rippling.cjs"))
+    argument = "" if payload is None else ", " + json.dumps(payload, ensure_ascii=False)
+    return f"async () => {{\n{code}\nreturn await globalThis.AutoApplyRippling.{action}(document{argument});\n}}"
+
+
+def _confirmed(answer):
+    return isinstance(answer, dict) and answer.get("status") == "confirmed" and answer.get("value") not in (None, "")
+
+
+def location_query(profile):
+    """'City, ST' from confirmed contact facts, or None."""
+    contact = profile.get("contact", {})
+    city, state = contact.get("city"), contact.get("state")
+    if _confirmed(city) and _confirmed(state):
+        return f"{city['value']}, {state['value']}"
+    return None
+
+
+def plan(profile, fields, job):
+    """Confirmed answers keyed by Rippling field name, the location query, and what stays unknown."""
+    answers, unknown, location = {}, [], None
+    contact = profile.get("contact", {})
+    for field in fields:
+        name = field["id"]
+        if field.get("type") == "file":
+            continue
+        if name == "location":
+            location = location_query(profile)
+            if location is None:
+                unknown.append(_unknown(field))
+            continue
+        if name in CONTACT:
+            supplied = next((contact[key] for key in CONTACT[name] if _confirmed(contact.get(key))), None)
+        else:
+            supplied = resolve_field(profile, field, job)
+        if _confirmed(supplied):
+            answers[name] = supplied
+        else:
+            unknown.append(_unknown(field))
+    return {"answers": answers, "unknown": unknown, "location": location}
+
+
+def _unknown(field):
+    return {"id": field["id"], "label": field.get("label", ""), "required": bool(field.get("required"))}
+
+
+def _receipt(path):
+    data = path.read_bytes()
+    return {"name": path.name, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+
+
+class RipplingDriver:
+    """Fill one held Rippling tab through an MCP client with evaluate_script and upload_file."""
+
+    def __init__(self, client, *, sleep=time.sleep, parse_wait_s=15, poll_s=0.5):
+        self.client, self.sleep = client, sleep
+        self.polls = max(1, math.ceil(parse_wait_s / poll_s)) if poll_s > 0 else 1
+        self.poll_s = poll_s
+
+    def call(self, tab_id, action, payload=None):
+        return self.client.evaluate_script(tab_id, script(action, payload), operation="fill")
+
+    def wait_parsed(self, tab_id):
+        for attempt in range(self.polls):
+            if self.call(tab_id, "modelReady") is True:
+                return True
+            if attempt + 1 < self.polls:
+                self.sleep(self.poll_s)
+        return False
+
+    def fill(self, tab_id, profile, job, pdf=None):
+        receipt = None
+        if pdf is not None:
+            path = Path(pdf).resolve()
+            if not path.is_file() or not path.read_bytes().startswith(b"%PDF-"):
+                raise ValueError("Upload requires an existing PDF")
+            receipt = _receipt(path)
+            self.client.upload_file(tab_id, str(path))
+            if not self.wait_parsed(tab_id):
+                return self._held([{"id": "resume", "reason": "resume_parse_timeout"}], [], [], receipt)
+        scanned = self.call(tab_id, "modelScan")
+        if not scanned.get("formsy"):
+            return self._held([{"id": "form", "reason": "form_model_missing"}], [], [], receipt)
+        steps = plan(profile, scanned["fields"], job)
+        result = self.call(tab_id, "modelFill", steps["answers"]) if steps["answers"] else {}
+        blocked = list(result.get("blocked", []))
+        if steps["location"]:
+            placed = self.call(tab_id, "location", {"query": steps["location"]})
+            if placed.get("blocked"):
+                blocked.append({"id": "location", "reason": placed["blocked"]})
+        after = self.call(tab_id, "modelScan")
+        for field in after.get("fields", []):
+            if field["id"] == "resume" and receipt and receipt["name"] not in (field.get("value") or []):
+                blocked.append({"id": "resume", "reason": "resume_not_attached"})
+            elif field.get("required") and field.get("value") in ("", None, []):
+                if not any(item["id"] == field["id"] for item in blocked):
+                    blocked.append({"id": field["id"], "reason": "required_empty"})
+        return self._held(blocked, result.get("filled", []), steps["unknown"], receipt, after.get("valid"))
+
+    @staticmethod
+    def _held(blocked, filled, unknown, receipt, valid=False):
+        return {
+            "status": "needs_manual" if blocked else "filled",
+            "filled": list(filled),
+            "blocked": blocked,
+            "unknown": unknown,
+            "upload_receipt": receipt,
+            "form_valid": bool(valid),
+        }

@@ -78,6 +78,8 @@ class FakeForm:
                 self.values[key] = payload[key]["value"]
             return {"filled": filled, "blocked": [], "uploads": []}
         if name == "location":
+            if not self.location_result:
+                self.values["location"] = payload["query"] + ", USA"
             return self.location_result or {"picked": payload["query"] + ", USA", "location": payload["query"], "placed": True}
         raise AssertionError("unexpected adapter call " + name)
 
