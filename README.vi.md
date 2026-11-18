@@ -349,6 +349,12 @@ tab đang giữ rồi tự nộp.
   tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
   mở tới khi bạn tự đóng.
 - `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
+- `update`: chép `user/` (trừ `backups/` và profile Chrome) vào
+  `user/backups/<ngày-giờ>/`, rồi `git pull --ff-only` (không có git: tải zip của
+  bản phát hành mới nhất, không bao giờ ghi vào `user/` hay `.venv/`), cài lại bằng
+  `pip install -e .`, chạy mỗi migration dữ liệu còn thiếu đúng một lần và in những gì đã đổi.
+  `apply` in một dòng ra stderr khi có bản mới; đặt
+  `AUTOAPPLY_LOCAL_NO_UPDATE_CHECK=1` để bỏ bước kiểm này.
 
 Mặc định một lane Chrome sạch và bền giữa các lệnh. Hai/ba lane cần opt-in.
 Kiểm RAM và giới hạn tab là heuristic, chưa phải benchmark máy 8 GB. Khi chạm trần,
