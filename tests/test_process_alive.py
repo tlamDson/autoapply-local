@@ -86,10 +86,15 @@ class BrowserLaneReuseTests(ReleaseCase):
         return executable
 
     def launch(self, executable):
+        # Run the Windows branch on every OS: the kernel query is stubbed so
+        # that only this test's own pid is running, and os.kill is forbidden.
         browser = self.module("browser")
+        process_alive = self.module("process_alive")
         version = io.BytesIO(json.dumps({"Browser": "Chrome/130.0"}).encode())
         with patch("os.kill", side_effect=AssertionError("os.kill must not probe the lane Chrome")) as kill, patch.object(
             browser, "urlopen", return_value=version
+        ), patch.object(process_alive.sys, "platform", "win32"), patch.object(
+            process_alive, "_windows_alive", side_effect=lambda pid: pid == os.getpid()
         ):
             try:
                 return browser.launch_chrome(self.root, executable=executable, spawn=None), kill
