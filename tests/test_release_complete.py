@@ -334,6 +334,7 @@ class ReleaseCompleteTests(ReleaseCase):
             "adapters/greenhouse.cjs",
             "adapters/rippling.cjs",
             "adapters/workday.cjs",
+            "adapters/ashby.cjs",
         ):
             with self.subTest(resource=relative):
                 self.assertEqual(

@@ -1,0 +1,31 @@
+{
+  "data": {
+    "jobPosting": {
+      "id": "0b7c1d4e-2f3a-4b5c-9d6e-7f8091a2b3c4",
+      "title": "Software Engineer Intern, Summer 2027",
+      "descriptionHtml": "<p>Build tools for <b>Example Labs</b>.</p><ul><li>Python</li><li>TypeScript</li></ul>",
+      "applicationForm": {
+        "sections": [
+          {
+            "fieldEntries": [
+              {"isRequired": true, "descriptionHtml": null, "field": {"id": "f1", "path": "_systemfield_name", "title": "Name", "type": "String"}},
+              {"isRequired": true, "descriptionHtml": null, "field": {"id": "f2", "path": "_systemfield_email", "title": "Email", "type": "Email"}},
+              {"isRequired": true, "descriptionHtml": null, "field": {"id": "f3", "path": "_systemfield_resume", "title": "Resume", "type": "File"}},
+              {"isRequired": false, "descriptionHtml": null, "field": {"id": "f4", "path": "9a1b", "title": "Phone", "type": "Phone"}},
+              {"isRequired": true, "descriptionHtml": null, "field": {"id": "f5", "path": "7c2d", "title": "Will you now or in the future require visa sponsorship?", "type": "Boolean"}},
+              {"isRequired": true, "descriptionHtml": "<p>Pick one.</p>", "field": {"id": "f6", "path": "5e3f", "title": "Which office do you prefer?", "type": "ValueSelect", "selectableValues": [{"label": "Remote"}, {"label": "Austin"}, {"label": "Old office", "isArchived": true}]}},
+              {"isRequired": false, "descriptionHtml": null, "field": {"id": "f7", "path": "3a4b", "title": "Languages", "type": "MultiValueSelect", "selectableValues": [{"label": "Python"}, {"label": "Go"}]}},
+              {"isRequired": true, "descriptionHtml": "<p>Tell us about a project.</p><ul><li>Maximum 150 words</li><li>At least 20 words</li></ul>", "field": {"id": "f8", "path": "1c5d", "title": "Describe a project you built", "type": "LongText"}},
+              {"isRequired": false, "descriptionHtml": null, "field": {"id": "f9", "path": "0e6f", "title": "Old question", "type": "String", "isDeactivated": true}}
+            ]
+          }
+        ]
+      },
+      "surveyForms": [
+        {"sections": [{"fieldEntries": [
+          {"isRequired": false, "descriptionHtml": "<p>Limit 500 characters.</p>", "field": {"id": "s1", "path": "8f7a", "title": "Anything else?", "type": "LongText"}}
+        ]}]}
+      ]
+    }
+  }
+}
