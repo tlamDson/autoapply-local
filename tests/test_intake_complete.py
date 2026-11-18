@@ -2,8 +2,7 @@
 
 Giả định của người thực thi (test-only): preserve the existing intake/profile
 JSON projections; runtime.select_resume(profile, config, job) returns a Path.
-Confirmed experience records must feed Tailor directly without hand-authored
-fact_sources. Explicit confirmation replaces extraction provenance with a user
+Explicit confirmation replaces extraction provenance with a user
 confirmation, while extracted/generated text cannot confirm itself. These
 assumptions live here because this task permits changes to test files only.
 """
@@ -13,14 +12,10 @@ import zipfile
 from pathlib import Path
 from unittest.mock import Mock
 
-import test_tailor
 from test_support import NOW, SCOPE, ReleaseCase, candidate, fact, job
 
 
 class IntakeCompleteTests(ReleaseCase):
-    prepared = test_tailor.TailorTests.prepared
-    config = test_tailor.TailorTests.config
-
     def intake_document(self):
         intake = self.module("intake")
         intake.setup(self.root)
@@ -257,8 +252,7 @@ class IntakeCompleteTests(ReleaseCase):
         self.assertNotIn("contact", config)
         self.assertNotIn("runtime", profile)
 
-    def test_full_import_drives_fetch_filter_resume_role_mapping_and_tailor(self):
-        runner = self.prepared()
+    def test_full_import_drives_fetch_filter_and_resume_role_mapping(self):
         intake, path, document = self.full_document()
         profile, config = self.import_document(intake, path, document)
         transport = Mock(spec=["get_json", "post_json"])
@@ -286,23 +280,6 @@ class IntakeCompleteTests(ReleaseCase):
         selected = self.module("runtime").select_resume(profile, config, fetched[0])
         self.assertEqual(Path(selected), self.root / "backend.pdf")
         self.assertNotIn("fact_sources", profile)
-        result = runner.run(self.jd, profile, engine=config["runtime"]["tailor_engine"], config=config["tailor"])
-        tex = Path(result["tex"]).read_text(encoding="utf-8")
-        self.assertIn("Example Systems", tex)
-        self.assertIn("Reduced Python service latency by 12", tex)
-        self.assertIn("Example University", tex)
-        self.assertIn("Python", tex)
-        self.engines["codex"].run.assert_called_once()
-        self.engines["claude"].run.assert_not_called()
-
-    def test_confirmed_profile_experience_reaches_tailor_without_fact_sources_backdoor(self):
-        runner = self.prepared()
-        intake, path, document = self.full_document()
-        profile, config = self.import_document(intake, path, document)
-        self.assertNotIn("fact_sources", profile)
-        result = runner.run(self.jd, profile, engine="codex", config=config["tailor"])
-        self.assertIn("Example Systems", Path(result["tex"]).read_text(encoding="utf-8"))
-        self.compiler.compile.assert_called_once()
 
     def test_education_fact_scope_and_date_precision_survive_import(self):
         intake, path, document = self.full_document()
@@ -426,7 +403,7 @@ class IntakeCompleteTests(ReleaseCase):
             self.assertEqual((self.root / name).read_bytes(), original)
 
     def test_pdf_tex_and_docx_extraction_stays_draft_until_user_confirmation(self):
-        tailor = self.module("tailor")
+        extraction = self.module("extraction")
         for suffix in (".pdf", ".tex", ".docx"):
             with self.subTest(suffix=suffix):
                 source = self.root / ("source" + suffix)
@@ -437,13 +414,13 @@ class IntakeCompleteTests(ReleaseCase):
                             '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
                             "<w:body><w:p><w:r><w:t>Built a Python API.</w:t></w:r></w:p></w:body></w:document>",
                         )
-                    draft = tailor.extract_source(source)
+                    draft = extraction.extract_source(source)
                 elif suffix == ".pdf":
                     source.write_bytes(b"%PDF-1.4\n% synthetic extraction\n%%EOF")
-                    draft = tailor.extract_source(source, extractor=Mock(return_value="Built a Python API."))
+                    draft = extraction.extract_source(source, extractor=Mock(return_value="Built a Python API."))
                 else:
                     source.write_text("Built a Python API.", encoding="utf-8")
-                    draft = tailor.extract_source(source)
+                    draft = extraction.extract_source(source)
                 self.assertEqual(draft["status"], "draft")
                 self.assertIs(draft["requires_confirmation"], True)
                 self.assertTrue(draft["facts"])

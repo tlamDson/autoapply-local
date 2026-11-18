@@ -32,10 +32,8 @@ COMMANDS = (
     "profile-update",
     "fetch",
     "apply",
-    "tailor",
     "review",
-    "submit",
-    "mail-check",
+    "submitted",
     "status",
 )
 WRAPPERS = tuple(f".claude/commands/{name}.md" for name in COMMANDS) + (".codex/skills/autoapply-local/SKILL.md",)
@@ -316,7 +314,6 @@ class ApplyPreflightTests(ReleaseCase):
             patch("autoapply_local.browser.BrowserBridge", return_value=self.bridge)
         )
         self.stack.enter_context(patch("autoapply_local.browser.available_memory_mb", return_value=16384))
-        self.tailor = self.stack.enter_context(patch("autoapply_local.tailor.Tailor"))
 
     def launch_browser(self, *args, **kwargs):
         self.events.append(("browser", self.stderr.getvalue(), self.stdout.getvalue()))
@@ -369,7 +366,6 @@ class ApplyPreflightTests(ReleaseCase):
         self.assertEqual(self.engine_factory.call_count, 1)
         self.assertEqual(self.engine_factory.call_args.args[0], "codex")
         self.assertTrue(all(call.args[0]["kind"] == "apply_analysis" for call in self.engine.run.call_args_list))
-        self.tailor.assert_not_called()
         self.bridge.submit.assert_not_called()
         self.bridge.close.assert_not_called()
         self.assertEqual(self.store.tracker_rows(), [])
@@ -400,7 +396,6 @@ class ApplyPreflightTests(ReleaseCase):
         self.bridge_factory.assert_not_called()
         self.bridge.open.assert_not_called()
         self.bridge.submit.assert_not_called()
-        self.tailor.assert_not_called()
         self.assertEqual(self.stdout.getvalue(), "")
         self.assertEqual(
             [self.store.get(key)["state"] for key in ("backend-job", "frontend-job")], ["pending", "pending"]

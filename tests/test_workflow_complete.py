@@ -7,49 +7,9 @@ scope. No implementation or plan is edited in this test-only turn.
 """
 
 import copy
-import multiprocessing
-from pathlib import Path
-from unittest.mock import Mock, patch
 
 import test_workflow
 from test_support import NOW, ReleaseCase, fact, job
-
-
-def submit_in_process(root, live, start, clicks, output):
-    """Spawn-safe worker; its only click is a counter on a fake browser."""
-    from autoapply_local.storage import Store
-    from autoapply_local.workflow import Workflow
-
-    browser = Mock(spec=["snapshot", "submit", "close"])
-    browser.snapshot.return_value = live
-
-    def click(*args, **kwargs):
-        # A second process can see intent before any simulated side effect.
-        state = Store(root).get("synthetic-1")["state"]
-        if state != "submit_intent":
-            raise AssertionError("Click happened before durable intent")
-        with clicks.get_lock():
-            clicks.value += 1
-        return {
-            "status": "confirmed",
-            "job_id": "synthetic-1",
-            "url": job()["url"] + "/confirmation",
-            "text": "Application received",
-        }
-
-    browser.submit.side_effect = click
-    runner = Workflow(root, browser=browser, engines={}, clock=lambda: NOW)
-    if not start.wait(10):
-        output.put("start_timeout")
-        return
-    try:
-        runner.submit(["synthetic-1"])
-    except ValueError:
-        output.put("blocked")
-    except BaseException as error:
-        output.put(type(error).__name__)
-    else:
-        output.put("submitted")
 
 
 class WorkflowCompleteTests(ReleaseCase):
@@ -289,78 +249,24 @@ class WorkflowCompleteTests(ReleaseCase):
         self.browser.fill.assert_called_once()
         self.browser.upload_file.assert_called_once()
 
-    def test_two_processes_submit_one_reviewed_job_with_one_durable_click_and_row(self):
-        runner = self.reviewed()
-        context = multiprocessing.get_context("spawn")
-        start, clicks, output = context.Event(), context.Value("i", 0), context.Queue()
-        processes = [
-            context.Process(
-                target=submit_in_process,
-                args=(
-                    str(self.root),
-                    copy.deepcopy(self.live),
-                    start,
-                    clicks,
-                    output,
-                ),
-            )
-            for _ in range(2)
-        ]
-        try:
-            for process in processes:
-                process.start()
-            start.set()
-            results = [output.get(timeout=20) for _ in processes]
-            for process in processes:
-                process.join(20)
-                self.assertEqual(process.exitcode, 0)
-            self.assertCountEqual(results, ["submitted", "blocked"])
-            self.assertEqual(clicks.value, 1)
-            reopened = self.module("storage").Store(self.root)
-            self.assertEqual(reopened.get("synthetic-1")["state"], "submitted")
-            self.assertEqual([row["id"] for row in reopened.tracker_rows()], ["synthetic-1"])
-        finally:
-            for process in processes:
-                if process.is_alive():
-                    process.terminate()
-                process.join(5)
-            output.close()
-            output.join_thread()
-
-    def test_restart_after_xlsx_commit_and_ledger_failure_preserves_proof_without_reclick(self):
-        runner = self.reviewed()
-        storage = self.module("storage")
-        real_write = storage.atomic_write_json
-
-        def interrupted_commit(path, data):
-            if Path(path).name == "ledger.json" and data["jobs"]["synthetic-1"]["state"] == "submitted":
-                raise KeyboardInterrupt("synthetic crash after XLSX commit before JSON commit")
-            return real_write(path, data)
-
-        with patch.object(storage, "atomic_write_json", side_effect=interrupted_commit):
-            with self.assertRaises(KeyboardInterrupt):
-                runner.submit(["synthetic-1"])
-        self.assertEqual(runner.store.get("synthetic-1")["state"], "submit_intent")
-        self.assertEqual(len(runner.store.tracker_rows()), 1)
-        restarted = self.module("workflow").Workflow(
-            self.root,
-            browser=self.browser,
-            engines=self.engines,
-            clock=lambda: NOW,
-        )
-        with self.assertRaises(ValueError):
-            restarted.submit(["synthetic-1"])
-        self.browser.submit.assert_called_once()
-        self.assertEqual(restarted.store.get("synthetic-1")["state"], "submitted")
-        self.assertIn("Application received", str(restarted.store.get("synthetic-1")["confirmation"]))
-        self.assertEqual(restarted.store.tracker_rows()[0]["confirmation"], "Application received")
-
     def test_authoritative_tracker_survives_restored_stale_ledger_without_losing_job(self):
         runner = self.reviewed()
         storage = self.module("storage")
         stale = copy.deepcopy(storage.read_json(runner.store.path))
         stale["jobs"] = {}
-        runner.submit(["synthetic-1"])
+        # The user submits the held tab by hand; tracking records the matched confirmation.
+        record = runner.store.get("synthetic-1")
+        runner.store.record_submit_intent("synthetic-1", {"review_id": record["review"]["review_id"]})
+        runner.store.mark_submitted(
+            "synthetic-1",
+            {
+                "status": "confirmed",
+                "job_id": "synthetic-1",
+                "url": job()["url"] + "/confirmation",
+                "text": "Application received",
+                "confirmed_at": NOW,
+            },
+        )
         # A valid but stale recovered ledger may predate enqueueing this job.
         storage.atomic_write_json(runner.store.path, stale)
         restarted = self.module("workflow").Workflow(
@@ -373,4 +279,3 @@ class WorkflowCompleteTests(ReleaseCase):
         self.assertIn("synthetic-1", records)
         self.assertEqual(records["synthetic-1"]["state"], "submitted")
         self.assertEqual(restarted.store.tracker_rows()[0]["confirmation"], "Application received")
-        self.browser.submit.assert_called_once()

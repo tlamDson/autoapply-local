@@ -1,14 +1,9 @@
 # AutoApply Local runtime — experimental
 
-Automated Gmail requires account binding enforced on every call. Currently only
-Claude supports search/read with an explicit account; Codex search/read remains
-`manual_required` until a transport can enforce that binding. Quick apply remains
-available; handle mail manually with Codex. Native browser fill still carries
+Native browser fill still carries
 real-engine risks and needs a live ATS gate before it can be considered stable.
 
-Gmail tự động cần ép đúng account ở từng lời gọi. Hiện chỉ Claude hỗ trợ search/read
-với account tường minh; Codex giữ `manual_required` tới khi transport ép được account.
-Quick apply vẫn chạy; dùng Codex thì xử lý mail tay. Fill browser native còn rủi ro
+Fill browser native còn rủi ro
 với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
 
 Open this exact directory in your selected engine. Activate the Python environment
@@ -92,13 +87,12 @@ Browser config fragments are for inspection; task calls supply the owned lane
 endpoint. Windows Codex MCP uses a pinned package, fixed command arguments and
 a startup timeout. Errors report login, quota, timeout, configuration, permission required, unsupported
 version, invalid response or engine failure without exposing raw CLI diagnostics.
-There is no automatic submission retry. Keep held forms open after any error.
+Keep held forms open after any error.
 
 Quick apply reports target roles, recruiting season/window and selected PDFs on
-stderr before browser work. It fills and holds existing PDFs without tailoring
-or submitting. Keep held tabs open. Submit requires your explicit request for
-reviewed IDs or all-reviewed. Unknown click outcomes need manual reconciliation.
-Gmail needs separate opt-in, verified account and native search/read tools.
+stderr before browser work. It fills and holds existing PDFs and never clicks
+Submit. Keep held tabs open, review each one, submit it yourself, then record
+it with `submitted ID,ID` to free its held-tab slot.
 
 ## Document drop folders / Thư mục tài liệu
 

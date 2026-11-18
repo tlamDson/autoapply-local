@@ -10,10 +10,8 @@ COMMANDS = (
     "profile-update",
     "fetch",
     "apply",
-    "tailor",
     "review",
-    "submit",
-    "mail-check",
+    "submitted",
     "status",
 )
 

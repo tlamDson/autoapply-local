@@ -1,4 +1,4 @@
-"""Fill, hold, review and explicitly submit using fresh browser observations.
+"""Fill, hold and review forms using fresh browser observations; the user submits by hand.
 
 Giả định của người thực thi: review records live in the locked job ledger, not
 an arbitrary approval file; all browser calls use an injected MCP bridge.
@@ -49,14 +49,12 @@ class Workflow:
             return [job["id"] for job in self.store.jobs() if job["state"] == "pending"][:selection]
         if selection == "all" and operation == "review":
             return [job["id"] for job in self.store.jobs() if job["state"] in ("filled", "reviewed")]
-        if selection == "all-reviewed" and operation == "submit":
-            return [job["id"] for job in self.store.jobs() if job["state"] == "reviewed"]
         if (
             not isinstance(selection, (list, tuple))
             or not selection
             or any(not isinstance(item, str) or not item for item in selection)
         ):
-            raise ValueError("Choose explicit job IDs" + (" or all-reviewed" if operation == "submit" else ""))
+            raise ValueError("Choose explicit job IDs")
         return list(dict.fromkeys(selection))
 
     def apply(self, ids, pdf, engine=None):
@@ -249,42 +247,6 @@ class Workflow:
                 self.store.update(job_id, state="reviewed", review=review)
                 results.append(review)
         return {"reviews": results, **self.status()}
-
-    def submit(self, ids):
-        results = []
-        for job_id in self._selection(ids, "submit"):
-            with self._operation_lock(job_id):
-                record = self.store.get(job_id)
-                review = record.get("review")
-                if record["state"] != "reviewed" or not review or not review.get("valid"):
-                    raise ValueError(
-                        "Submission requires a previously reviewed job; uncertain outcomes need manual reconciliation"
-                    )
-                profile = self._profile()
-                live = self._live(record)
-                if profile["revision"] != review["profile_revision"] or _digest(profile) != review["profile_sha256"]:
-                    raise ValueError("Profile changed after review")
-                if _digest(live) != review["form_sha256"]:
-                    raise ValueError("Live page, form or attachment changed after review")
-                self.store.record_submit_intent(
-                    job_id,
-                    {
-                        "review_id": review["review_id"],
-                        "tab_id": record["tab_id"],
-                        "created_at": self.clock(),
-                    },
-                )
-                try:
-                    evidence = self.browser.submit(record["tab_id"], job_id=job_id)
-                    if isinstance(evidence, dict):
-                        evidence = {**evidence, "confirmed_at": self.clock()}
-                    self.store.mark_submitted(job_id, evidence)
-                    results.append({"job_id": job_id, "status": "submitted"})
-                except Exception as error:
-                    # Never retry a click whose outcome may have reached the server.
-                    self.store.update(job_id, state="needs_reconciliation", problem=type(error).__name__)
-                    results.append({"job_id": job_id, "status": "needs_reconciliation"})
-        return {"jobs": results, **self.status()}
 
     def status(self):
         jobs = self.store.jobs()

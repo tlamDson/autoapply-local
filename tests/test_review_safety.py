@@ -9,9 +9,8 @@ import copy
 import io
 import json
 import subprocess
-import unicodedata
 from contextlib import redirect_stderr, redirect_stdout
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from test_support import ReleaseCase, candidate, fact, job
 
@@ -188,134 +187,6 @@ class MailGateSafetyTests(ReleaseCase):
             self.assert_gate({"kind": kind, "tools": [browser]}, {"tool_name": browser, "tool_input": {}}, True)
 
 
-class EngineMailSafetyTests(ReleaseCase):
-    def setUp(self):
-        super().setUp()
-        self.engines = self.module("engines")
-        self.original_resolver = self.engines.resolve_executable
-        self.runner = Mock(side_effect=self.process)
-        for boundary in (
-            patch.object(self.engines, "resolve_executable", side_effect=lambda name: ["synthetic-" + name]),
-            patch.object(self.engines, "_app_plugin_names", return_value=({}, set())),
-            patch.object(subprocess, "run", self.runner),
-            patch.object(subprocess, "Popen", side_effect=AssertionError("No live subprocesses")),
-        ):
-            boundary.start()
-            self.addCleanup(boundary.stop)
-
-    def process(self, argv, **kwargs):
-        if "--version" in argv:
-            result = "2.1.312"
-        elif "mcp" in argv and "list" in argv:
-            result = "[]"
-        elif "--print" in argv:
-            result = json.dumps(
-                {"type": "result", "subtype": "success", "is_error": False, "structured_output": RESULT}
-            )
-        else:
-            result = json.dumps(RESULT)
-        return subprocess.CompletedProcess(argv, 0, result, "")
-
-    def test_codex_search_read_fail_before_resolution_probe_inventory_or_execution(self):
-        for kind in ("mail_search", "mail_read"):
-            with self.subTest(kind=kind):
-                self.runner.reset_mock()
-                with patch.object(self.engines, "resolve_executable", return_value=["synthetic"]) as resolve:
-                    with self.assertRaises(self.engines.EngineError) as caught:
-                        self.engines.Engine("codex", runner=self.runner).run(mail_task(kind))
-                self.assertEqual(caught.exception.category, "configuration")
-                self.assertIn("manual_required", str(caught.exception))
-                self.assertNotIn(ACCOUNT, str(caught.exception))
-                self.assertNotIn("@", str(caught.exception))
-                resolve.assert_not_called()
-                self.runner.assert_not_called()
-
-    def test_codex_mail_refusal_does_not_depend_on_executable_path(self):
-        for kind in ("mail_search", "mail_read"):
-            with self.subTest(kind=kind):
-                with patch.object(self.engines, "resolve_executable", self.original_resolver):
-                    with patch.object(self.engines.shutil, "which", return_value=None):
-                        with self.assertRaises(self.engines.EngineError) as caught:
-                            self.engines.Engine("codex", runner=self.runner).run(mail_task(kind))
-                self.assertEqual(caught.exception.category, "configuration")
-                self.assertIn("manual_required", str(caught.exception))
-                self.runner.assert_not_called()
-
-    def test_codex_discovery_browser_and_tool_free_tasks_still_dispatch(self):
-        browser = "mcp__autoapply-local-browser__take_snapshot"
-        payloads = [mail_task("mail_discovery")]
-        payloads.extend(
-            {"kind": kind, "schema": SCHEMA, "allowed_tools": [], "prompt": "Synthetic"}
-            for kind in ("tailor", "apply_analysis")
-        )
-        payloads.append(
-            {"kind": "browser_evaluate", "schema": SCHEMA, "allowed_tools": [browser], "prompt": "Synthetic"}
-        )
-        for payload in payloads:
-            with self.subTest(kind=payload["kind"]):
-                self.runner.reset_mock()
-                engine = self.engines.Engine("codex", runner=self.runner, debug_url="http://127.0.0.1:9333")
-                self.assertEqual(engine.run(payload), RESULT)
-                dispatches = [call for call in self.runner.call_args_list if "exec" in call.args[0]]
-                self.assertEqual(len(dispatches), 1)
-
-    def test_claude_mail_hook_carries_exact_account_for_search_and_read(self):
-        for kind in ("mail_search", "mail_read"):
-            with self.subTest(kind=kind):
-                self.runner.reset_mock()
-                self.assertEqual(self.engines.Engine("claude", runner=self.runner).run(mail_task(kind)), RESULT)
-                dispatches = [call.args[0] for call in self.runner.call_args_list if "--print" in call.args[0]]
-                self.assertEqual(len(dispatches), 1)
-                argv = dispatches[0]
-                settings = json.loads(argv[argv.index("--settings") + 1])
-                hook = settings["hooks"]["PreToolUse"][0]["hooks"][0]
-                policy = json.loads(hook["args"][-1])
-                self.assertEqual(policy["account"], ACCOUNT)
-                self.assertEqual(policy["kind"], kind)
-                self.assertEqual(policy["tools"], mail_task(kind)["allowed_tools"])
-
-    def test_claude_invalid_or_missing_account_rejects_before_runner(self):
-        for kind in ("mail_search", "mail_read"):
-            prompts = [
-                "{}",
-                *(
-                    json.dumps({"account": value})
-                    for value in (None, "", [], {}, 7, True, [ACCOUNT], {"address": ACCOUNT})
-                ),
-            ]
-            for prompt in prompts:
-                with self.subTest(kind=kind, prompt=prompt):
-                    self.runner.reset_mock()
-                    with self.assertRaises(ValueError):
-                        self.engines.Engine("claude", runner=self.runner).run({**mail_task(kind), "prompt": prompt})
-                    self.runner.assert_not_called()
-
-    def test_mailchecker_returns_manual_required_for_engine_configuration_refusal(self):
-        engine = Mock(spec=["name", "run"])
-        engine.name = "codex"
-        capabilities = {
-            "accounts": [ACCOUNT],
-            "permissions": ["search", "read"],
-            "search_tool": "mcp__gmail__search_email_ids",
-            "read_tool": "mcp__gmail__read_email",
-        }
-        engine.run.side_effect = [
-            {"gmail": capabilities},
-            self.engines.EngineError("configuration", "manual_required: account binding unavailable"),
-        ]
-        native = self.module("runtime").NativeMailRuntime(engine)
-        report = (
-            self.module("gmail")
-            .MailChecker(self.root, native)
-            .check({"gmail_opt_in": True, "gmail_account": ACCOUNT, "gmail_permissions": ["search", "read"]})
-        )
-        self.assertEqual(report["status"], "manual_required")
-        self.assertEqual(report["events"], [])
-        self.assertEqual(
-            [call.args[0]["kind"] for call in engine.run.call_args_list], ["mail_discovery", "mail_search"]
-        )
-
-
 class ProfileBindingSafetyTests(ReleaseCase):
     def setUp(self):
         super().setUp()
@@ -368,116 +239,6 @@ class ProfileBindingSafetyTests(ReleaseCase):
                 self.assert_unknown(self.resolve(kind, index=0, id=kind + ":1"))
 
 
-class TailorUnicodeSafetyTests(ReleaseCase):
-    def source(self, text, **fields):
-        return {
-            "id": "experience:one",
-            "entry_id": "entry:one",
-            "type": "experience",
-            "status": "confirmed",
-            "text": text,
-            **fields,
-        }
-
-    def claim(self, text, **fields):
-        return {"type": "experience", "source_ids": ["experience:one"], "text": text, **fields}
-
-    def validate(self, sources, claims):
-        return self.module("tailor").validate_claims(sources, claims)
-
-    def test_unsupported_cjk_accented_and_greek_additions_are_rejected(self):
-        for added in ("主导", "résilient", "λύση"):
-            with self.subTest(added=added):
-                with self.assertRaises(ValueError):
-                    self.validate([self.source("Built API")], [self.claim("Built API " + added)])
-
-    def test_nfc_evidence_and_nfd_claim_are_equivalent(self):
-        text = "Built Café λύση API"
-        claims = self.validate([self.source(text)], [self.claim(unicodedata.normalize("NFD", text))])
-        self.assertEqual(claims[0]["text"], unicodedata.normalize("NFD", text))
-
-    def test_english_rewrites_keep_build_built_and_apis_api(self):
-        claims = self.validate([self.source("Build APIs using Python")], [self.claim("Built API with Python")])
-        self.assertEqual(claims[0]["text"], "Built API with Python")
-
-    def test_ownership_order_cannot_be_swapped(self):
-        with self.assertRaises(ValueError):
-            self.validate([self.source("Used Python and led Java API")], [self.claim("Led Python and used Java API")])
-
-    def test_numeric_claims_stay_bound_to_evidence(self):
-        source = self.source("Reduced latency by 12%")
-        self.assertEqual(self.validate([source], [self.claim(source["text"])])[0]["text"], source["text"])
-        with self.assertRaises(ValueError):
-            self.validate([source], [self.claim("Reduced latency by 15%")])
-
-    def test_metric_qualifiers_cannot_be_dropped(self):
-        for qualifier in ("approximately", "about", "estimated", "roughly", "up to", "at least"):
-            with self.subTest(qualifier=qualifier):
-                text = "Reduced latency by " + qualifier + " 12%"
-                self.assertEqual(self.validate([self.source(text)], [self.claim(text)])[0]["text"], text)
-                with self.assertRaises(ValueError):
-                    self.validate([self.source(text)], [self.claim("Reduced latency by 12%")])
-
-    def test_qualifier_detection_uses_same_unicode_casefold_as_evidence(self):
-        # Long s casefolds to s: the evidence still says "estimated".
-        text = "Reduced latency by eſtimated 12%"
-        self.validate([self.source(text)], [self.claim("Reduced latency by estimated 12%")])
-        with self.assertRaises(ValueError):
-            self.validate([self.source(text)], [self.claim("Reduced latency by 12%")])
-
-    def test_cpp_csharp_keywords_remain_distinct_from_c(self):
-        tailor = self.module("tailor")
-        for keyword in ("C++", "C#"):
-            with self.subTest(keyword=keyword):
-                text = "Built " + keyword + " API"
-                self.validate([self.source(text)], [self.claim(text)])
-                with self.assertRaises(ValueError):
-                    self.validate([self.source("Built C API")], [self.claim(text)])
-                self.assertEqual(tailor.classify_keywords([keyword], [self.source(text)])[keyword]["category"], "HAVE")
-                self.assertEqual(
-                    tailor.classify_keywords([keyword], [self.source("Built C API")])[keyword]["category"], "MISSING"
-                )
-
-    def test_secondary_source_cannot_replace_primary_owned_fields(self):
-        originals = {"employer": "Example Systems", "title": "Engineering Intern", "start": "2029-06", "end": "2029-08"}
-        changes = {"employer": "Other Systems", "title": "Senior Engineer", "start": "2028-06", "end": "2030-08"}
-        for field in originals:
-            with self.subTest(field=field):
-                primary = self.source("Built API", **{field: originals[field]})
-                secondary = {**self.source("Built API", **{field: changes[field]}), "id": "experience:two"}
-                claim = self.claim("Built API", **{field: changes[field]})
-                claim["source_ids"].append(secondary["id"])
-                with self.assertRaises(ValueError):
-                    self.validate([primary, secondary], [claim])
-
-    def test_missing_primary_field_still_requires_secondary_owner_match(self):
-        originals = {"employer": "Example Systems", "title": "Engineering Intern", "start": "2029-06", "end": "2029-08"}
-        for field, value in originals.items():
-            with self.subTest(field=field):
-                primary = self.source("Built API")
-                secondary = {**self.source("Built API", **{field: value}), "id": "experience:two"}
-                claim = self.claim("Built API", **{field: "Unconfirmed"})
-                claim["source_ids"].append(secondary["id"])
-                with self.assertRaises(ValueError):
-                    self.validate([primary, secondary], [claim])
-                claim[field] = value
-                self.assertEqual(self.validate([primary, secondary], [claim])[0][field], value)
-
-    def test_immutable_strings_accept_nfc_equivalence_without_casefolding(self):
-        for field in ("title", "employer"):
-            for primary_has_field in (True, False):
-                with self.subTest(field=field, primary_has_field=primary_has_field):
-                    value = "Café Systems"
-                    primary = self.source("Built API", **({field: value} if primary_has_field else {}))
-                    secondary = {**self.source("Built API", **{field: value}), "id": "experience:two"}
-                    claim = self.claim("Built API", **{field: unicodedata.normalize("NFD", value)})
-                    claim["source_ids"].append(secondary["id"])
-                    self.assertEqual(self.validate([primary, secondary], [claim])[0][field], claim[field])
-                    claim[field] = value.lower()
-                    with self.assertRaises(ValueError):
-                        self.validate([primary, secondary], [claim])
-
-
 class PdfSourceSafetyTests(ReleaseCase):
     def setUp(self):
         super().setUp()
@@ -488,7 +249,7 @@ class PdfSourceSafetyTests(ReleaseCase):
         text = "Kỹ sư phần mềm\n主导 API\n"
         completed = subprocess.CompletedProcess([], 0, stdout=text.encode("utf-8"), stderr=b"")
         with patch.object(subprocess, "run", return_value=completed) as runner:
-            result = self.module("tailor").extract_source(self.pdf)
+            result = self.module("extraction").extract_source(self.pdf)
         argv = runner.call_args.args[0]
         self.assertEqual(argv, ["pdftotext", "-enc", "UTF-8", "-layout", str(self.pdf), "-"])
         self.assertEqual(runner.call_args.kwargs["timeout"], 30)
@@ -511,7 +272,7 @@ class PdfSourceSafetyTests(ReleaseCase):
                 kwargs = {"side_effect": failure} if isinstance(failure, Exception) else {"return_value": failure}
                 with patch.object(subprocess, "run", **kwargs) as runner:
                     try:
-                        self.module("tailor").extract_source(self.pdf)
+                        self.module("extraction").extract_source(self.pdf)
                     except ValueError as error:
                         self.assertTrue(str(error).strip(), "Failure needs an actionable diagnostic")
                         self.assertNotIn("Traceback", str(error))

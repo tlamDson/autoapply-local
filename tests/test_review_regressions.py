@@ -8,7 +8,6 @@ Không ghi receipt RED ngoài phạm vi; output lệnh chạy là bằng chứng
 import copy
 import hashlib
 import json
-import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -300,113 +299,6 @@ class AnswerReconfirmationTests(ReleaseCase):
         self.assert_answer_states(self.all_states(False))
 
 
-class ClaimQualifierTests(ReleaseCase):
-    def validate(self, evidence, text, supporting=None):
-        source = {"id": "experience:1", "type": "experience", "status": "confirmed", "text": evidence}
-        sources = [source, *(supporting or [])]
-        claim = {"type": "experience", "source_ids": [item["id"] for item in sources], "text": text}
-        return self.module("tailor").validate_claims(sources, [claim])
-
-    def test_dropping_contribution_words_cannot_promote_ownership(self):
-        for qualifier in ("assisted", "helped", "supported", "contributed", "participated", "collaborated"):
-            with self.subTest(qualifier=qualifier), self.assertRaises(ValueError):
-                self.validate(qualifier + " in building the API", "Built the API")
-
-    def test_dropping_negation_is_rejected_without_numbers(self):
-        for evidence, claim in (
-            ("did not lead the API", "lead the API"),
-            ("No API ownership", "API ownership"),
-            ("Never led the API", "Led the API"),
-            ("Built the API without ownership", "Built the API"),
-            ("không dẫn dắt", "dẫn dắt"),
-            ("chưa dẫn dắt", "dẫn dắt"),
-            ("chẳng dẫn dắt", "dẫn dắt"),
-        ):
-            with self.subTest(evidence=evidence), self.assertRaises(ValueError):
-                self.validate(evidence, claim)
-
-    def test_dropping_limitations_is_rejected_without_numbers(self):
-        for qualifier in ("partial", "partially", "limited", "only", "prototype", "experimental"):
-            with self.subTest(qualifier=qualifier), self.assertRaises(ValueError):
-                self.validate("Built the " + qualifier + " API", "Built the API")
-
-    def test_protected_words_from_supporting_evidence_also_must_survive(self):
-        support = {
-            "id": "experience:1:scope",
-            "entry_id": "experience:1",
-            "type": "experience",
-            "status": "confirmed",
-            "text": "Assisted with the prototype API",
-        }
-        # Both sources describe the same entry; rejecting unrelated entries
-        # would not exercise preservation across all cited evidence.
-        with self.assertRaises(ValueError):
-            self.validate("Built the API", "Built the API", supporting=[support])
-
-    def test_protected_word_in_claim_requires_evidence(self):
-        for qualifier in ("Assisted", "not", "prototype", "không"):
-            with self.subTest(qualifier=qualifier), self.assertRaises(ValueError):
-                self.validate("Built the API", qualifier + " built the API")
-
-    def test_rewrites_preserving_qualifiers_and_word_forms_are_accepted(self):
-        pairs = [
-            ("Assisted in building the API", "Assisted building the API"),
-            ("did not lead the API", "not lead the API"),
-            ("Built the prototype API", "Built prototype API"),
-            ("Partially built the API", "Partially built API"),
-            ("Không dẫn dắt API", "KHÔNG dẫn dắt API"),
-            (unicodedata.normalize("NFD", "chưa dẫn dắt API"), "chưa dẫn dắt API"),
-        ]
-        for form in (
-            "assist",
-            "assisting",
-            "helps",
-            "helping",
-            "supporting",
-            "contributes",
-            "participating",
-            "collaborating",
-        ):
-            pairs.append((form + " in building the API", form + " building the API"))
-        for evidence, claim in pairs:
-            with self.subTest(evidence=evidence):
-                self.assertEqual(self.validate(evidence, claim)[0]["text"], claim)
-
-    def test_dropping_contribution_word_variants_is_rejected(self):
-        for form in (
-            "assist",
-            "assisting",
-            "helps",
-            "helping",
-            "supporting",
-            "contributes",
-            "participating",
-            "collaborating",
-        ):
-            with self.subTest(form=form), self.assertRaises(ValueError):
-                self.validate(form + " in building the API", "Built the API")
-
-    def test_unicode_normalization_cannot_hide_dropped_vietnamese_negation(self):
-        for word in ("không", "chưa", "chẳng"):
-            with self.subTest(word=word), self.assertRaises(ValueError):
-                self.validate(unicodedata.normalize("NFD", word.upper() + " dẫn dắt API"), "dẫn dắt API")
-
-    def test_existing_technical_rewrites_metrics_and_ownership_guards_survive(self):
-        for evidence, claim in (
-            ("Developed Python services using HTTP APIs", "Built Python service with HTTP API"),
-            ("Reduced Python service latency by approximately 12%", "Reduced Python latency by approximately 12%"),
-        ):
-            with self.subTest(claim=claim):
-                self.assertEqual(self.validate(evidence, claim)[0]["text"], claim)
-        for evidence, claim in (
-            ("Reduced latency by approximately 12%", "Reduced latency by 12%"),
-            ("Reduced latency by 12%", "Reduced latency by 90%"),
-            ("Used Python tooling and led HTTP review", "Led Python tooling and used HTTP review"),
-        ):
-            with self.subTest(claim=claim), self.assertRaises(ValueError):
-                self.validate(evidence, claim)
-
-
 class AnalysisFailureTests(ReleaseCase):
     def setUp(self):
         super().setUp()
@@ -576,7 +468,7 @@ class RestorePdfIsolationTests(ReleaseCase):
         self.assertNotIn(missing["tab_id"], bridge.uploads)
         self.assertIn(missing["tab_id"], bridge.restore_errors)
         self.assertEqual(bridge.snapshot(healthy["tab_id"], healthy["id"])["resume_sha256"], healthy["resume_sha256"])
-        for operation in (bridge.snapshot, bridge.submit):
+        for operation in (bridge.snapshot,):
             with (
                 self.subTest(operation=operation.__name__),
                 self.assertRaisesRegex(ValueError, "Selected PDF missing/unreadable"),
@@ -606,7 +498,7 @@ class RestorePdfIsolationTests(ReleaseCase):
             bridge.restore(healthy)
         self.assertEqual(set(bridge.tabs), {record["tab_id"] for record in records})
         self.assertNotIn(missing["tab_id"], bridge.uploads)
-        for operation in (bridge.snapshot, bridge.submit):
+        for operation in (bridge.snapshot,):
             with (
                 self.subTest(operation=operation.__name__),
                 self.assertRaisesRegex(ValueError, "Selected PDF missing/unreadable"),
