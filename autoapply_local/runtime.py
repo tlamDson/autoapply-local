@@ -23,11 +23,11 @@ def selected_engine(config, override=None, purpose="apply"):
     return selected
 
 
-def choose_resume(profile, config, job, *, memory=None, ask=None):
+def choose_resume(profile, config, job, *, memory=None, ask=None, fallback=False):
     """Role-tag resume choice (resume_choice.choose); the chosen file must be a real PDF."""
     from . import resume_choice
 
-    choice = resume_choice.choose(config, job, memory=memory, ask=ask)
+    choice = resume_choice.choose(config, job, memory=memory, ask=ask, fallback=fallback)
     path = choice.path
     if not path.is_file() or not path.read_bytes().startswith(b"%PDF-"):
         raise ValueError("The selected resume must be an existing PDF")
@@ -41,6 +41,7 @@ def describe_choice(choice):
         "only_resume": "only resume",
         "remembered": "your earlier answer",
         "asked": "your answer",
+        "no_terminal": "main resume: no terminal to ask which resume fits; add a role tag to choose another",
     }[choice.reason]
     return f"{choice.path} ({why})"
 
@@ -449,7 +450,10 @@ def apply(*, root, selection=None, engine=None, approve_browser_tools=False, res
 
     memory = Memory(Path(root) / "user/resume-choices.json")
     ask = resume_ask or (terminal_ask if sys.stdin is not None and sys.stdin.isatty() else None)
-    choices = {record["id"]: choose_resume(profile, config, record, memory=memory, ask=ask) for record in records}
+    choices = {
+        record["id"]: choose_resume(profile, config, record, memory=memory, ask=ask, fallback=ask is None)
+        for record in records
+    }
     pdfs = {job_id: choice.path for job_id, choice in choices.items()}
     for item in plan["by_hand"]:
         try:

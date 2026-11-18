@@ -214,11 +214,15 @@ Without N it fills the jobs-per-run number from setup. One run, in order:
 2. Fetch new jobs from the active boards.
 3. Filter with your confirmed filters and skip jobs already in the tracker or in
    the Gmail/imported history (same company and role).
-4. Pick the resume: a PDF whose role tag is a whole word of the job title; several
+4. Pick the resume: a PDF whose role tag is a whole word of the job title (common
+   abbreviations count both ways: SWE = software engineer/engineering, SDE =
+   software development engineer, ML = machine learning, AI = artificial
+   intelligence, FE/BE = frontend/backend); several
    match → the one naming the most of the job description's technology keywords
    (no model; ties keep configuration order); none matches and you have more than
    one → `apply` asks once per role in the terminal and remembers it in
-   `user/resume-choices.json`. Each choice and its reason are printed before filling.
+   `user/resume-choices.json` (with no terminal, the main resume is used and the
+   reason is printed). Each choice and its reason are printed before filling.
 5. Fill with the ATS script driver: Greenhouse, Workday, Rippling, Ashby, Lever and
    Workable (Ashby, Lever and Workable jobs are not fetched yet). Workday signs in with the account stored for that Workday site in
    `secrets.json`, creates the account when sign-in fails, and types the
