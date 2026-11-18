@@ -212,7 +212,7 @@ def doctor(*, root, engine=None):
 
 def fetch(*, root, engine=None, url=None, today=None):
     from .boards import active_boards
-    from .fetch import Fetcher
+    from .fetch import Fetcher, failure_status
     from .fetch_screen import report, screen
 
     config = configuration(root)
@@ -237,7 +237,7 @@ def fetch(*, root, engine=None, url=None, today=None):
             try:
                 batches.extend(fetcher.fetch(board["ats"], board))
             except (OSError, ValueError) as error:
-                unknown.append({"board": board, "reason": str(error)})
+                unknown.append({"board": board, "status": failure_status(error), "reason": str(error)})
     for item in batches:
         verdict = screen(item, profile, today=today)
         if verdict["decision"] == "exclude":

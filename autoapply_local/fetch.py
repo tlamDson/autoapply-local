@@ -2,6 +2,7 @@
 
 import html
 import json
+import random as _random
 import re
 import time
 from datetime import date
@@ -9,6 +10,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
+from . import polite_http
+from .polite_http import BROWSER_HEADERS, failure_status, no_sleep
 from .posting_dates import posted_on
 
 
@@ -19,7 +22,7 @@ class Transport:
         request = Request(
             url,
             data=json.dumps(data).encode() if data is not None else None,
-            headers={"User-Agent": "autoapply-local/0.1", "Content-Type": "application/json"},
+            headers={"User-Agent": "autoapply-local/0.1", "Content-Type": "application/json", **BROWSER_HEADERS},
         )
         with urlopen(request, timeout=timeout) as response:
             body = response.read(10_000_001)
@@ -50,11 +53,29 @@ def _rippling_parts(path):
 
 
 class Fetcher:
-    def __init__(self, transport=None, timeout=10, retries=2, today=None):
+    def __init__(
+        self, transport=None, timeout=10, retries=2, today=None, *, sleep=None, random=None, clock=None, gate=None
+    ):
         if not 0 < timeout <= 60 or not 0 <= retries <= 5:
             raise ValueError("Bound timeout to 60 seconds and retries to five")
         self.transport, self.timeout, self.retries = transport or Transport(), timeout, retries
         self.today = today or date.today()
+        # Injected transports (tests) never wait unless a sleep is injected too.
+        self.sleep = sleep or (time.sleep if isinstance(self.transport, Transport) else no_sleep)
+        self.random, self.clock = random or _random.random, clock or time.monotonic
+        self.gate = gate
+
+    def _polite(self, host, method, url, **kwargs):
+        """Workday: one request at a time per host, Retry-After, backoff with jitter."""
+        return polite_http.call(
+            lambda: getattr(self.transport, method)(url, timeout=self.timeout, **kwargs),
+            host=host,
+            tries=self.retries + 1,
+            sleep=self.sleep,
+            random=self.random,
+            clock=self.clock,
+            gate=self.gate,
+        )
 
     def _request(self, method, url, **kwargs):
         for attempt in range(self.retries + 1):
@@ -66,8 +87,7 @@ class Fetcher:
                 if attempt == self.retries:
                     raise
                 # No unbounded retry or request flood; tests inject a transport.
-                if isinstance(self.transport, Transport):
-                    time.sleep(min(2**attempt, 4))
+                self.sleep(min(2**attempt, 4))
 
     def fetch(self, ats, board):
         postings = []
@@ -87,7 +107,8 @@ class Fetcher:
             )
             pages = set()
             for offset in range(0, 2000, 20):
-                payload = self._request(
+                payload = self._polite(
+                    host,
                     "post_json",
                     endpoint,
                     data={"appliedFacets": {}, "limit": 20, "offset": offset, "searchText": board.get("search", "")},
@@ -185,7 +206,7 @@ class Fetcher:
         try:
             postings = self.fetch(ats, board)
         except HTTPError as error:
-            return {"status": "closed" if error.code in (404, 410) else "unknown", "url": url, "reason": str(error)}
+            return {"status": failure_status(error), "url": url, "reason": str(error)}
         for item in postings:
             if ats == "rippling":
                 posting = urlparse(item["url"])

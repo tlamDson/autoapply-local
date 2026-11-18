@@ -205,5 +205,7 @@
   "tests/test_board_seeds.py",
   "tests/test_fetch_screen.py",
   "tests/test_demo_form.py",
-  "tests/board_payloads.json"
+  "tests/board_payloads.json",
+  "autoapply_local/polite_http.py",
+  "tests/test_workday_rate_limit.py"
 ]
