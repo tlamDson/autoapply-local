@@ -123,7 +123,7 @@ class CliTests(ReleaseCase):
         for arguments in (
             ("apply", "--quick", "0"),
             ("apply", "--quick", "-1"),
-            ("apply",),
+            ("apply", "2", "3"),
             ("submit",),
             ("submit", "all"),
             ("fetch", "unknown-engine"),

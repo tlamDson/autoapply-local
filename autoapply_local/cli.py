@@ -44,6 +44,21 @@ def _selection(value, operation):
     return list(dict.fromkeys(item.strip() for item in ids))
 
 
+def _apply_words(words, quick=None):
+    """apply [ENGINE] [N|ID,ID]: no selection means the configured jobs per run."""
+    engine, picks = None, []
+    for word in words:
+        if word in ("codex", "claude") and engine is None:
+            engine = word
+        else:
+            picks.append(word)
+    if quick is not None:
+        picks.append(quick)
+    if len(picks) > 1:
+        raise ValueError("Choose one count or one comma-separated list of job IDs")
+    return {"engine": engine, "selection": _selection(picks[0], "apply") if picks else None}
+
+
 def _utf8_process_stream(stream):
     encoding = (getattr(stream, "encoding", None) or "").lower().replace("-", "_")
     if hasattr(stream, "reconfigure") and encoding not in ("utf8", "utf_8"):
@@ -88,14 +103,15 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     history_import = history.add_parser("import")
     history_import.add_argument("path", type=Path)
     history_import.add_argument("--confirm", action="store_true")
-    for name in ("doctor", "fetch", "apply"):
+    for name in ("doctor", "fetch"):
         command = commands.add_parser(name)
         command.add_argument("engine", nargs="?", choices=("codex", "claude"))
-        if name == "apply":
-            command.add_argument("--quick", required=True)
-            command.add_argument("--approve-browser-tools", action="store_true")
         if name == "fetch":
             command.add_argument("--url")
+    apply = commands.add_parser("apply", help="apply [ENGINE] [N|ID,ID]: fill and hold forms; never submits")
+    apply.add_argument("words", nargs="*", metavar="[ENGINE] [N|ID,ID]")
+    apply.add_argument("--quick")
+    apply.add_argument("--approve-browser-tools", action="store_true")
     review = commands.add_parser("review")
     review.add_argument("selection")
     review.add_argument("--approve-browser-tools", action="store_true")
@@ -145,10 +161,10 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         elif name == "history":
             name = "history_import"
             kwargs.update(path=args.path, confirm=args.confirm)
-        elif name in ("doctor", "fetch", "apply"):
+        elif name == "apply":
+            kwargs.update(_apply_words(args.words, args.quick))
+        elif name in ("doctor", "fetch"):
             kwargs["engine"] = args.engine
-            if name == "apply":
-                kwargs["selection"] = _selection(args.quick, "apply")
             if name == "fetch" and args.url:
                 kwargs["url"] = args.url
         elif name in ("review", "submitted"):

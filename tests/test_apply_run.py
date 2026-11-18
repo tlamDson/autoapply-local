@@ -26,8 +26,8 @@ ENDPOINT = "http://127.0.0.1:9440"
 
 
 def gh_job(number, **changes):
-    return job(f"greenhouse:exampleco:{number}", company="Example Co", url=GH + str(number),
-               role="Backend Software Engineering Intern", **changes)
+    fields = {"company": "Example Co", "url": GH + str(number), "role": "Backend Software Engineering Intern"}
+    return job(f"greenhouse:exampleco:{number}", **{**fields, **changes})
 
 
 class RunPlanTests(ReleaseCase):
@@ -61,11 +61,7 @@ class RunPlanTests(ReleaseCase):
             self.assertFalse(apply_run.supported({"ats": ats}), ats)
 
     def test_job_already_in_the_tracker_by_company_and_role_is_skipped(self):
-        self.store.enqueue(job("old", company="Example Co", role="Backend Software Engineering Intern",
-                               url="https://mail.example.invalid/thread-1"))
-        self.store.mark_submitted("old", {"status": "confirmed", "job_id": "old", "channel": "gmail",
-                                          "account": "gmail", "message_id": "m1", "text": "Gmail: thanks",
-                                          "url": "https://mail.example.invalid/thread-1"})
+        self.history("mail-1", "Backend Software Engineering Intern")
         self.store.enqueue(gh_job(1, role="Backend Software Engineering Intern (Summer 2030)"))
         self.store.enqueue(gh_job(2, role="Data Engineering Intern"))
         plan = apply_run.pick(self.store, 5)
@@ -73,6 +69,24 @@ class RunPlanTests(ReleaseCase):
         self.assertEqual([(item["id"], item["reason"]) for item in plan["skipped"]],
                          [("greenhouse:exampleco:1", "already in the tracker")])
         self.assertEqual(self.store.get("greenhouse:exampleco:1")["state"], "skipped")
+
+    def history(self, job_id, role, url="https://mail.google.com/mail/u/0/?th=t1#all/t1"):
+        self.store.enqueue(job(job_id, company="Example Co", role=role, url=url))
+        self.store.mark_submitted(job_id, {"status": "confirmed", "job_id": job_id, "channel": "gmail",
+                                           "account": "gmail", "message_id": job_id, "text": "Gmail: thanks",
+                                           "url": url})
+
+    def test_a_job_the_tool_applied_to_at_another_url_is_not_a_duplicate(self):
+        # Held-tab submissions carry their posting URL; the ledger dedups those by URL.
+        self.history("applied", "Backend Software Engineering Intern", url=GH + "55")
+        self.store.enqueue(gh_job(56))
+        self.assertEqual(apply_run.pick(self.store, 5)["selected"], ["greenhouse:exampleco:56"])
+
+    def test_named_job_ids_are_not_deduplicated(self):
+        self.history("mail-1", "Backend Software Engineering Intern")
+        self.store.enqueue(gh_job(1))
+        plan = apply_run.pick(self.store, ids=["greenhouse:exampleco:1"])
+        self.assertEqual((plan["selected"], plan["skipped"]), (["greenhouse:exampleco:1"], []))
 
     def test_explicit_ids_keep_held_jobs_and_send_unsupported_ones_by_hand(self):
         self.store.enqueue(job("icims-1", ats="icims", url="https://careers-example.icims.com/jobs/1/job"))
@@ -230,14 +244,14 @@ class ApplyEndToEndTests(ReleaseCase):
                 self.requests.append(request)
                 return {"status": "completed"}
 
-        err = io.StringIO()
+        err, real = io.StringIO(), browser.BrowserBridge
         with (
             patch("autoapply_local.fetch.Fetcher.fetch", return_value=[copy.deepcopy(p) for p in postings]),
             patch("autoapply_local.cdp.pages", side_effect=self.pages),
             patch("autoapply_local.track._gmail_rows", return_value=[]),
             patch.object(browser, "launch_chrome", side_effect=self.launch),
             patch.object(browser, "available_memory_mb", return_value=16384),
-            patch.object(browser, "BrowserBridge", side_effect=lambda **kw: browser.BrowserBridge(self.client)),
+            patch.object(browser, "BrowserBridge", side_effect=lambda *a, **kw: real(self.client)),
             patch.object(engines, "Engine", side_effect=Engine),
             redirect_stderr(err),
         ):

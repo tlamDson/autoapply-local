@@ -329,10 +329,76 @@ def _apply_summary(profile, records, pdfs):
     )
 
 
-def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_ask=None):
+def _run_size(config, selection):
+    """A count (``apply N``; none -> jobs per run, default 10) or the explicit job IDs."""
+    if selection is None:
+        selection = (config.get("runtime") or {}).get("jobs_per_run", 10)
+        if type(selection) is not int or selection < 1:
+            selection = 10
+    if isinstance(selection, int) and not isinstance(selection, bool):
+        if selection < 1:
+            raise ValueError("Quick count must be positive")
+        return selection, None
+    if (
+        not isinstance(selection, (list, tuple))
+        or not selection
+        or any(not isinstance(item, str) or not item for item in selection)
+    ):
+        raise ValueError("Choose explicit job IDs")
+    return None, list(dict.fromkeys(selection))
+
+
+def _launch(root, resources, lane_count, held=()):
+    from . import browser
+
+    lanes = browser.launch_chrome(
+        root,
+        executable=resources.get("chrome_override") or None,
+        lanes=lane_count,
+        opt_in=resources.get("multiple_lanes_opt_in", lane_count > 1),
+        available_memory_mb=None,
+        held_tabs=held,
+        held_tab_cap=resources.get("held_tab_cap", 5),
+    )
+    atomic_write_json(Path(root) / "browser/active-lanes.json", lanes)
+    return lanes
+
+
+def _fetch_new(root, engine):
+    """Step 2 of apply N: fetch the active boards; a failed fetch is reported, never fatal."""
+    from .boards import active_boards
+
+    if not active_boards(root):
+        return {"report": None, "note": "No boards are active; fetch skipped"}
+    try:
+        fetched = fetch(root=root, engine=engine)
+    except (OSError, ValueError) as error:
+        return {"report": None, "note": f"Fetch failed: {error}"}
+    return {"report": fetched.get("report"), "boards_unread": len(fetched.get("unknown") or [])}
+
+
+def _rows(records, pdfs):
+    from . import apply_run
+
+    return [
+        {
+            "job_id": item["id"],
+            "company": item.get("company"),
+            "role": item.get("role"),
+            "resume": pdfs[item["id"]].name,
+            "tab": item.get("tab_id"),
+            "state": item["state"],
+            "check": apply_run.fields_to_check(item),
+        }
+        for item in records
+    ]
+
+
+def apply(*, root, selection=None, engine=None, approve_browser_tools=False, resume_ask=None):
+    """apply N (plan 3.4): track, fetch, filter, resume, drivers, questions, end table; never submits."""
     if type(approve_browser_tools) is not bool:
         raise ValueError("approve_browser_tools must be a bool")
-    from . import browser
+    from . import apply_run, browser
     from .storage import lock
     from .workflow import Workflow
 
@@ -343,7 +409,26 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
     tracked = track_module.run(root)
     selected = selected_engine(config, engine)
     base = Workflow(root, browser=None, engines={}, default_engine=selected)
-    ids = base._selection(selection, "apply")
+    count, explicit = _run_size(config, selection)
+    resources = config.get("resources", {})
+    lane_count = resources.get("lanes", 1)
+    if type(lane_count) is not int or lane_count not in (1, 2, 3):
+        raise ValueError("Choose one to three browser lanes")
+    if lane_count > 1 and not resources.get("multiple_lanes_opt_in", lane_count > 1):
+        raise ValueError("Multiple browser lanes require explicit opt-in")
+    lanes, reason = None, None
+    if count is not None and tracked.get("unknown"):
+        # Chrome was closed: start it so held tabs and Gmail can be read, then track again.
+        try:
+            lanes = _launch(root, resources, lane_count)
+            tracked = track_module.run(root)
+        except (OSError, ValueError) as error:
+            reason = f"Chrome could not start to recover held tabs: {error}"
+    gone = [item for item in tracked.get("gone") or [] if explicit is None or item["job_id"] in explicit]
+    reopened = apply_run.reopen(base.store, gone)
+    fetched = _fetch_new(root, engine) if count is not None else None
+    plan = apply_run.pick(base.store, count, ids=explicit, first=reopened)
+    ids = plan["selected"]
     records = [base.store.get(job_id) for job_id in ids]
     for record in records:
         if record["state"] not in ("pending", "filled", "reviewed", "needs_manual"):
@@ -357,17 +442,13 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
     ask = resume_ask or (terminal_ask if sys.stdin is not None and sys.stdin.isatty() else None)
     choices = {record["id"]: choose_resume(profile, config, record, memory=memory, ask=ask) for record in records}
     pdfs = {job_id: choice.path for job_id, choice in choices.items()}
+    for item in plan["by_hand"]:
+        try:
+            item["resume"] = choose_resume(profile, config, base.store.get(item["id"]), memory=memory).path.name
+        except (OSError, ValueError):
+            item["resume"] = None
     print(_apply_summary(profile, records, choices), file=sys.stderr, flush=True)
-    resources = config.get("resources", {})
-    lane_count = resources.get("lanes", 1)
-    if type(lane_count) is not int or lane_count not in (1, 2, 3):
-        raise ValueError("Choose one to three browser lanes")
-    if lane_count > 1 and not resources.get("multiple_lanes_opt_in", lane_count > 1):
-        raise ValueError("Multiple browser lanes require explicit opt-in")
-    lanes, runners = None, {}
-    cursor = 0
-    results = []
-    reason = None
+    runners, cursor, results, done = {}, 0, [], []
     for job_id in ids:
         # The lock covers admission and creation of the held-tab record, so
         # another command cannot admit the same capacity while a job is filling.
@@ -382,16 +463,7 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
                     reason = "Insufficient available memory for new browser work; held tabs are preserved"
                     break
                 if lanes is None:
-                    lanes = browser.launch_chrome(
-                        root,
-                        executable=resources.get("chrome_override") or None,
-                        lanes=lane_count,
-                        opt_in=resources.get("multiple_lanes_opt_in", lane_count > 1),
-                        available_memory_mb=None,
-                        held_tabs=held,
-                        held_tab_cap=resources.get("held_tab_cap", 5),
-                    )
-                    atomic_write_json(Path(root) / "browser/active-lanes.json", lanes)
+                    lanes = _launch(root, resources, lane_count, held)
                 owner = lanes[cursor % len(lanes)]
                 cursor += 1
             else:
@@ -406,10 +478,24 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
             if key not in runners:
                 options = {"approve_browser_tools": True} if approve_browser_tools else {}
                 runners[key] = _workflow(root, engine, lane=owner, **options)[0]
-            runner = runners[key]
-            pdf = pdfs[job_id]
-            results.append(runner.apply([job_id], pdf=pdf, engine=selected))
-    return {"track": tracked, "results": results, **({"reason": reason} if reason else {}), **base.status()}
+            results.append(runners[key].apply([job_id], pdf=pdfs[job_id], engine=selected))
+            done.append(job_id)
+    finished = [base.store.get(job_id) for job_id in done]
+    report = {
+        "track": tracked,
+        "fetch": fetched,
+        "reopened": reopened,
+        "results": results,
+        "rows": _rows(finished, pdfs),
+        "questions": apply_run.questions(finished),
+        "by_hand": plan["by_hand"],
+        "skipped": plan["skipped"],
+        **({"reason": reason} if reason else {}),
+        **base.status(),
+    }
+    report["table"] = apply_run.table(report)
+    print(report["table"], file=sys.stderr, flush=True)
+    return report
 
 
 def review(*, root, selection, approve_browser_tools=False):
