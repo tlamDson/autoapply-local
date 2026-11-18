@@ -159,10 +159,29 @@ function formsyForm({ model = {}, valid = false, options = [], invalid = [] } = 
 
 const confirmed = value => ({ value, status: 'confirmed' });
 
+// The MCP readback contracts every adapter action must fit (EVALUATE_SCHEMAS in
+// autoapply_local/browser.py; additionalProperties is false for both).
+const SCHEMA = {
+  audit: { keys: ['fields', 'errors', 'text', 'url', 'attachments', 'page', 'required_unknown'], required: ['fields', 'errors', 'text', 'url', 'attachments'] },
+  fill: { keys: ['filled', 'blocked', 'uploads'], required: ['filled', 'blocked', 'uploads'] },
+};
+function assertShape(operation, value) {
+  const { keys, required } = SCHEMA[operation];
+  for (const key of Object.keys(value)) assert.ok(keys.includes(key), `${operation} readback has no ${key} property`);
+  for (const key of required) assert.ok(key in value, `${operation} readback needs ${key}`);
+  for (const key of ['fields', 'errors', 'attachments', 'required_unknown', 'filled', 'blocked', 'uploads'])
+    if (key in value) assert.ok(Array.isArray(value[key]), key);
+  for (const key of ['errors', 'required_unknown', 'filled'])
+    if (key in value) assert.ok(value[key].every(item => typeof item === 'string'), key);
+  for (const key of ['text', 'url']) if (key in value) assert.equal(typeof value[key], 'string', key);
+}
+const reasonOf = result => result.blocked.map(item => item.reason).join(',');
+
 test('rippling: model scan reads names, question labels, required flags and options', () => {
   const { document } = formsyForm({ model: { first_name: 'Parsed', resume: [{ name: 'alex.pdf', url: 'https://signed.example/x', progress: 100 }] } });
   const scanned = rippling.modelScan(document);
-  assert.equal(scanned.formsy, true);
+  assertShape('audit', scanned);
+  assert.equal(scanned.page.formsy, true);
   const byId = Object.fromEntries(scanned.fields.map(field => [field.id, field]));
   assert.equal(byId.first_name.label, 'First name');
   assert.equal(byId.first_name.required, true);
@@ -186,16 +205,30 @@ test('rippling: model scan reads names, question labels, required flags and opti
 
 test('rippling: model scan reports no form model on a plain page', () => {
   const document = { querySelector: () => null, querySelectorAll: () => [], body: { innerText: '' } };
-  assert.deepEqual(rippling.modelScan(document), { formsy: false, fields: [], valid: false });
+  const scanned = rippling.modelScan(document);
+  assertShape('audit', scanned);
+  assert.equal(scanned.page.formsy, false);
+  assert.deepEqual(scanned.fields, []);
 });
 
-test('rippling: modelReady waits for the uploaded resume and the parsed first name', () => {
-  const state = formsyForm({ model: { resume: [{ name: 'a.pdf', url: 'u', progress: 40 }] } });
-  assert.equal(rippling.modelReady(state.document), false);
-  state.model.resume[0].progress = 100;
-  assert.equal(rippling.modelReady(state.document), false);
-  state.model.first_name = 'Alex';
-  assert.equal(rippling.modelReady(state.document), true);
+test('rippling: modelReady waits for the finished upload and the parsed first name', () => {
+  const ready = model => {
+    const result = rippling.modelReady(formsyForm({ model }).document);
+    assertShape('fill', result);
+    return result.filled.includes('resume');
+  };
+  const done = { name: 'a.pdf', url: 'u', progress: 100 };
+  assert.equal(ready({ first_name: 'Alex', resume: [{ ...done, progress: 40 }] }), false, 'upload still in progress');
+  assert.equal(ready({ first_name: 'Alex', resume: [{ ...done, progress: 0 }] }), false, 'upload not started');
+  assert.equal(ready({ first_name: 'Alex', resume: [{ ...done, url: '' }] }), false, 'no stored file yet');
+  assert.equal(ready({ resume: [done] }), false, 'parse has not written the name');
+  assert.equal(ready({ first_name: 'Alex', resume: [] }), false);
+  assert.equal(ready({ first_name: 'Alex', resume: [done] }), true);
+  assert.equal(ready({ first_name: 'Alex', resume: [{ name: 'a.pdf', url: 'u' }] }), true, 'no progress field');
+  const pending = rippling.modelReady(formsyForm({ model: {} }).document);
+  assert.deepEqual(pending.blocked, [{ id: 'resume', reason: 'resume_parse_pending' }]);
+  const plain = { querySelector: () => null, querySelectorAll: () => [], body: { innerText: '' } };
+  assert.equal(reasonOf(rippling.modelReady(plain)), 'form_model_missing');
 });
 
 test('rippling: modelFill writes confirmed text and maps choice labels to option values', async () => {
@@ -265,7 +298,9 @@ test('rippling: location types the query and picks the one matching suggestion',
   assert.equal(state.locationInput.value, 'Example City, CA');
   assert.deepEqual(wanted.events, ['mousedown', 'mouseup', 'click']);
   assert.equal(other.clicks + other.events.length, 0);
-  assert.deepEqual(result, { picked: 'Example City, CA, USA', location: 'Example City, CA, USA', placed: true });
+  assertShape('fill', result);
+  assert.deepEqual(result, { filled: ['location'], blocked: [], uploads: [] });
+  assert.equal(state.model.externalPlaceId, 'place-1');
   assert.equal(state.submit.clicks, 0);
 });
 
@@ -279,7 +314,8 @@ test('rippling: location blocks on no, ambiguous or unsafe suggestions', async (
       state.document.options = texts.map(text => suggestion(text, state.model, 'p'));
     };
     const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 2, waitMs: 1 });
-    assert.equal(result.blocked, reason);
+    assertShape('fill', result);
+    assert.equal(reasonOf(result), reason);
     assert.equal(state.model.externalPlaceId, undefined);
   }
   const state = formsyForm();
@@ -288,23 +324,39 @@ test('rippling: location blocks on no, ambiguous or unsafe suggestions', async (
     state.document.options = [trap];
   };
   const result = await rippling.location(state.document, { query: 'Example City, CA', tries: 2, waitMs: 1 });
-  assert.equal(result.blocked, 'unsafe_control');
+  assert.equal(reasonOf(result), 'unsafe_control');
   assert.equal(trap.events.length, 0);
 });
 
 test('rippling: location without a form field or query is blocked, not guessed', async () => {
   const document = { querySelector: () => null, querySelectorAll: () => [], body: { innerText: '' } };
-  assert.equal((await rippling.location(document, { query: 'Example City, CA' })).blocked, 'form_model_missing');
+  assert.equal(reasonOf(await rippling.location(document, { query: 'Example City, CA' })), 'form_model_missing');
   const state = formsyForm();
-  assert.equal((await rippling.location(state.document, { query: '' })).blocked, 'no_query');
+  assert.equal(reasonOf(await rippling.location(state.document, { query: '' })), 'no_query');
 });
 
-test('rippling: audit adds the form validity and invalid model fields', () => {
+test('rippling: audit keeps the common readback schema and reports model problems as errors', () => {
   const state = formsyForm({ valid: false, invalid: ['phone_number'] });
   const audit = rippling.audit(state.document);
-  assert.equal(audit.form_valid, false);
+  // browser.py adds url and attachments after audit(); the keys must match the common audit.
+  const common = require(path.resolve(__dirname, '..', 'autoapply_local', 'adapters', 'common.cjs'));
+  assert.deepEqual(Object.keys(audit).sort(), Object.keys(common.audit(state.document)).sort());
+  assertShape('audit', { ...audit, url: '', attachments: [] });
   assert.ok(audit.errors.includes('Invalid field: phone_number'));
-  assert.ok(audit.required_unknown.includes('first_name'));
+  assert.ok(audit.errors.includes('Required field empty: first_name'));
+  const ids = new Set(audit.fields.map(field => field.id));
+  assert.ok(audit.required_unknown.every(id => ids.has(id)), 'required_unknown names only scanned fields');
+  const filled = formsyForm({
+    valid: true,
+    model: { first_name: 'A', last_name: 'R', email: 'e', phone_number: 'p', location: 'L', resume: [{ name: 'a.pdf' }], customQuestions: { bbb222: { answer: 'opt-no' } } },
+  });
+  assert.deepEqual(rippling.audit(filled.document).errors, []);
+});
+
+test('rippling: every fill-side action returns an MCP fill readback', async () => {
+  const state = formsyForm();
+  assertShape('fill', await rippling.modelFill(state.document, { first_name: confirmed('Alex') }));
+  assertShape('fill', await rippling.fill(state.document, { first_name: confirmed('Alex') }));
 });
 
 test('rippling: the adapter exposes no submit or navigation action', () => {

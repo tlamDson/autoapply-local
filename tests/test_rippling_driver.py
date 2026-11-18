@@ -11,6 +11,9 @@ from unittest.mock import Mock
 
 from test_support import ReleaseCase, candidate, fact, job
 
+from autoapply_local.browser import EVALUATE_SCHEMAS
+from autoapply_local.engines import validate_schema
+
 ACTION = re.compile(r"globalThis\.AutoApplyRippling\.(\w+)\(document(?:, (.*))?\);\s*\}\s*$", re.S)
 
 
@@ -65,22 +68,34 @@ class FakeForm:
         name, payload = match.group(1), json.loads(match.group(2) or "null")
         assert "AutoApplyDOM" in function, "common.cjs is loaded before the Rippling adapter"
         self.calls.append((name, payload))
+        expected = "audit" if name == "modelScan" else "fill"
+        assert operation == expected, f"{name} must be read back as {expected}, not {operation}"
+        result = self.answer(name, payload)
+        # The real MCP client rejects any readback outside its contract.
+        validate_schema(result, EVALUATE_SCHEMAS[operation])
+        return result
+
+    def answer(self, name, payload):
+        fill = lambda filled=(), blocked=(): {"filled": list(filled), "blocked": list(blocked), "uploads": []}
         if name == "modelReady":
             self.ready_polls += 1
-            return self.ready_polls >= self.ready_after
+            if self.ready_polls >= self.ready_after:
+                return fill(["resume"])
+            return fill(blocked=[{"id": "resume", "reason": "resume_parse_pending"}])
         if name == "modelScan":
-            if not self.formsy:
-                return {"formsy": False, "fields": [], "valid": False}
-            return {"formsy": True, "fields": form_fields(**self.values), "valid": not self.missing()}
+            fields = form_fields(**self.values) if self.formsy else []
+            page = {"index": 1, "total": 1, "title": "Example", "formsy": self.formsy, "valid": not self.missing()}
+            return {"fields": fields, "errors": [], "text": "", "url": "https://ats.rippling.com/x", "attachments": [], "page": page, "required_unknown": []}
         if name == "modelFill":
             filled = [key for key in payload if key not in self.keep_empty]
             for key in filled:
                 self.values[key] = payload[key]["value"]
-            return {"filled": filled, "blocked": [], "uploads": []}
+            return fill(filled)
         if name == "location":
-            if not self.location_result:
-                self.values["location"] = payload["query"] + ", USA"
-            return self.location_result or {"picked": payload["query"] + ", USA", "location": payload["query"], "placed": True}
+            if self.location_result:
+                return fill(blocked=[{"id": "location", "reason": self.location_result}])
+            self.values["location"] = payload["query"] + ", USA"
+            return fill(["location"])
         raise AssertionError("unexpected adapter call " + name)
 
     def missing(self):
@@ -161,6 +176,25 @@ class PlanTests(Base):
         self.assertNotIn(SPONSOR, plan["answers"])
         self.assertIn(SPONSOR, {item["id"] for item in plan["unknown"]})
 
+    def test_custom_question_never_takes_a_contact_fact_by_its_label(self):
+        # An employer's own question titled "Phone" or "City" is not the contact
+        # field; only an exact scoped answer may fill it.
+        fields = form_fields() + [
+            field("customQuestions.ddd444.answer", "Phone"),
+            field("customQuestions.eee555.answer", "City"),
+            field("eeoc.firstName", "First name"),
+        ]
+        plan = self.rp.plan(self.profile, fields, self.job)
+        for name in ("customQuestions.ddd444.answer", "customQuestions.eee555.answer", "eeoc.firstName"):
+            self.assertNotIn(name, plan["answers"])
+            self.assertIn(name, {item["id"] for item in plan["unknown"]})
+        question = "Phone"
+        scope = {"country": "US", "job_type": "internship", "employer": "Example Labs", "question": question, "effective_at": None}
+        self.profile["answers"].append({"question": question, **fact("+1 202 555 0111", scope=scope)})
+        plan = self.rp.plan(self.profile, fields, self.job)
+        self.assertEqual(plan["answers"]["customQuestions.ddd444.answer"]["value"], "+1 202 555 0111")
+        self.assertEqual(plan["answers"]["phone_number"]["value"], "+1 202 555 0100")
+
     def test_location_without_confirmed_city_and_state_is_unknown(self):
         self.profile["contact"]["state"] = fact(None, "unknown")
         plan = self.rp.plan(self.profile, form_fields(), self.job)
@@ -224,7 +258,7 @@ class DriverTests(Base):
         self.assertIn({"id": "phone_number", "reason": "required_empty"}, result["blocked"])
 
     def test_location_suggestion_failure_is_blocked(self):
-        form = FakeForm(location={"blocked": "ambiguous_suggestion"})
+        form = FakeForm(location="ambiguous_suggestion")
         result = self.driver(form).fill("tab-1", self.profile, self.job, pdf=self.pdf)
         self.assertIn({"id": "location", "reason": "ambiguous_suggestion"}, result["blocked"])
 

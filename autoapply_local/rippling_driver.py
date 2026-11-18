@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .profile import resolve_field
+from .profile import resolve_answer
 
 ATS = "rippling"
 ADAPTERS = Path(__file__).with_name("adapters")
@@ -29,8 +29,9 @@ CONTACT = {
     "linkedin_link": ("linkedin",),
     "website_link": ("portfolio", "github"),
 }
-# Adapter calls the driver may make; none of them clicks a control.
-ACTIONS = ("modelReady", "modelScan", "modelFill", "location")
+# Adapter calls the driver may make, with the MCP readback each one fits
+# (browser.EVALUATE_SCHEMAS); none of them clicks a control.
+ACTIONS = {"modelReady": "fill", "modelScan": "audit", "modelFill": "fill", "location": "fill"}
 APPLY_PATH = re.compile(r"(?:/[A-Za-z]{2}-[A-Za-z]{2})?/[^/]+/jobs/[^/]+(?:/apply)?/?")
 
 
@@ -78,12 +79,26 @@ def plan(profile, fields, job):
         if name in CONTACT:
             supplied = next((contact[key] for key in CONTACT[name] if _confirmed(contact.get(key))), None)
         else:
-            supplied = resolve_field(profile, field, job)
+            # Custom, EEO and other employer questions take only an answer
+            # confirmed for this exact question and scope, never a contact
+            # fact that happens to share the label.
+            supplied = resolve_answer(profile, field.get("label", ""), _scope(field, job))
         if _confirmed(supplied):
             answers[name] = supplied
         else:
             unknown.append(_unknown(field))
     return {"answers": answers, "unknown": unknown, "location": location}
+
+
+def _scope(field, job):
+    """The same exact scope profile.resolve_field uses for a question."""
+    return {
+        "country": job.get("country"),
+        "job_type": job.get("level"),
+        "employer": job.get("company"),
+        "question": field.get("label", ""),
+        "effective_at": job.get("start_date"),
+    }
 
 
 def _unknown(field):
@@ -104,11 +119,14 @@ class RipplingDriver:
         self.poll_s = poll_s
 
     def call(self, tab_id, action, payload=None):
-        return self.client.evaluate_script(tab_id, script(action, payload), operation="fill")
+        result = self.client.evaluate_script(tab_id, script(action, payload), operation=ACTIONS[action])
+        if not isinstance(result, dict):
+            raise ValueError("Rippling adapter readback is not an object")
+        return result
 
     def wait_parsed(self, tab_id):
         for attempt in range(self.polls):
-            if self.call(tab_id, "modelReady") is True:
+            if "resume" in self.call(tab_id, "modelReady").get("filled", []):
                 return True
             if attempt + 1 < self.polls:
                 self.sleep(self.poll_s)
@@ -125,15 +143,14 @@ class RipplingDriver:
             if not self.wait_parsed(tab_id):
                 return self._held([{"id": "resume", "reason": "resume_parse_timeout"}], [], [], receipt)
         scanned = self.call(tab_id, "modelScan")
-        if not scanned.get("formsy"):
+        if not scanned.get("page", {}).get("formsy"):
             return self._held([{"id": "form", "reason": "form_model_missing"}], [], [], receipt)
         steps = plan(profile, scanned["fields"], job)
         result = self.call(tab_id, "modelFill", steps["answers"]) if steps["answers"] else {}
         blocked = list(result.get("blocked", []))
         if steps["location"]:
             placed = self.call(tab_id, "location", {"query": steps["location"]})
-            if placed.get("blocked"):
-                blocked.append({"id": "location", "reason": placed["blocked"]})
+            blocked.extend(placed.get("blocked", []))
         after = self.call(tab_id, "modelScan")
         for field in after.get("fields", []):
             if field["id"] == "resume" and receipt and receipt["name"] not in (field.get("value") or []):
@@ -141,7 +158,8 @@ class RipplingDriver:
             elif field.get("required") and field.get("value") in ("", None, []):
                 if not any(item["id"] == field["id"] for item in blocked):
                     blocked.append({"id": field["id"], "reason": "required_empty"})
-        return self._held(blocked, result.get("filled", []), steps["unknown"], receipt, after.get("valid"))
+        valid = after.get("page", {}).get("valid")
+        return self._held(blocked, result.get("filled", []), steps["unknown"], receipt, valid)
 
     @staticmethod
     def _held(blocked, filled, unknown, receipt, valid=False):

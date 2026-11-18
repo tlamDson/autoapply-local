@@ -123,19 +123,41 @@
     };
   }
 
+  // Readbacks keep the MCP contracts in browser.py EVALUATE_SCHEMAS: scans are
+  // audit-shaped (model status in `page`), every other action is fill-shaped.
+  const readback = (filled = [], blocked = []) => ({ filled, blocked, uploads: [] });
+
   function modelScan(document) {
     const state = formsy(document);
-    if (!state) return { formsy: false, fields: [], valid: false };
     const fields = [];
-    for (const [name, node] of state.fields) if (!HIDDEN.test(name)) fields.push(describe(name, node, state.model));
-    return { formsy: true, fields, valid: Boolean(state.owner.state?.isValid) };
+    if (state)
+      for (const [name, node] of state.fields) if (!HIDDEN.test(name)) fields.push(describe(name, node, state.model));
+    return {
+      fields,
+      errors: [],
+      text: '',
+      url: String(document.location?.href || root.location?.href || ''),
+      attachments: [],
+      page: {
+        index: 1,
+        total: 1,
+        title: String(document.title || ''),
+        formsy: Boolean(state),
+        valid: Boolean(state?.owner.state?.isValid),
+      },
+      required_unknown: [],
+    };
   }
 
+  // Ready once the upload finished (progress absent or 100), Rippling stored the
+  // file (url) and its parse wrote the first name.
   function modelReady(document) {
     const state = formsy(document);
-    if (!state) return false;
+    if (!state) return readback([], [{ id: 'resume', reason: 'form_model_missing' }]);
     const resume = Array.isArray(state.model.resume) ? state.model.resume[0] : null;
-    return Boolean(resume?.url && (resume.progress === undefined || resume.progress === 100) && state.model.first_name);
+    const uploaded = Boolean(resume?.url) && (resume.progress === undefined || resume.progress === 100);
+    if (uploaded && !empty(state.model.first_name)) return readback(['resume']);
+    return readback([], [{ id: 'resume', reason: 'resume_parse_pending' }]);
   }
 
   async function modelFill(document, answers) {
@@ -213,7 +235,12 @@
   // Google Places autocomplete: the form wants the picked text and its place id.
   // Type the confirmed "City, ST" query, then pick the only suggestion that
   // starts with it; none, several or an unsafe control blocks for the user.
-  async function location(document, { query, tries = 60, waitMs = 50 } = {}) {
+  async function location(document, options = {}) {
+    const result = await placeLocation(document, options);
+    return result.blocked ? readback([], [{ id: 'location', reason: result.blocked }]) : readback(['location']);
+  }
+
+  async function placeLocation(document, { query, tries = 60, waitMs = 50 } = {}) {
     const state = formsy(document);
     const node = state?.fields.get('location');
     if (!node) return { blocked: 'form_model_missing' };
@@ -248,18 +275,18 @@
       model = state.owner.getModel() || {};
     }
     if (!model.externalPlaceId) return { blocked: 'place_not_selected' };
-    return { picked: pick.innerText.trim(), location: model.location, placed: true };
+    return { placed: true };
   }
 
+  // The common audit readback, unchanged in shape; model-only problems become
+  // error strings because required_unknown may only name scanned DOM fields.
   function audit(document) {
     const current = base.audit(document);
     const scanned = modelScan(document);
-    if (!scanned.formsy) return current;
-    current.form_valid = scanned.valid;
+    if (!scanned.page.formsy) return current;
     for (const field of scanned.fields) {
       if (!field.valid) current.errors.push('Invalid field: ' + field.id);
-      if (field.required && empty(field.value) && !current.required_unknown.includes(field.id))
-        current.required_unknown.push(field.id);
+      if (field.required && empty(field.value)) current.errors.push('Required field empty: ' + field.id);
     }
     return current;
   }
