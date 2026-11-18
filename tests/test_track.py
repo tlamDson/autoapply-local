@@ -180,16 +180,48 @@ class TrackTests(ReleaseCase):
         self.assertEqual(self.tracker_ids(), [])
         self.assertEqual(cdp.closed, [])
 
-    def test_tab_id_on_a_job_neutral_confirmation_page_of_the_same_site_is_this_job(self):
-        self.held("wd-1", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1/apply")
+    def test_workday_page_naming_no_job_waits_for_the_email_and_keeps_the_tab(self):
+        # The user may have moved the held tab to another posting of the same site and applied there.
+        self.held("wd-1", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1/apply",
+                  company="Acme Robotics", role="Software Engineer Intern")
         done = "https://acme.wd5.myworkdayjobs.com/en-US/Ext/jobTasks/completed/application"
-        report = self.reconcile(FakeCDP([{"id": "tab-wd-1", "url": done}]))
-        self.assertEqual([item["job_id"] for item in report["submitted"]], ["wd-1"])
-        other = "https://other.wd1.myworkdayjobs.com/en-US/Ext/jobTasks/completed/application"
-        self.held("wd-2", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R2/apply")
-        report = self.reconcile(FakeCDP([{"id": "tab-wd-2", "url": other}]))
+        cdp = FakeCDP([{"id": "tab-wd-1", "url": done}])
+        report = self.reconcile(cdp)
         self.assertEqual(report["submitted"], [])
+        self.assertEqual(self.store.get("wd-1")["state"], "filled")
+        self.assertEqual(self.tracker_ids(), [])
+        self.assertEqual(cdp.closed, [])
+        self.assertEqual(report["waiting"], [{
+            "job_id": "wd-1", "company": "Acme Robotics", "role": "Software Engineer Intern", "tab_id": "tab-wd-1",
+            "state": "filled", "page_url": done, "note": self.track.NO_JOB_NOTE,
+        }])
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern", thread="th-wd")])
+        self.assertEqual([(item["job_id"], item["via"]) for item in report["submitted"]], [("wd-1", "email")])
+        self.assertEqual(cdp.closed, ["tab-wd-1"])
+
+    def test_workday_confirmation_counts_only_for_the_posting_it_names(self):
+        self.held("wd-1", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1/apply")
+        self.held("wd-2", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R2")
+        own = "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1/apply/applyManually?job_application_id=9"
+        other = "https://acme.wd5.myworkdayjobs.com/Ext/job/Remote/Intern_R3/apply/applyManually?job_application_id=8"
+        cdp = FakeCDP([{"id": "tab-wd-1", "url": own}, {"id": "tab-wd-2", "url": other}])
+        report = self.reconcile(cdp)
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["wd-1"])
+        self.assertEqual(self.tracker_ids(), ["wd-1"])
+        self.assertEqual([item["job_id"] for item in report["gone"]], ["wd-2"])
         self.assertEqual(self.store.get("wd-2")["state"], "filled")
+        self.assertEqual(cdp.closed, ["tab-wd-1"])
+
+    def test_reopened_workday_tab_without_locale_is_matched_by_its_posting(self):
+        self.held("wd-1", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1")
+        done = "https://acme.wd5.myworkdayjobs.com/Ext/job/Remote/Intern_R1/apply/autofillWithResume?job_application_id=7"
+        report = self.reconcile(FakeCDP([{"id": "new-target", "url": done}]))
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["wd-1"])
+        neutral = "https://acme.wd5.myworkdayjobs.com/en-US/Ext/jobTasks/completed/application"
+        self.held("wd-2", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R2")
+        report = self.reconcile(FakeCDP([{"id": "new-target-2", "url": neutral}]))
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual([item["job_id"] for item in report["gone"]], ["wd-2"])
 
     def test_email_older_than_the_held_form_does_not_match(self):
         self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",
@@ -200,12 +232,43 @@ class TrackTests(ReleaseCase):
         self.assertEqual(report["history"]["added"], 0)
         self.assertEqual(self.store.get("ab-1")["state"], "filled")
 
-    def test_email_without_a_date_or_job_without_held_time_does_not_match(self):
+    def test_legacy_held_job_matches_an_exact_role_confirmation_from_the_last_two_weeks(self):
+        # Held before `held_at` existed: no held day, so the email must name the exact role.
         self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",
                   role="Software Engineer Intern", held_at=None)
         cdp = FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/1/application"}])
-        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern")])
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern", thread="th-l",
+                                           date="Nov 5, 2026")])
+        self.assertEqual([(item["job_id"], item["via"]) for item in report["submitted"]], [("ab-1", "email")])
+        self.assertEqual(self.store.get("ab-1")["state"], "submitted")
+        self.assertEqual(self.tracker_ids(), ["ab-1"])
+        self.assertEqual(report["history"]["added"], 0)
+
+    def test_legacy_held_job_needs_a_role_a_recent_date_and_no_earlier_application(self):
+        self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",
+                  role="Software Engineer Intern", held_at=None)
+        cdp = FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/1/application"}])
+        rows = [mail("Acme Robotics", thread="th-1"),
+                mail("Acme Robotics", "Software Engineer Intern", thread="th-2", date="Nov 3, 2026"),
+                mail("Acme Robotics", "Software Engineer Intern", thread="th-3", date="sometime")]
+        report = self.reconcile(cdp, rows)
         self.assertEqual(report["submitted"], [])
+        self.assertEqual(report["held_back_emails"], 3, "none of them may become a separate application")
+        self.assertEqual(report["history"]["added"], 0)
+        self.assertEqual(self.store.get("ab-1")["state"], "filled")
+        # The tracker already holds this company and role: a new email may belong to that application.
+        self.store.enqueue(job("earlier", url="https://jobs.ashbyhq.com/acme/0/application", company="Acme Robotics",
+                               role="Software Engineer Intern"))
+        self.store.update("earlier", state="claimed")
+        self.store.record_submit_intent("earlier", {"review_id": "r"})
+        self.store.mark_submitted("earlier", {"status": "confirmed", "job_id": "earlier", "text": "seen",
+                                              "url": "https://jobs.ashbyhq.com/acme/0/application"})
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern", thread="th-4")])
+        self.assertEqual(report["submitted"], [])
+        self.assertEqual(self.store.get("ab-1")["state"], "filled")
+        self.assertEqual(self.tracker_ids(), ["earlier"])
+
+    def test_email_without_a_date_does_not_match(self):
         self.held("ab-2", "https://jobs.ashbyhq.com/acme/2/application", company="Bolt Freight", role="Data Intern")
         cdp = FakeCDP([{"id": "tab-ab-2", "url": "https://jobs.ashbyhq.com/acme/2/application"}])
         report = self.reconcile(cdp, [mail("Bolt Freight", "Data Intern", thread="th-b", date="sometime")])
