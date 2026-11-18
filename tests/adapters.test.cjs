@@ -1098,10 +1098,10 @@ test('workable: fill sets every planned field, holds widgets for the engine and 
   assert.deepEqual(
     [...result.blocked].sort((a, b) => a.id.localeCompare(b.id)),
     [
+      { id: 'education', reason: 'agent_interaction_required' },
       { id: 'QA_100', reason: 'agent_interaction_required' },
       { id: 'QA_102', reason: 'agent_interaction_required' },
       { id: 'QA_103', reason: 'agent_interaction_required' },
-      { id: 'education', reason: 'agent_interaction_required' },
     ],
   );
   assert.equal(control('QA_102')[0].nativeWrites, 0);

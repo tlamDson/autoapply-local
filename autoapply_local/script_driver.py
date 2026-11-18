@@ -15,6 +15,7 @@ ADAPTERS = {
     "greenhouse": "AutoApplyGreenhouse",
     "lever": "AutoApplyLever",
     "rippling": "AutoApplyRippling",
+    "workable": "AutoApplyWorkable",
     "workday": "AutoApplyWorkday",
 }
 CLICKS = re.compile(r"\.click\s*\(|requestSubmit|\.submit\s*\(")
@@ -75,6 +76,9 @@ class ScriptDriver:
     # True when the ATS parses the uploaded resume and overwrites fields with
     # what it read, so the resume must be uploaded before the planned fill.
     upload_before_fill = False
+    # Field types that only native engine interaction can set; the planned
+    # confirmed value travels with the field to the engine.
+    widget_types = WIDGET_TYPES
 
     def known(self, field, profile, job):
         """ATS-specific fact for a field, or None to use the generic resolver."""
@@ -113,7 +117,7 @@ class ScriptDriver:
                     unknown.append({**entry, "reason": "no_confirmed_fact"})
                 continue
             value = supplied["value"]
-            if kind in WIDGET_TYPES:
+            if kind in self.widget_types:
                 unknown.append({**entry, "reason": "agent_interaction_required", "value": value})
             elif kind in CHOICE_TYPES:
                 matches = [
@@ -185,5 +189,7 @@ def driver_for(ats):
     """The script driver for an ATS, or None when only the engine can fill it."""
     from .greenhouse_driver import GreenhouseDriver
     from .lever_driver import LeverDriver
+    from .workable_driver import WorkableDriver
 
-    return {"greenhouse": GreenhouseDriver, "lever": LeverDriver}.get(ats, lambda: None)()
+    drivers = {"greenhouse": GreenhouseDriver, "lever": LeverDriver, "workable": WorkableDriver}
+    return drivers.get(ats, lambda: None)()
