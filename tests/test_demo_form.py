@@ -9,7 +9,10 @@ network and stays open. The browser is a fake CDP module; the candidate is inven
 import io
 import json
 import re
+import shutil
+import subprocess
 from importlib.resources import files
+from pathlib import Path
 from unittest.mock import Mock
 
 from test_support import ReleaseCase, fact
@@ -70,6 +73,57 @@ class FakeCDP:
             return recorded_scan()
         filled = [key for key in ("first_name", "last_name", "email", "phone", "question_1") if f'"{key}"' in expression]
         return self.fill_result or {"filled": filled, "blocked": [], "uploads": []}
+
+
+NODE_PAGE = r"""
+const vm = require('node:vm');
+const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const { Input, TextArea, makeDocument, addField } = require(input.fake_dom);
+const { document, form, submit } = makeDocument();
+const controls = {};
+for (const item of input.fields) {
+  const control = item.tag === 'textarea' ? new TextArea(item.attrs) : new Input(item.attrs);
+  controls[item.attrs.id] = addField(form, control, item.label);
+}
+const context = vm.createContext({ document, location: { href: input.href } });
+(async () => {
+  const result = await vm.runInContext(input.expression, context, { timeout: 5000 });
+  const values = Object.fromEntries(Object.entries(controls).map(([id, c]) => [id, c.value]));
+  const writes = Object.values(controls).reduce((sum, c) => sum + c.nativeWrites, 0);
+  process.stdout.write(JSON.stringify({ result, values, writes, clicks: submit.clicks }));
+})().catch(error => { console.error(error); process.exitCode = 1; });
+"""
+
+
+class NodePageCDP(FakeCDP):
+    """Runs each real wrapped script in Node against a synthetic copy of the demo page.
+
+    ``hrefs`` gives the document URL the page reports for each script in turn,
+    so a test can move the tab to another document after the audit while the
+    target list (``pages``) still reports the demo URL.
+    """
+
+    def __init__(self, hrefs):
+        super().__init__()
+        self.hrefs, self.pages_seen = list(hrefs), []
+        self.node = shutil.which("node")
+
+    def evaluate(self, ws, expression, timeout=60):
+        self.expressions.append(expression)
+        href = self.hrefs.pop(0) if self.hrefs else self.page["url"]
+        payload = {
+            "fake_dom": str(Path(__file__).with_name("fake_dom.cjs")),
+            "fields": spec()["fields"],
+            "href": self.page["url"] if href is None else href,
+            "expression": expression,
+        }
+        done = subprocess.run([self.node, "-e", NODE_PAGE], input=json.dumps(payload), capture_output=True,
+                              text=True, encoding="utf-8", timeout=60, shell=False)
+        if done.returncode:
+            raise AssertionError(done.stderr[-2000:])
+        page = json.loads(done.stdout)
+        self.pages_seen.append(page)
+        return page["result"]
 
 
 class DemoPageTests(ReleaseCase):
@@ -141,6 +195,30 @@ class DemoRunTests(ReleaseCase):
         url = (self.root / "demo" / "demo-form.html").as_uri()
         for expression in cdp.expressions:
             self.assertIn("location.href !== " + json.dumps(url), expression)
+
+    def test_real_scripts_fill_the_synthetic_demo_page_without_clicking(self):
+        demo, cdp = self.module("demo_form"), NodePageCDP([None, None])
+        self.assertIsNotNone(cdp.node, "Node is a required offline adapter test dependency")
+        result = demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        audit, fill = cdp.pages_seen
+        self.assertEqual(audit["writes"], 0)
+        self.assertEqual(fill["values"]["first_name"], "Alex")
+        self.assertEqual(fill["values"]["email"], "alex.rivera@example.com")
+        self.assertEqual(fill["values"]["question_2"], "")
+        self.assertEqual(fill["clicks"], 0)
+        self.assertIn("first_name", result["filled"])
+
+    def test_in_page_guard_blocks_the_fill_after_navigation_the_tab_list_missed(self):
+        demo, cdp = self.module("demo_form"), NodePageCDP([None, "https://job-boards.greenhouse.io/examplecorp/jobs/1"])
+        self.assertIsNotNone(cdp.node, "Node is a required offline adapter test dependency")
+        with self.assertRaises(ValueError):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
+        self.assertEqual(len(cdp.pages_seen), 2, "the fill script reached the page; only its own guard can stop it")
+        fill = cdp.pages_seen[1]
+        self.assertEqual(fill["result"], {"wrong_document": True})
+        self.assertEqual(fill["writes"], 0)
+        self.assertEqual(set(fill["values"].values()), {""})
+        self.assertEqual(fill["clicks"], 0)
 
     def test_document_mismatch_inside_the_page_stops_the_demo(self):
         demo, cdp = self.module("demo_form"), FakeCDP()
