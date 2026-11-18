@@ -94,6 +94,9 @@ class RefillValidationTests(ReleaseCase):
     def test_valid_answers_are_written(self):
         runner = self.held()
         self.browser.refill.return_value = {"filled": ["question_1", "question_2", "question_3"], "blocked": []}
+        self.browser.snapshot.return_value = snapshot(fields=[
+            {"id": "question_1", "label": HEAR, "value": "12"}, {"id": "question_2", "label": CLUB, "value": "Robotics Society"},
+            {"id": "question_3", "label": SHIFT, "value": True}])
         result = runner.refill("synthetic-1", {"question_1": "12", "question_2": "Robotics Society", "question_3": True})
         self.assertEqual(result["status"], "filled")
 

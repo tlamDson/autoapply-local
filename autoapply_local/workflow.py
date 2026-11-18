@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from .refill_proof import unproven
 from .storage import Store, lock, read_json
 from .unanswered import check_answers, pending_fields
 
@@ -208,8 +209,12 @@ class Workflow:
                 self.store.update(job_id, unanswered=fields, problem=reason)
                 return {"job_id": job_id, "status": "needs_manual", "tab_id": tab_id,
                         "questions": len(fields), "reason": reason}
+            # The adapter's own report is not proof: a field is done only when the
+            # fresh readback shows the user's answer for it.
+            wrong = unproven(fields, answers, live)
+            remaining = [item for item in fields if item in remaining or item["id"] in wrong]
             if live.get("errors") or live.get("required_unknown"):
-                # The adapter's own report is not proof; keep every field for questions --refill.
+                # An unclean form keeps every field for questions --refill.
                 remaining = fields
             if remaining or result.get("blocked") or live.get("errors") or live.get("required_unknown"):
                 self.store.update(job_id, unanswered=remaining, problem="Held form still contains unresolved fields")

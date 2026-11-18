@@ -290,7 +290,7 @@ class WorkflowTests(ReleaseCase):
         runner = self.runner(fill_result(unknown("question_2", CLUB, "text")))
         runner.apply(["synthetic-1"], pdf=self.pdf)
         self.browser.refill.return_value = {"filled": ["question_2"], "blocked": []}
-        self.live = snapshot()
+        self.live = snapshot(fields=[{"id": "question_2", "label": CLUB, "required": True, "value": "Robotics Society"}])
         result = runner.refill("synthetic-1", {"question_2": "Robotics Society"})
         self.assertEqual(result["status"], "filled")
         args = self.browser.refill.call_args

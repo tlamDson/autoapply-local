@@ -297,7 +297,8 @@ UNKNOWN_SCHEMA = {
 REFILL_RULE = (
     "Fill exactly these answers, keyed by the tab's field ID, into this existing held tab. Use native fill/type then "
     "blur for text and dates, and pick each option from the field's own listbox. For multipage Workday, move with "
-    "Back/Next only to the page that holds a field. Read every value back. Return the IDs you filled and verified in "
+    "Back/Next only to the page that holds a field, then finish on the Review page or the page that shows every "
+    "answer you filled, so each value can be read back there. Read every value back. Return the IDs you filled and verified in "
     "filled and every other ID in blocked with its reason. Change no other field, upload nothing, open no tab. "
     "Never click Submit."
 )

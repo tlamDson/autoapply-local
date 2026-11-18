@@ -76,10 +76,15 @@ fit are `deferred` to the next popup); after the user's actual answers, `questio
 --answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
 Skip, timeout or no native tool keeps them pending; a failed refill is retried
 with `questions --refill`. A banked answer is reused only for the same question
-wording, options, country and job type (authorization, sponsorship, consent,
-EEO and pay questions, including a money amount in the options, also keep
-employer and start date); it is never inferred. A refill never writes to a tab
-showing another application; Workday is refilled by native engine interaction.
+wording, options, country and job type, and crosses employers only for a
+question about the candidate alone: a required checkbox, a yes/no or
+agree/decline question, a question that refers to the employer or the role, and
+authorization, sponsorship, consent, agreement, EEO and pay questions (including
+a money amount in the options) also keep employer and start date; it is never
+inferred. A refill never writes to a tab showing another application; Workday
+is refilled by native engine interaction. A refilled field counts only when the
+fresh readback of the tab shows the user's own answer for it; a wrong, empty or
+missing value keeps that field for `questions --refill`.
 
 Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/wd_cred.py`): never
 print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any

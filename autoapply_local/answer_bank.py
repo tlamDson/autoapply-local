@@ -2,12 +2,15 @@
 
 Each entry is an answer the user gave in the end-of-run popup, keyed by the
 exact question: its normalized label, its kind (choice, boolean or text), its
-option labels and the job's country and job type. Questions about work
-authorization, sponsorship, consent, EEO or pay (in the label or in a money
-option) also keep the employer and start date, the full scope a profile answer needs. A question outside that scope is a
-different question and is asked again. The bank
-lives in the runtime root (``user/answer-bank.json``) and never holds inferred
-answers: only explicit popup answers become ``confirmed`` entries.
+option labels and the job's country and job type. Only a question about the
+candidate alone is shared across employers. A required checkbox, a yes/no or
+agree/decline question, a question that refers to the employer or the role,
+and any wording about work authorization, sponsorship, consent, agreement,
+EEO or pay (in the label or in a money option) also keep the employer and
+start date, the full scope a profile answer needs. A question outside that
+scope is a different question and is asked again. The bank lives in the
+runtime root (``user/answer-bank.json``) and never holds inferred answers:
+only explicit popup answers become ``confirmed`` entries.
 """
 
 import copy
@@ -28,7 +31,20 @@ SENSITIVE = re.compile(
     r"criminal|convict|background check|gender|race|ethnic|hispanic|veteran|disab|pronoun|sexual|"
     # Pay: any wording of salary, wage, rate or money amount keeps the full scope.
     r"salar|compensat|remunerat|\bpay|wage|stipend|hourly|\brates?\b|per (?:hour|year|annum|month|week)|"
-    r"annual|income|\bearn|bonus|equity|\$|€|£|\busd\b|\beur\b|\bgbp\b",
+    r"annual|income|\bearn|bonus|equity|\$|€|£|\busd\b|\beur\b|\bgbp\b|"
+    # Agreement: accepting, acknowledging or attesting to one employer's own text.
+    r"agree|accept|acknowledg|\bterms\b|condition|polic|privacy|notice|statement|certif|attest|declar|confirm|"
+    r"understand|\bread\b|\bsign|arbitrat|waive|releas|truthful|accura|non-?compete|non-?disclos|confidential|"
+    # The employer or the role itself: the answer belongs to this application.
+    r"\b(?:us|we|our|ours|here)\b|\b(?:this|the|your) (?:role|position|job|company|team|employer|firm|"
+    r"organi[sz]ation|opportunity|opening|internship|program(?:me)?|posting|vacancy)\b|"
+    r"refer|relative|related to|conflict|previously|former|\bbefore\b|\bever\b|interview|appl(?:y|ied|ication)",
+    re.I,
+)
+# An option that only says yes or no, or accepts or declines something.
+VERDICT = re.compile(
+    r"(?:yes|no|y|n|true|false|(?:i )?(?:do not |don't |dont )?"
+    r"(?:agree|disagree|accept|decline|consent|acknowledge|understand|certify|confirm))\b",
     re.I,
 )
 CHOICE_TYPES = {"select", "select-one", "radio", "combobox", "listbox", "checkbox-group"}
@@ -64,10 +80,20 @@ def job_scope(job):
     return {name: (job or {}).get(name) for name in JOB_SCOPE}
 
 
+def employer_bound(field):
+    """Whether an answer to this question holds for one employer and start date only."""
+    labels = options(field)
+    return bool(
+        kind(field) == "boolean"
+        or (labels and all(VERDICT.match(normalize(label)) for label in labels))
+        or SENSITIVE.search(" ".join([str(field.get("label", "")), *labels]))
+    )
+
+
 def scope(field, job):
     job = job or {}
     result = {"country": normalize(job.get("country")), "job_type": normalize(job.get("level"))}
-    if SENSITIVE.search(" ".join([str(field.get("label", "")), *options(field)])):
+    if employer_bound(field):
         result.update(employer=normalize(job.get("company")), effective_at=normalize(job.get("start_date")))
     return result
 
@@ -110,7 +136,8 @@ class AnswerBank:
         for entry in self._load()["answers"]:
             if entry.get("status") != "confirmed" or entry.get("value") in (None, ""):
                 continue
-            field = {"label": entry.get("question", ""), "options": entry.get("options") or []}
+            field = {"label": entry.get("question", ""), "options": entry.get("options") or [],
+                     **({"type": "checkbox"} if entry.get("kind") == "boolean" else {})}
             if entry.get("scope") != scope(field, job):
                 continue
             found[entry["key"]] = {name: copy.deepcopy(entry.get(name)) for name in ("question", "kind", "options", "value")}
