@@ -62,7 +62,7 @@ def _private(pure):
         return True
     if name in _PRIVATE_NAMES and (not pure.parts or pure.parts[0] != "examples"):
         return True
-    if "secret" in name or name.startswith(".env") or name.endswith(".review.md"):
+    if any("secret" in part for part in parts) or name.startswith(".env") or name.endswith(".review.md"):
         return True
     return pure.suffix.lower() in _BINARY_OUTPUTS
 
