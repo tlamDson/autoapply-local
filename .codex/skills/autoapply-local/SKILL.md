@@ -42,7 +42,9 @@ intake remains available for advanced editing/export.
    Preserve unknown, not_applicable, declined and notasked separately; skipping is
    not No. Optional EEO may be declined. Repeated records use Add, individual
    field questions and Done; multiple roles use native multiSelect or repeated
-   single choices with pagination, never a request to type a raw array.
+   single choices with pagination, never a request to type a raw array. Paged
+   picks accumulate until Done (Clear empties them); a multiSelect answer may
+   send its picks together with More choices or Done.
 4. Write a new private response JSON file under this runtime's user directory,
    using the host's permitted file tool (not public source or an engine prompt).
    Its only top-level fields are the packet's schema_version, session_id,
