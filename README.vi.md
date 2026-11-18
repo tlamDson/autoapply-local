@@ -223,6 +223,30 @@ Không khớp và có hơn một resume: `apply` hỏi một lần cho mỗi rol
 và nhớ đáp án ở `user/resume-choices.json`; không có terminal thì dừng thay vì
 đoán. `apply` in từng lựa chọn và lý do trước khi điền.
 
+Câu hỏi bắt buộc chưa có fact đã xác nhận (ví dụ "How did you hear about this
+role?") không làm dừng đợt chạy. `apply` điền mọi thứ khác, giữ tab và gom các
+câu đó cho cả đợt; kết quả có `questions.pending`. Sau đó
+`python autoapply-local.py questions --ui UI` trả về một popup native cho tất cả
+(cùng một câu từ nhiều job chỉ hỏi một lần). Ghi đáp án thật của người dùng vào
+một file riêng rồi chạy `questions --answer PATH`: đáp án vào answer bank
+`user/answer-bank.json` và được điền vào các tab đang giữ, không bao giờ Submit.
+Job sau hỏi cùng câu (cùng chữ, lựa chọn, quốc gia và loại job) được điền từ
+bank mà không hỏi lại. Chỉ câu hỏi chắc chắn về riêng bạn (học vấn, kỹ năng,
+ngôn ngữ, câu lạc bộ, dự án) mới được dùng lại cho công ty khác. Mọi câu khác
+còn cần cùng công ty và ngày bắt đầu, kể cả ô tick bắt buộc, câu có/không hoặc
+đồng ý/từ chối, câu nhắc tới công ty hay vị trí, và câu về quyền làm việc,
+sponsorship, đồng ý, thoả thuận, cho phép liên hệ hoặc dùng dữ liệu, EEO hoặc
+lương. Một câu được điền lại chỉ tính là
+xong khi tab, đọc lại mới, hiện đúng đáp án của bạn; giá trị sai hoặc thiếu thì
+giữ câu đó cho `questions --refill`. Bỏ qua, hết giờ hoặc không có công cụ native
+thì giữ câu hỏi cho lần sau; `questions --refill` thử lại lần điền bị lỗi.
+Popup là một lần gọi native, nên chỉ chứa số câu công cụ của host nhận một lần
+(Claude 4, Codex 3); phần còn lại, câu ít job hỏi hơn đi sau, chờ popup kế tiếp
+và trường `deferred` cho biết còn bao nhiêu. Tab Workday được engine điền lại
+bằng thao tác native, tab khác bằng adapter của ATS; tab đang hiện đơn khác
+không bao giờ bị ghi, và lần điền mà bản đọc lại mới chưa sạch thì giữ mọi câu
+hỏi cho `questions --refill`.
+
 ## Bắt đầu: setup, cấu hình nguồn, fetch và review
 
 Sau các bước cài đặt/setup trên, chạy từ chính thư mục runtime vừa tạo.

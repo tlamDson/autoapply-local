@@ -272,6 +272,47 @@ def validate_quote(text, evidence, label=None, value=None):
         raise ValueError("Static Review quote/span does not prove the observed value")
 
 
+# The engine reports each required question it cannot answer and keeps going,
+# so the run's end-of-run popup can ask the user once.
+UNKNOWN_RULE = (
+    "A bank_answers entry answers a required question only when its question text, kind and option labels match "
+    "exactly; never adapt it to a similar question. List every required question no confirmed fact or bank answer "
+    "covers in unknown as {id, label, type, required, options:[{value,label}]}, with the field ID the tab uses; "
+    "do not guess an answer for it. Then keep filling the other fields and upload the resume, and return "
+    "needs_manual."
+)
+UNKNOWN_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "label": {"type": "string"},
+            "type": {"type": "string"},
+            "required": {"type": "boolean"},
+            "options": {"type": "array", "items": {"type": "object"}},
+        },
+        "required": ["id", "label", "type", "required", "options"],
+    },
+}
+REFILL_RULE = (
+    "Fill exactly these answers, keyed by the tab's field ID, into this existing held tab. Use native fill/type then "
+    "blur for text and dates, and pick each option from the field's own listbox. For multipage Workday, move with "
+    "Back/Next only to the page that holds a field, then finish on the Review page or the page that shows every "
+    "answer you filled, so each value can be read back there. Read every value back. Return the IDs you filled and verified in "
+    "filled and every other ID in blocked with its reason. Change no other field, upload nothing, open no tab. "
+    "Never click Submit."
+)
+
+
+def check_unknown(result):
+    """Refuse an engine's unknown-question list that cannot be asked or refilled."""
+    for item in result.get("unknown") or []:
+        if not isinstance(item, dict) or not str(item.get("id") or "").strip() or not str(item.get("label") or "").strip():
+            raise ValueError("The engine reported an unknown question without its field ID and label")
+    return result
+
+
 class EngineMCPClient:
     """Selected-engine MCP actions with Chrome's loopback tab list as authority.
 
@@ -290,10 +331,16 @@ class EngineMCPClient:
             matches = [page for page in self.list_pages() if str(page["id"]) == str(payload["tab_id"])]
             if len(matches) != 1:
                 raise ValueError("Native Chrome target disappeared")
+            expected = payload.get("expected_url")
+            # A write carries the application it was verified for; the tab may
+            # have navigated since that check, so compare again at dispatch.
+            if expected is not None and _url_identity(matches[0]["url"]) != _url_identity(expected):
+                raise ValueError("Native current URL belongs to another application")
             payload = {
                 **payload,
                 "target_url": matches[0]["url"],
-                "target_instructions": "Match this native target URL against MCP list_pages, select its existing page ID, and fail if ambiguous. The native tab_id is a Chrome target ID, not a numeric MCP page index.",
+                "target_instructions": "Match this native target URL against MCP list_pages, select its existing page ID, and fail if ambiguous. The native tab_id is a Chrome target ID, not a numeric MCP page index."
+                + (" Before writing anything, confirm the selected page still shows expected_url; if it shows another URL, write nothing and fail." if expected is not None else ""),
             }
         return self.engine.run(
             {
@@ -332,12 +379,13 @@ class EngineMCPClient:
         # its ID rather than lose the only tab opened by this operation.
         return new[0]
 
-    def evaluate_script(self, tab_id, function, *, operation="audit"):
+    def evaluate_script(self, tab_id, function, *, operation="audit", expected_url=None):
         if operation not in EVALUATE_SCHEMAS:
             raise ValueError("Unsupported evaluate readback operation")
         return self._run(
             "evaluate",
-            {"tab_id": tab_id, "function": function, "readback": operation, "response_contract": EVALUATE_CONTRACT},
+            {"tab_id": tab_id, "function": function, "readback": operation, "response_contract": EVALUATE_CONTRACT,
+             **({"expected_url": expected_url} if expected_url is not None else {})},
             {"result": copy.deepcopy(EVALUATE_SCHEMAS[operation])},
             ["result"],
             ["list_pages", "select_page", "evaluate_script"],
@@ -356,7 +404,7 @@ class EngineMCPClient:
             ["list_pages", "select_page", "take_snapshot", "upload_file"],
         )
 
-    def interact(self, tab_id, profile, job, blocked, pdf=None):
+    def interact(self, tab_id, profile, job, blocked, pdf=None, bank_answers=None):
         return self._run(
             "native_fill",
             {
@@ -365,11 +413,13 @@ class EngineMCPClient:
                 "job": job,
                 "blocked": blocked,
                 "pdf": str(pdf) if pdf is not None else None,
-                "instructions": "Use only confirmed exact scoped facts. Inspect the existing tab's DOM snapshot and identify actual fields and required questions. Fill supported controls; use native keyboard fill/type then blur for Workday names, employee ID, fieldOfStudy, phone code, textareas and dates. Scope option selection to the field's aria-controls listbox and verify selectedItem chips. Inspect Add/Remove controls before use; opaque record IDs are not profile indexes. Upload the selected PDF on the actual Resume page before Next advances or leaves that page. Observe the actual browser File name, size and SHA256 from File.arrayBuffer with crypto.subtle.digest; return that observed upload_receipt, never a hash copied from profile/job/local expectations. Missing file input or receipt means needs_manual. For multipage Workday, continue with Next/Back only, wait for current step transition or validation errors, and read values back on Review. Stop for account sign-in/creation challenges or unknown questions before uploading, returning needs_manual with blocked reasons. Preserve the tab. Never click Submit. Do not open another tab.",
+                **({"bank_answers": bank_answers} if bank_answers is not None else {}),
+                "instructions": "Use only confirmed exact scoped facts. " + UNKNOWN_RULE + " Inspect the existing tab's DOM snapshot and identify actual fields and required questions. Fill supported controls; use native keyboard fill/type then blur for Workday names, employee ID, fieldOfStudy, phone code, textareas and dates. Scope option selection to the field's aria-controls listbox and verify selectedItem chips. Inspect Add/Remove controls before use; opaque record IDs are not profile indexes. Upload the selected PDF on the actual Resume page before Next advances or leaves that page. Observe the actual browser File name, size and SHA256 from File.arrayBuffer with crypto.subtle.digest; return that observed upload_receipt, never a hash copied from profile/job/local expectations. Missing file input or receipt means needs_manual. For multipage Workday, continue with Next/Back only, wait for current step transition or validation errors, and read values back on Review. Stop for account sign-in/creation challenges before uploading, returning needs_manual with blocked reasons. Preserve the tab. Never click Submit. Do not open another tab.",
             },
             {
                 "filled": {"type": "array", "items": {"type": "string"}},
                 "blocked": {"type": "array", "items": {"type": "object"}},
+                "unknown": copy.deepcopy(UNKNOWN_SCHEMA),
                 "status": {"type": "string", "enum": ["filled", "needs_manual"]},
                 "upload_receipt": {
                     "type": "object",
@@ -382,7 +432,7 @@ class EngineMCPClient:
                     "additionalProperties": False,
                 },
             },
-            ["filled", "blocked", "status"],
+            ["filled", "blocked", "unknown", "status"],
             [
                 "list_pages",
                 "select_page",
@@ -394,6 +444,26 @@ class EngineMCPClient:
                 "evaluate_script",
                 "upload_file",
             ],
+        )
+
+    def refill(self, tab_id, job, answers):
+        """Fill the user's popup answers into a held tab by native interaction; never submits."""
+        return self._run(
+            "native_refill",
+            {
+                "tab_id": tab_id,
+                "expected_url": job["url"],
+                "job": {name: job.get(name) for name in ("id", "ats", "company", "role", "url")},
+                "answers": answers,
+                "instructions": REFILL_RULE,
+            },
+            {
+                "filled": {"type": "array", "items": {"type": "string"}},
+                "blocked": {"type": "array", "items": {"type": "object"}},
+                "status": {"type": "string", "enum": ["filled", "needs_manual"]},
+            },
+            ["filled", "blocked", "status"],
+            ["list_pages", "select_page", "take_snapshot", "fill", "fill_form", "press_key", "click"],
         )
 
     def interact_fields(self, tab_id, fields):
@@ -429,6 +499,9 @@ class BrowserBridge:
         self.restore_errors = {}
         # Injected DevTools client for script-first drivers; built per driver when None.
         self.script_client = None
+
+    # Script drivers read the user's answer bank for questions no fact covers.
+    answer_bank = True
 
     @property
     def native_uploads(self):
@@ -473,7 +546,7 @@ class BrowserBridge:
 
         return adapter_script(ats, operation, answers)
 
-    def fill(self, tab_id, profile, job, pdf=None):
+    def fill(self, tab_id, profile, job, pdf=None, bank=None):
         self.tabs.setdefault(str(tab_id), {"url": job["url"]}).update(job=copy.deepcopy(job))
         self._native(tab_id)
         if isinstance(self.client, EngineMCPClient):
@@ -481,10 +554,11 @@ class BrowserBridge:
 
             driver = driver_for(job.get("ats", "greenhouse"))
             if driver is not None and driver.runs_before_engine:
-                return script_then_engine(self, driver, tab_id, profile, job, pdf)
+                return script_then_engine(self, driver, tab_id, profile, job, pdf, bank=bank)
             # One engine-assisted fill operation owns scan, native interactions
             # and persisted Review readback; no duplicate pre-fill LLM pass.
-            result = self.client.interact(tab_id, profile, job, [], pdf=pdf)
+            extra = {"bank_answers": bank.entries_for(job)} if bank is not None else {}
+            result = check_unknown(self.client.interact(tab_id, profile, job, [], pdf=pdf, **extra))
             self._prove_engine_upload(tab_id, result, pdf)
             return result
         # A script driver fills every field a confirmed fact covers and reports
@@ -493,7 +567,7 @@ class BrowserBridge:
 
         driver = driver_for(job.get("ats", "greenhouse"))
         if driver is not None:
-            return driver.run(self.client, tab_id, profile, job, pdf=pdf)
+            return driver.run(self.client, tab_id, profile, job, pdf=pdf, bank=bank)
         # Map only supported confirmed facts; all other questions require an
         # exact scoped answer and are left to the native-agent interaction.
         scanned = self.client.evaluate_script(
@@ -512,6 +586,34 @@ class BrowserBridge:
             tab_id, self._script("fill", job.get("ats", "greenhouse"), answers), operation="fill"
         )
         return result
+
+    def refill(self, tab_id, job, answers):
+        """Fill popup answers into a held tab; never clicks Submit.
+
+        A script-driver ATS gets its adapter's fill script. Workday and other
+        engine-only ATSs get a native engine interaction. Either way the tab
+        must still show this job's application before anything is written.
+        """
+        from .script_driver import driver_for, refill_script
+
+        ats = job.get("ats", "greenhouse")
+        # Workday is multi-step: the question may sit on a page other than the one
+        # showing, so only native engine interaction (Back/Next) can refill it.
+        native = ats == "workday" or driver_for(ats) is None
+        if native and not isinstance(self.client, EngineMCPClient):
+            raise ValueError("Unsupported ATS requires manual interaction")
+        script = None if native else refill_script(ats, answers)
+        if not job.get("url"):
+            raise ValueError("The held job has no application URL")
+        expected = _url_identity(job["url"])
+        bound = self.tabs.get(str(tab_id), {}).get("url")
+        if _url_identity(self._native(tab_id)["url"]) != expected or (bound and _url_identity(bound) != expected):
+            raise ValueError("Native current URL belongs to another application")
+        if native:
+            return self.client.refill(tab_id, job, answers)
+        # The engine client re-checks this verified URL when it dispatches the write.
+        extra = {"expected_url": job["url"]} if isinstance(self.client, EngineMCPClient) else {}
+        return self.client.evaluate_script(tab_id, script, operation="fill", **extra)
 
     def _prove_engine_upload(self, tab_id, result, pdf):
         if result.get("status") == "filled" and pdf is not None:

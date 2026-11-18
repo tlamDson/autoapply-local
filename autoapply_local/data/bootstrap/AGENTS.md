@@ -65,5 +65,13 @@ and records it with `submitted ID,ID`, which frees its held-tab slot.
 Keep unsubmitted tabs open for sign-in, account creation, CAPTCHA, missing
 answers and errors.
 
+Required questions no confirmed fact or answer-bank entry covers are held,
+collected for the whole `apply` run and asked once at the end: `questions --ui UI`
+returns one native popup packet (a single native call; questions that do not
+fit are `deferred` to the next popup); after the user's actual answers, `questions
+--answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
+Skip, timeout or no native tool keeps them pending; a failed refill is retried
+with `questions --refill`.
+
 There is no Gmail command. Never send, draft, archive, label, scrape browser
 Gmail, persist codes or access another workspace's private data. Report held tabs and unresolved work.

@@ -58,7 +58,7 @@ class WorkdayDriver(ScriptDriver):
     def _step(self, client, tab_id, script):
         return client.evaluate_script(tab_id, script, operation=workday_steps.OPERATION)
 
-    def run(self, client, tab_id, profile, job, pdf=None, account=None):
+    def run(self, client, tab_id, profile, job, pdf=None, account=None, bank=None):
         """Fill every step up to Review; never presses Review's Submit and never closes the tab."""
         report = {
             "driver": self.name,
@@ -96,7 +96,7 @@ class WorkdayDriver(ScriptDriver):
                     report["status"] = "needs_manual"
                     return report
                 return _hold(report, "form_not_readable")
-            if not self._fill_step(client, tab_id, profile, job, pdf, where, report):
+            if not self._fill_step(client, tab_id, profile, job, pdf, where, report, bank):
                 return report
             moved = self._step(client, tab_id, workday_steps.press_script("next", where))
             if not isinstance(moved, dict) or not moved.get("pressed"):
@@ -108,11 +108,11 @@ class WorkdayDriver(ScriptDriver):
                 return report
         return _hold(report, "too_many_steps")
 
-    def _fill_step(self, client, tab_id, profile, job, pdf, where, report):
+    def _fill_step(self, client, tab_id, profile, job, pdf, where, report, bank=None):
         """Fill the current step; False when the run stops on it."""
         step = where["step"]
         title = step.get("title")
-        page, answers, fields = self.fill_page(client, tab_id, profile, job, pdf=pdf)
+        page, answers, fields = self.fill_page(client, tab_id, profile, job, pdf=pdf, bank=bank)
         self._type_blocked(client, tab_id, page, answers)
         report["filled"].extend(page["filled"])
         report["blocked"].extend(page["blocked"])

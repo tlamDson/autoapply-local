@@ -48,6 +48,25 @@ loads current facts into a new session, and requires a new preview before Confir
 Existing records use the numbered native picker and field editor; Cancel keeps
 the original record, and unchanged facts keep their metadata.
 
+Required questions no confirmed fact or answer-bank entry covers are held,
+collected for the whole `apply` run and asked once at the end: `questions --ui UI`
+returns one native popup packet (a single native call; questions that do not
+fit are `deferred` to the next popup); after the user's actual answers, `questions
+--answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
+Skip, timeout or no native tool keeps them pending; a failed refill is retried
+with `questions --refill`. A banked answer is reused only for the same question
+wording, options, country and job type, and crosses employers only for a
+question known to be about the candidate alone (education, skills, languages,
+clubs, projects). Every other question keeps employer and start date, and so
+does any required checkbox, yes/no or agree/decline question, question that
+refers to the employer or the role, and authorization, sponsorship, consent,
+agreement, contact or data permission, EEO and pay question (including a money
+amount in the options); it is never inferred. A refill never writes to a tab showing another application; Workday
+is refilled by native engine interaction. A refilled field counts only when the
+fresh readback of the tab shows the user's own answer for it (a review row is
+read as an option label only); a wrong, empty, ambiguous or missing value keeps
+that field for `questions --refill`.
+
 Never click a Submit control, through any command or raw browser action: the
 user reviews and submits each held form by hand. Follow normal engine/MCP
 approval prompts.

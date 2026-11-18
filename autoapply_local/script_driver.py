@@ -100,7 +100,8 @@ class ScriptDriver:
             raise ValueError(f"The {self.name} adapter can click; a script driver never clicks or submits")
         return script
 
-    def plan(self, fields, profile, job, pdf=None):
+    def plan(self, fields, profile, job, pdf=None, bank=None):
+        """Answers from confirmed facts, then from the user's answer bank."""
         from .profile import resolve_field
 
         answers, unknown, resume = {}, [], None
@@ -119,6 +120,8 @@ class ScriptDriver:
             supplied = self.known(field, profile, job)
             if supplied is None and kind != "file":
                 supplied = resolve_field(profile, field, job)
+            if not _confirmed(supplied) and bank is not None and kind != "file":
+                supplied = bank.lookup(field, job) or supplied
             if not _confirmed(supplied):
                 if _empty(field.get("value")):
                     unknown.append({**entry, "reason": "no_confirmed_fact"})
@@ -158,11 +161,11 @@ class ScriptDriver:
     def _held_page(self, scanned):
         return self._held(scanned), {}, []
 
-    def run(self, client, tab_id, profile, job, pdf=None):
+    def run(self, client, tab_id, profile, job, pdf=None, bank=None):
         """Scan, plan and fill one held tab; never clicks and never closes it."""
-        return self.fill_page(client, tab_id, profile, job, pdf=pdf)[0]
+        return self.fill_page(client, tab_id, profile, job, pdf=pdf, bank=bank)[0]
 
-    def fill_page(self, client, tab_id, profile, job, pdf=None):
+    def fill_page(self, client, tab_id, profile, job, pdf=None, bank=None):
         """``run`` for the current page: the report, the planned answers and the scanned fields.
 
         With ``upload_before_fill`` and a selected PDF, the resume is uploaded
@@ -191,7 +194,7 @@ class ScriptDriver:
             if receipt is None:
                 return self._held_page({"blocked": [{"id": resume, "reason": "upload_not_observed"}]})
             uploaded, pdf = [{"id": resume, "path": str(pdf)}], None
-        plan = self.plan(fields, profile, job, pdf=pdf)
+        plan = self.plan(fields, profile, job, pdf=pdf, bank=bank)
         # Confirmed-status objects keep the adapter's own unconfirmed-answer guard.
         confirmed = {key: {"value": value, "status": "confirmed"} for key, value in plan["answers"].items()}
         result = client.evaluate_script(tab_id, self.script("fill", confirmed), operation="fill")
@@ -237,6 +240,14 @@ class ScriptDriver:
             else "filled",
         }
         return report, plan["answers"], fields
+
+
+def refill_script(ats, answers):
+    """The fill script for answers the user gave after the run; never clicks."""
+    driver = driver_for(ats)
+    if driver is None:
+        raise ValueError("Unsupported ATS requires manual interaction")
+    return driver.script("fill", {key: {"value": value, "status": "confirmed"} for key, value in answers.items()})
 
 
 def observed_receipt(fields, resume, pdf):
