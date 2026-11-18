@@ -1,5 +1,6 @@
 """Ashby driver: posting questions from a recorded GraphQL response, offline only."""
 
+import copy
 import json
 import unittest
 from pathlib import Path
@@ -152,6 +153,60 @@ class BrowserScript(unittest.TestCase):
         self.assertIn("globalThis.AutoApplyAshby.audit(document)", audit)
         # Readback binds each field through the adapter, so Yes/No groups count as observed.
         self.assertIn("globalThis.AutoApplyAshby.resolve(document, field.id)", audit)
+
+
+class Driver(unittest.TestCase):
+    SCAN = {
+        "fields": [
+            {"id": "_systemfield_name", "label": "Name", "type": "text", "required": True, "value": "", "options": []},
+            {"id": "_systemfield_email", "label": "Email", "type": "email", "required": True, "value": "", "options": []},
+            {"id": "_systemfield_resume", "label": "Resume", "type": "file", "required": True, "value": "", "options": []},
+            {"id": "yesno:1", "label": "Will you now or in the future require visa sponsorship?", "type": "yesno",
+             "required": True, "value": "", "options": [{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}]},
+            {"id": "yesno:2", "label": "Are you open to relocation?", "type": "yesno", "required": False, "value": "",
+             "options": [{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}]},
+        ],
+        "errors": [],
+    }
+
+    def test_driver_is_registered_and_its_scripts_cannot_click(self):
+        from autoapply_local import script_driver
+        from autoapply_local.ashby_driver import AshbyDriver
+
+        driver = script_driver.driver_for("ashby")
+        self.assertIsInstance(driver, AshbyDriver)
+        for operation in ("audit", "fill"):
+            self.assertIsNone(script_driver.CLICKS.search(driver.script(operation, {})))
+
+    def test_run_fills_system_fields_and_hands_yes_no_to_a_native_click(self):
+        from unittest.mock import Mock
+
+        from autoapply_local.ashby_driver import AshbyDriver
+
+        question = "Will you now or in the future require visa sponsorship?"
+        client = Mock(spec=["evaluate_script"])
+        client.evaluate_script.side_effect = [
+            copy.deepcopy(self.SCAN),
+            {
+                "filled": ["_systemfield_name", "_systemfield_email"],
+                "blocked": [{"id": "yesno:1", "reason": "native_click_required", "option": "Yes"}],
+                "uploads": [{"id": "_systemfield_resume", "path": "resume.pdf"}],
+            },
+        ]
+        result = AshbyDriver().run(client, "tab-1", profile(scoped(question, True)), JOB, pdf="resume.pdf")
+        planned = json.loads(
+            client.evaluate_script.call_args_list[1].args[1].split("globalThis.AutoApplyAshby.fill(document, ", 1)[1].rsplit(");", 1)[0]
+        )
+        self.assertEqual(planned["_systemfield_name"]["value"], "Alex Rivera")
+        self.assertEqual(planned["_systemfield_email"]["value"], "alex.rivera@example.com")
+        self.assertIs(planned["yesno:1"]["value"], True)
+        self.assertNotIn("yesno:2", planned)
+        self.assertEqual(result["resume_field"], "_systemfield_resume")
+        unknown = {item["id"]: item for item in result["unknown"]}
+        self.assertEqual(unknown["yesno:1"]["reason"], "native_click_required")
+        self.assertEqual(unknown["yesno:2"]["reason"], "no_confirmed_fact")
+        self.assertFalse(unknown["yesno:2"]["required"])
+        self.assertEqual(result["status"], "needs_engine")
 
 
 if __name__ == "__main__":

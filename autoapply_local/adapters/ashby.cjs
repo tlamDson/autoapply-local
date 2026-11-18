@@ -2,9 +2,11 @@
 
 // Ashby (jobs.ashbyhq.com) form adapter on top of common.cjs. Ashby marks
 // required questions on the entry heading and renders Boolean questions as
-// Yes/No toggle buttons, not inputs. Toggles are clicked only when the answer
-// is confirmed and the option is not a submit control; a toggle the page resets
-// is reported for a native click. Nothing here ever clicks Submit.
+// Yes/No toggle buttons, not inputs. The adapter never clicks (script drivers
+// refuse any script that can): a confirmed answer whose option is not already
+// active is handed back as native_click_required with that option, and an
+// option that is a submit control is refused. Scripted clicks also do not stick
+// on Ashby's React toggles, so the native browser tool clicks them.
 (function install(root) {
   const base = typeof module !== 'undefined' && module.exports ? require('./common.cjs') : root.AutoApplyDOM;
   if (!base) throw new Error('Load common.cjs before the ATS adapter');
@@ -101,7 +103,7 @@
     return current;
   }
 
-  async function toggle(group, supplied) {
+  function toggle(group, supplied) {
     if (supplied && typeof supplied === 'object' && supplied.status !== 'confirmed') return 'unconfirmed_answer';
     const value = supplied && typeof supplied === 'object' ? supplied.value : supplied;
     if (value === null || value === undefined) return 'unknown_answer';
@@ -111,9 +113,7 @@
     const [button] = choices;
     if (isSubmitControl(button) || button.disabled) return 'submit_control';
     if (isOn(button)) return null;
-    button.click();
-    for (let waited = 0; !isOn(button) && waited < 300; waited += 25) await new Promise(r => setTimeout(r, 25));
-    return isOn(button) ? null : 'native_click_required';
+    return { reason: 'native_click_required', option: clean(button.innerText) };
   }
 
   async function fill(document, answers) {
@@ -126,8 +126,9 @@
         rest[key] = supplied;
         continue;
       }
-      const reason = await toggle(group, supplied);
-      if (reason) done.blocked.push({ id: key, reason });
+      const outcome = toggle(group, supplied);
+      if (typeof outcome === 'string') done.blocked.push({ id: key, reason: outcome });
+      else if (outcome) done.blocked.push({ id: key, ...outcome });
       else done.filled.push(key);
     }
     const result = await base.fill(document, rest);

@@ -24,7 +24,7 @@ function entry(form, labelText, required) {
   return { node, heading };
 }
 
-function yesNo(parent, { active = null, sticky = true, type = 'button' } = {}) {
+function yesNo(parent, { active = null, type = 'button' } = {}) {
   const box = parent.appendChild(new Element('div', { class: '_yesno_1e3gg_148' }));
   const buttons = ['Yes', 'No'].map(text =>
     box.appendChild(
@@ -37,7 +37,6 @@ function yesNo(parent, { active = null, sticky = true, type = 'button' } = {}) {
   );
   for (const button of buttons)
     button.onClick = () => {
-      if (!sticky) return; // React resets a scripted click on some forms
       for (const other of buttons)
         other.setAttribute('class', '_option_1e3gg_150' + (other === button ? ' _active_1e3gg_160' : ''));
     };
@@ -93,24 +92,20 @@ test('ashby: scan reads heading labels, heading required marks and Yes/No toggle
   assert.equal(adapter.scan(document).fields.find(field => field.type === 'yesno').id, sponsor.id, 'IDs are stable');
 });
 
-test('ashby: a confirmed Yes/No answer clicks the matching toggle once and reads it back', async () => {
+test('ashby: a confirmed Yes/No answer is handed to a native click with its option, never clicked by script', async () => {
   const adapter = load('ashby');
   const { document, sponsor, relocate, submit } = ashbyForm();
   const fields = adapter.scan(document).fields;
   const sponsorId = byLabel(fields, SPONSOR).id;
   const relocateId = byLabel(fields, RELOCATE).id;
   const result = await adapter.fill(document, { [sponsorId]: confirmed(false), [relocateId]: confirmed('No') });
-  assert.deepEqual(result.blocked, []);
-  assert.deepEqual([...result.filled].sort(), [relocateId, sponsorId].sort());
+  assert.deepEqual(result.blocked, [{ id: sponsorId, reason: 'native_click_required', option: 'No' }]);
+  assert.deepEqual(result.filled, [relocateId], 'An already active option counts as filled');
   assert.deepEqual(
-    sponsor.map(button => button.clicks),
-    [0, 1],
+    [...sponsor, ...relocate].map(button => button.clicks),
+    [0, 0, 0, 0],
   );
-  assert.deepEqual(
-    relocate.map(button => button.clicks),
-    [0, 0],
-    'An already active option is not clicked again',
-  );
+  sponsor[1].click(); // the native browser tool's click
   const audited = adapter.audit(document);
   assert.equal(byLabel(audited.fields, SPONSOR).value, 'No');
   assert.equal(audited.required_unknown.includes(sponsorId), false);
@@ -143,16 +138,6 @@ test('ashby: unconfirmed, unknown or inexact Yes/No answers are blocked without 
     assert.equal(sponsor[0].clicks + sponsor[1].clicks, 0);
     assert.equal(submit.clicks, 0);
   }
-});
-
-test('ashby: a toggle the page resets is reported for a native click, not claimed filled', async () => {
-  const adapter = load('ashby');
-  const { document, sponsor } = ashbyForm({ sponsor: { sticky: false } });
-  const id = byLabel(adapter.scan(document).fields, SPONSOR).id;
-  const result = await adapter.fill(document, { [id]: confirmed('Yes') });
-  assert.deepEqual(result.blocked, [{ id, reason: 'native_click_required' }]);
-  assert.equal(sponsor[0].clicks, 1);
-  assert.ok(adapter.audit(document).required_unknown.includes(id));
 });
 
 test('ashby: an option that is a submit control is never clicked', async () => {

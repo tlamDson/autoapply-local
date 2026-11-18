@@ -418,48 +418,9 @@ class BrowserBridge:
         return tab_id
 
     def _script(self, operation, ats="greenhouse", answers=None):
-        adapters = {
-            "greenhouse": "AutoApplyGreenhouse",
-            "rippling": "AutoApplyRippling",
-            "workday": "AutoApplyWorkday",
-            "ashby": "AutoApplyAshby",
-        }
-        if ats not in adapters:
-            raise ValueError("Unsupported ATS requires manual interaction")
-        directory = Path(__file__).with_name("adapters")
-        code = (
-            (directory / "common.cjs").read_text(encoding="utf-8")
-            + "\n"
-            + (directory / (ats + ".cjs")).read_text(encoding="utf-8")
-        )
-        adapter = adapters[ats]
-        if operation == "fill":
-            action = (
-                f"return await globalThis.{adapter}.fill(document, {json.dumps(answers or {}, ensure_ascii=False)});"
-            )
-        else:
-            action = (
-                f"const result = globalThis.{adapter}.audit(document);"
-                + """
-for (const field of result.fields) {
-  const element = globalThis.""" + adapter + """.resolve(document, field.id);
-  if (element?.type === 'file') {
-    field.files = [];
-    for (const file of element.files || []) {
-      const bytes = await file.arrayBuffer();
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
-      const sha256 = Array.from(new Uint8Array(digest), n => n.toString(16).padStart(2, '0')).join('');
-      field.files.push({name: file.name, size: file.size, sha256});
-    }
-  }
-  if (field.type !== 'summary') field.observed = Boolean(element);
-}
-result.attachments = result.fields.filter(field => field.type === 'summary' && /^(resume|resume pdf)$/i.test(field.label))
-  .map(field => ({name: field.value, observed: true, evidence: field.evidence}));
-result.url = location.href;
-return result;"""
-            )
-        return "async () => {\n" + code + "\n" + action + "\n}"
+        from .script_driver import adapter_script
+
+        return adapter_script(ats, operation, answers)
 
     def fill(self, tab_id, profile, job, pdf=None):
         self.tabs.setdefault(str(tab_id), {"url": job["url"]}).update(job=copy.deepcopy(job))
@@ -481,6 +442,13 @@ return result;"""
                 self.uploads[str(tab_id)] = copy.deepcopy(receipt)
                 self.observed_uploads[str(tab_id)] = copy.deepcopy(receipt)
             return result
+        # A script driver fills every field a confirmed fact covers and reports
+        # the rest as unknown; only those need the engine.
+        from .script_driver import driver_for
+
+        driver = driver_for(job.get("ats", "greenhouse"))
+        if driver is not None:
+            return driver.run(self.client, tab_id, profile, job, pdf=pdf)
         # Map only supported confirmed facts; all other questions require an
         # exact scoped answer and are left to the native-agent interaction.
         scanned = self.client.evaluate_script(
