@@ -351,16 +351,19 @@ tab đang giữ rồi tự nộp.
 - `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng
   tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
   mở tới khi bạn tự đóng.
-- `track`: ghi lại các form đang giữ mà bạn đã tự nộp: tab đang giữ đã sang trang
-  xác nhận của ATS (Greenhouse, Workday, Rippling, Lever) hoặc mail xác nhận trong
-  tab Gmail, gửi từ ngày giữ form trở đi, nêu đúng tên công ty (và role, nếu mail có) của job đang giữ sẽ thành dòng
-  tracker, và tab ở trang xác nhận được đóng. Tab còn ở form được liệt kê là đang
-  chờ và giữ nguyên; tab đã mất mà chưa có bằng chứng được liệt kê kèm URL. Gmail được tìm
-  ngược tới form giữ lâu nhất (ít nhất 14 ngày, nhiều nhất sáu tháng); mail xác nhận
-  của công ty khác được thêm vào lịch sử một lần, còn mail khác nêu công ty của job
-  đang giữ thì được để lại. Lệnh chỉ liệt
-  kê tab và đọc dòng Gmail, không chạy script trong tab job, và không đổi gì khi
-  Chrome của tool chưa chạy.
+- `track`: ghi lại các form đang giữ mà bạn đã tự nộp. Tab đang giữ đã sang trang
+  xác nhận của chính posting đó (Greenhouse, Workday, Rippling, Lever) sẽ thành dòng
+  tracker và tab được đóng. Trang Workday không nêu job nào thì chưa đủ: tab được
+  liệt kê là đang chờ tới khi có mail. Mail xác nhận trong tab Gmail nêu đúng tên
+  công ty (và role, nếu mail có) của job đang giữ, gửi từ ngày giữ form trở đi,
+  cũng thành dòng tracker. Form giữ từ trước khi tool lưu ngày giữ cần mail trong
+  14 ngày gần nhất nêu đúng role, và tracker chưa có đơn nào cùng công ty và role
+  đó. Tab còn ở form được liệt kê là đang chờ và giữ nguyên; tab đã mất mà chưa có
+  bằng chứng được liệt kê kèm URL. Gmail được tìm ngược tới form giữ lâu nhất (ít
+  nhất 14 ngày, nhiều nhất sáu tháng); mail xác nhận của công ty khác được thêm vào
+  lịch sử một lần, còn mail khác nêu công ty của job đang giữ thì được để lại. Lệnh
+  chỉ liệt kê tab và đọc dòng Gmail, không chạy script trong tab job, và không đổi
+  gì khi Chrome của tool chưa chạy.
 - `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
 - `update`: chép `user/` (trừ `backups/` và profile Chrome) vào
   `user/backups/<ngày-giờ>/`, rồi `git pull --ff-only` (không có git: tải zip của

@@ -26,6 +26,10 @@ TRACK_DAYS = 14
 HELD_STATES = ("filled", "reviewed", "needs_manual")
 REVIEW_ID = "confirmation-page-detected"
 PAGE_TEXT = "Confirmation page seen in the held tab"
+NO_JOB_NOTE = (
+    "This confirmation page does not name the job; it is recorded when its Gmail confirmation arrives, "
+    "or run `submitted <id>` if you submitted this form"
+)
 
 
 def confirmation_page(url):
@@ -73,6 +77,19 @@ def _day(text):
 
 
 _FORM_STEPS = ("apply", "application", "thanks", "confirmation")
+_LOCALE = re.compile(r"^[a-z]{2}(-[a-z]{2})?$", re.IGNORECASE)
+
+
+def _workday_posting(host, segments):
+    """Workday: site and requisition path before ``apply``, without the locale; None when no job is named."""
+    if segments and _LOCALE.match(segments[0]):
+        segments = segments[1:]
+    lowered = [segment.lower() for segment in segments]
+    if "apply" in lowered:
+        segments = segments[:lowered.index("apply")]
+    if not {"job", "details"} & {segment.lower() for segment in segments[:-1]}:
+        return None
+    return host, "/".join(segments)
 
 
 def _posting(url):
@@ -82,6 +99,8 @@ def _posting(url):
     except ValueError:
         return None
     segments = [segment for segment in parts.path.split("/") if segment]
+    if (parts.hostname or "").lower().endswith(".myworkdayjobs.com"):
+        return _workday_posting(parts.netloc.lower(), segments)
     while segments and segments[-1].lower() in _FORM_STEPS:
         segments.pop()
     return (parts.netloc, "/".join(segments)) if segments else None
@@ -120,14 +139,20 @@ def _job_neutral_confirmation(record, url):
         return False
     return (
         confirmation_page(url)
+        and _posting(url) is None
         and (tab.hostname or "").lower().endswith(".myworkdayjobs.com")
         and (tab.hostname or "").lower() == (job.hostname or "").lower()
     )
 
 
-def _belongs(record, tab):
+def _names_job(record, url):
     wanted = _posting(record["url"])
-    return (wanted is not None and _posting(tab["url"]) == wanted) or _job_neutral_confirmation(record, tab["url"])
+    return wanted is not None and _posting(url) == wanted
+
+
+def _belongs(record, tab):
+    """The held tab still shows this job, or a confirmation page that names no job on its site."""
+    return _names_job(record, tab["url"]) or _job_neutral_confirmation(record, tab["url"])
 
 
 def _tab(record, tabs):
@@ -135,13 +160,7 @@ def _tab(record, tabs):
     for tab in tabs:
         if tab["id"] == str(record["tab_id"]):
             return tab if _belongs(record, tab) else None
-    wanted = _posting(record["url"])
-    if wanted is None:
-        return None
-    for tab in tabs:
-        if _posting(tab["url"]) == wanted:
-            return tab
-    return None
+    return next((tab for tab in tabs if _names_job(record, tab["url"])), None)
 
 
 def _summary(record, **extra):
@@ -171,13 +190,33 @@ def _record_mail(store, record, row, entry, clock):
                              "date": entry["date"]})
 
 
-def _mail_matches(held, rows, seen):
+def _fits(record, entry, sent, today, tracked):
+    """Whether a confirmation sent on ``sent`` can be this held job's.
+
+    With a held day: the same role when the email names one, sent on or after
+    that day. A legacy record (held before ``held_at`` existed) has no such day,
+    so the email must name the exact role and be sent within TRACK_DAYS, and the
+    tracker must not already hold that company and role (it may be that one's).
+    """
+    if sent is None:
+        return False
+    held = _day(record.get("held_at"))
+    if held is not None:
+        return (not entry["role"] or _same_role(record["role"], entry["role"])) and sent >= held
+    return (
+        bool(entry["role"]) and _same_role(record["role"], entry["role"])
+        and today is not None and 0 <= (today - sent).days <= TRACK_DAYS
+        and not any(_same_company(row.get("company"), record["company"]) and _same_role(row.get("role"), record["role"])
+                    for row in tracked)
+    )
+
+
+def _mail_matches(held, rows, seen, today=None, tracked=()):
     """{job id: (row, entry)} for each unseen confirmation naming exactly one held job, and held-back keys.
 
-    A match needs the same company, the same role when the email names one, and
-    an email dated on or after the day the form was held. Any other email naming
-    a held job's company is held back: neither matched nor added to the history,
-    so it cannot become a second application for the same job.
+    A match needs the same company and a confirmation that ``_fits`` the job.
+    Any other email naming a held job's company is held back: neither matched
+    nor added to the history, so it cannot become a second application.
     """
     matches, held_back = {}, set()
     for row in rows:
@@ -188,9 +227,7 @@ def _mail_matches(held, rows, seen):
             continue
         company = [r for r in held if _same_company(r["company"], entry["company"])]
         sent = _day(entry["date"])
-        hits = [r for r in company if r["id"] not in matches
-                and (not entry["role"] or _same_role(r["role"], entry["role"]))
-                and sent is not None and _day(r.get("held_at")) is not None and sent >= _day(r["held_at"])]
+        hits = [r for r in company if r["id"] not in matches and _fits(r, entry, sent, today, tracked)]
         if len(hits) == 1:
             matches[hits[0]["id"]] = (row, entry)
         elif company:
@@ -227,18 +264,19 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
     report = {"submitted": [], "waiting": [], "gone": [], "unknown": [], "problems": [],
               "history": {"added": 0, "duplicates": 0, "ignored": 0}, "gmail": "not checked"}
     rows = []
+    today = _day(clock()) or datetime.now(timezone.utc).date()
     gmail_url = by_lane.get("1") if by_lane.get("1") in reachable else (reachable[0] if reachable else None)
     if gmail_url is None:
         report["gmail"] = "Chrome is not reachable; run apply to start it, then track again"
     else:
         try:
-            days = lookback_days(held, _day(clock()) or datetime.now(timezone.utc).date())
+            days = lookback_days(held, today)
             rows = list(gmail(gmail_url, days) or [])
             report["gmail"] = f"checked {len(rows)} rows from the last {days} days"
         except (OSError, ValueError, RuntimeError) as error:
             report["gmail"] = f"Gmail unavailable: {error}"
     seen = {event.get("message_id") for event in store.mail_events() if event.get("account") == ACCOUNT}
-    mails, held_back = _mail_matches(held, rows, seen)
+    mails, held_back = _mail_matches(held, rows, seen, today, store.tracker_rows())
     for record in held:
         endpoint = record.get("debug_url") or by_lane.get(str(record.get("lane", 1)))
         tab = _tab(record, tabs[endpoint]) if endpoint in tabs else None
@@ -247,7 +285,7 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
                 row, entry = mails[record["id"]]
                 _record_mail(store, record, row, entry, clock)
                 report["submitted"].append(_summary(record, via="email", evidence="Gmail: " + entry["subject"]))
-            elif tab is not None and confirmation_page(tab["url"]):
+            elif tab is not None and confirmation_page(tab["url"]) and _names_job(record, tab["url"]):
                 _record_page(store, record, tab, clock)
                 report["submitted"].append(_summary(record, via="page", evidence=tab["url"]))
             elif endpoint not in tabs:
@@ -255,6 +293,10 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
                 continue
             elif tab is None:
                 report["gone"].append(_summary(record, url=record["url"]))
+                continue
+            elif confirmation_page(tab["url"]):
+                report["waiting"].append(_summary(record, tab_id=tab["id"], state=record["state"],
+                                                  page_url=tab["url"], note=NO_JOB_NOTE))
                 continue
             else:
                 report["waiting"].append(_summary(record, tab_id=tab["id"], state=record["state"]))

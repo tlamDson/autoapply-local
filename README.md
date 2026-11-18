@@ -404,15 +404,21 @@ Submit capability; you review each held tab and submit it yourself.
 - `submitted ID,ID`: record held forms you submitted by hand. It writes the
   tracker row and frees the held-tab slot without touching the browser or an
   engine; the tab stays open until you close it.
-- `track`: record held forms you already submitted: a held tab now on the ATS
-  confirmation page (Greenhouse, Workday, Rippling, Lever) or a confirmation email
-  in the Gmail tab, dated on or after the day the form was held, that names the
-  held job's exact company (and role, when the email has one) becomes a tracker row, and a tab on a confirmation page is closed. Tabs still
-  on their form are listed as waiting and kept; tabs that are gone without evidence
-  are listed with their URL. Gmail is searched back to the oldest held form (at
-  least 14 days, at most six months); confirmations for other companies join the
-  applied history once, and other emails naming a held job's company are held back. It only lists tabs and reads Gmail rows, never runs a
-  script in a job tab, and changes nothing when the tool's Chrome is not running.
+- `track`: record held forms you already submitted. A held tab now on the ATS
+  confirmation page of its own posting (Greenhouse, Workday, Rippling, Lever)
+  becomes a tracker row and the tab is closed. A Workday page that names no job
+  is not enough: the tab is listed as waiting until its email arrives. A
+  confirmation email in the Gmail tab that names the held job's exact company
+  (and role, when the email has one), dated on or after the day the form was held,
+  also becomes a tracker row. A form held before held days were stored needs an
+  email from the last 14 days with its exact role, and none already in the tracker
+  for that company and role. Tabs still on their form are listed as waiting and
+  kept; tabs that are gone without evidence are listed with their URL. Gmail is
+  searched back to the oldest held form (at least 14 days, at most six months);
+  confirmations for other companies join the applied history once, and other
+  emails naming a held job's company are held back. It only lists tabs and reads
+  Gmail rows, never runs a script in a job tab, and changes nothing when the
+  tool's Chrome is not running.
 - `status`: list held forms, counts and unresolved applications without an engine.
 - `update`: copy `user/` (except `backups/` and Chrome profiles) to
   `user/backups/<date-time>/`, then `git pull --ff-only` (no git: download the
