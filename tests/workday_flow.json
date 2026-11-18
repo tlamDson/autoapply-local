@@ -1,0 +1,56 @@
+{
+  "_comment": "Synthetic Workday application (invented employer and candidate): what workday_steps.where() and the Workday adapter's audit return on each page. Field IDs follow Workday's data-automation-id naming.",
+  "pages": {
+    "job": {"page": "job", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "start": {"page": "start", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "sign_in": {"page": "sign_in", "step": {"index": 1, "total": 6, "title": "Create Account/Sign In"}, "errors": [], "create_link": true, "sign_in_with_email": false},
+    "sign_in_email_only": {"page": "sign_in", "step": null, "errors": [], "create_link": true, "sign_in_with_email": true},
+    "sign_in_failed": {"page": "sign_in", "step": {"index": 1, "total": 6, "title": "Create Account/Sign In"}, "errors": ["Error: Wrong email or password"], "create_link": true, "sign_in_with_email": false},
+    "create_account": {"page": "create_account", "step": {"index": 1, "total": 6, "title": "Create Account/Sign In"}, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "create_account_failed": {"page": "create_account", "step": {"index": 1, "total": 6, "title": "Create Account/Sign In"}, "errors": ["Error: An account already exists for this email"], "create_link": false, "sign_in_with_email": false},
+    "verify_code": {"page": "verify_code", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "verify_email": {"page": "verify_email", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "applied": {"page": "applied", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "captcha": {"page": "captcha", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "unknown": {"page": "unknown", "step": null, "errors": [], "create_link": false, "sign_in_with_email": false},
+    "review": {"page": "review", "step": {"index": 6, "total": 6, "title": "Review"}, "errors": [], "create_link": false, "sign_in_with_email": false}
+  },
+  "steps": [
+    {
+      "where": {"page": "form", "step": {"index": 2, "total": 6, "title": "My Information"}, "errors": [], "create_link": false, "sign_in_with_email": false},
+      "fields": [
+        {"id": "source--source", "label": "How Did You Hear About Us?", "type": "combobox", "required": true, "value": ["Company Website"], "options": []},
+        {"id": "candidateIsPreviousWorker", "label": "Have you previously worked for Example Co?", "type": "radio", "required": true, "value": null, "options": [{"value": "true", "label": "Yes"}, {"value": "false", "label": "No"}]},
+        {"id": "country--country", "label": "Country", "type": "combobox", "required": true, "value": "United States of America", "options": []},
+        {"id": "name--legalName--firstName", "label": "First Name", "type": "text", "required": true, "value": "", "options": []},
+        {"id": "name--legalName--lastName", "label": "Last Name", "type": "text", "required": true, "value": "", "options": []},
+        {"id": "address--addressLine1", "label": "Address Line 1", "type": "text", "required": true, "value": "", "options": []},
+        {"id": "address--city", "label": "City", "type": "text", "required": true, "value": "", "options": []},
+        {"id": "address--postalCode", "label": "Postal Code", "type": "text", "required": true, "value": "", "options": []},
+        {"id": "phoneNumber--phoneType", "label": "Phone Device Type", "type": "combobox", "required": true, "value": "Mobile", "options": []},
+        {"id": "phoneNumber--phoneNumber", "label": "Phone Number", "type": "text", "required": true, "value": "", "options": []}
+      ]
+    },
+    {
+      "where": {"page": "form", "step": {"index": 3, "total": 6, "title": "My Experience"}, "errors": [], "create_link": false, "sign_in_with_email": false},
+      "fields": [
+        {"id": "autoapply-field-1", "label": "Upload a file (5MB max)", "type": "file", "required": true, "value": "", "options": []},
+        {"id": "socialNetworkAccounts--linkedInAccount", "label": "LinkedIn", "type": "text", "required": false, "value": "", "options": []},
+        {"id": "autoapply-field-2", "label": "Websites", "type": "text", "required": false, "value": "", "options": []}
+      ]
+    },
+    {
+      "where": {"page": "form", "step": {"index": 4, "total": 6, "title": "Application Questions"}, "errors": [], "create_link": false, "sign_in_with_email": false},
+      "fields": [
+        {"id": "autoapply-field-3", "label": "Will you now or in the future require sponsorship for employment visa status?", "type": "select-one", "required": true, "value": "", "options": [{"value": "", "label": "Select One"}, {"value": "yes", "label": "Yes"}, {"value": "no", "label": "No"}]}
+      ]
+    },
+    {
+      "where": {"page": "form", "step": {"index": 5, "total": 6, "title": "Voluntary Disclosures"}, "errors": [], "create_link": false, "sign_in_with_email": false},
+      "fields": [
+        {"id": "personalInfoUS--gender", "label": "Gender", "type": "combobox", "required": false, "value": "", "options": []},
+        {"id": "termsAndConditions--acceptTermsAndAgreements", "label": "I have read and consent to the terms and conditions", "type": "checkbox", "required": true, "value": true, "options": []}
+      ]
+    }
+  ]
+}
