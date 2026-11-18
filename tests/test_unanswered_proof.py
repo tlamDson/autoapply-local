@@ -199,3 +199,59 @@ class EmployerScopeTests(ReleaseCase):
         self.assertEqual(bank.lookup(choice, other)["value"], "Go")
         self.assertEqual(sorted(item["question"] for item in bank.entries_for(other)), [choice["label"], CLUB])
         self.assertEqual(OPTIONS[2]["label"], "Friend")
+
+
+class CollidingOptionTests(RefillProofTests):
+    """One option's value reads like another option's label."""
+
+    OPTIONS = [{"value": "North", "label": "South"}, {"value": "south-id", "label": "North"}]
+
+    def held(self):
+        runner = super().held()
+        runner.store.update("synthetic-1", unanswered=[unknown("question_1", HEAR, options=self.OPTIONS)])
+        self.browser.refill.return_value = {"filled": ["question_1"], "blocked": []}
+        return runner
+
+    def refilled(self, row):
+        runner = self.held()
+        self.browser.snapshot.return_value = snapshot(fields=[row])
+        return runner.refill("synthetic-1", {"question_1": "North"})["status"]  # the user chose "South"
+
+    def test_a_review_row_is_read_as_a_label_never_as_an_option_value(self):
+        self.assertEqual(self.refilled({"id": "review-1", "type": "summary", "label": HEAR, "value": "North"}), "needs_manual")
+        self.assertEqual(self.refilled({"id": "question_1", "type": "summary", "label": HEAR, "value": "North"}), "needs_manual")
+        self.assertEqual(self.refilled({"id": "review-1", "type": "summary", "label": HEAR, "value": "South"}), "filled")
+
+    def test_a_control_value_that_could_name_two_options_proves_nothing(self):
+        self.assertEqual(self.refilled({"id": "question_1", "type": "select", "label": HEAR, "value": "North"}), "needs_manual")
+        self.assertEqual(self.refilled({"id": "question_1", "type": "select", "label": HEAR, "value": "south-id"}), "needs_manual")
+
+
+for _name in [name for name in dir(RefillProofTests) if name.startswith("test_")]:
+    setattr(CollidingOptionTests, _name, None)  # only the collision cases run here
+
+
+class CandidateOnlyScopeTests(EmployerScopeTests):
+    test_a_question_about_the_candidate_alone_is_reused_by_the_next_employer = None
+    test_agreement_questions_stay_with_the_employer_and_start_date = None
+    test_a_required_checkbox_stays_with_the_employer = None
+    test_a_yes_no_question_stays_with_the_employer_whatever_its_wording = None
+    test_a_question_about_the_employer_or_the_role_stays_with_the_employer = None
+
+    def test_contact_permission_stays_with_the_employer_in_both_lookup_paths(self):
+        for label in ("May recruiters contact you about future opportunities?", "Stay in touch?",
+                      "Join the talent community", "Receive job alerts by"):
+            with self.subTest(label=label):
+                self.stays_with_the_employer(
+                    {"label": label, "type": "select", "options": ["Email only", "Do not contact"]}, "Email only")
+
+    def test_a_question_not_known_to_concern_the_candidate_alone_stays_with_the_employer(self):
+        for label in ("Choose one", "Preferred office", "Which shift suits you?", "Anything else to add?"):
+            with self.subTest(label=label):
+                self.stays_with_the_employer({"label": label, "type": "select", "options": ["Blue", "Green"]}, "Blue")
+                self.stays_with_the_employer({"label": label, "type": "text"}, "Blue")
+
+    def test_candidate_wording_never_frees_an_employer_bound_question(self):
+        for label in ("May we keep your degree and skills on file?", "Share your university with recruiters by"):
+            with self.subTest(label=label):
+                self.stays_with_the_employer({"label": label, "type": "select", "options": ["Email", "Phone"]}, "Email")

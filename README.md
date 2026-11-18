@@ -242,11 +242,12 @@ once). Write the user's actual answers to a private file and run `questions
 --answer PATH`: the answers go to the answer bank `user/answer-bank.json` and
 are filled into the held tabs, which are never submitted. The next job that asks
 the same question (same wording, options, country and job type) is filled from
-the bank without asking. Only a question about you alone is reused by another
-employer: a required checkbox, a yes/no or agree/decline question, a question
-that mentions the employer or the role, and questions about authorization,
-sponsorship, consent, agreement, EEO or pay also need the same employer and
-start date. A refilled question counts only when the tab, read back afresh,
+the bank without asking. Only a question known to be about you alone
+(education, skills, languages, clubs, projects) is reused by another employer.
+Every other question also needs the same employer and start date, and so does
+any required checkbox, yes/no or agree/decline question, question that mentions
+the employer or the role, and question about authorization, sponsorship,
+consent, agreement, contact or data permission, EEO or pay. A refilled question counts only when the tab, read back afresh,
 shows your answer; a wrong or missing value keeps it for `questions --refill`. Skip, timeout or no native
 tool keeps the questions for later; `questions --refill` retries a failed refill.
 The popup is one native call, so it holds as many questions as the host tool

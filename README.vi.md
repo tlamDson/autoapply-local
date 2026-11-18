@@ -231,10 +231,12 @@ câu đó cho cả đợt; kết quả có `questions.pending`. Sau đó
 một file riêng rồi chạy `questions --answer PATH`: đáp án vào answer bank
 `user/answer-bank.json` và được điền vào các tab đang giữ, không bao giờ Submit.
 Job sau hỏi cùng câu (cùng chữ, lựa chọn, quốc gia và loại job) được điền từ
-bank mà không hỏi lại. Chỉ câu hỏi về riêng bạn mới được dùng lại cho công ty
-khác: ô tick bắt buộc, câu có/không hoặc đồng ý/từ chối, câu nhắc tới công ty
-hay vị trí, và câu về quyền làm việc, sponsorship, đồng ý, thoả thuận, EEO hoặc
-lương còn cần cùng công ty và ngày bắt đầu. Một câu được điền lại chỉ tính là
+bank mà không hỏi lại. Chỉ câu hỏi chắc chắn về riêng bạn (học vấn, kỹ năng,
+ngôn ngữ, câu lạc bộ, dự án) mới được dùng lại cho công ty khác. Mọi câu khác
+còn cần cùng công ty và ngày bắt đầu, kể cả ô tick bắt buộc, câu có/không hoặc
+đồng ý/từ chối, câu nhắc tới công ty hay vị trí, và câu về quyền làm việc,
+sponsorship, đồng ý, thoả thuận, cho phép liên hệ hoặc dùng dữ liệu, EEO hoặc
+lương. Một câu được điền lại chỉ tính là
 xong khi tab, đọc lại mới, hiện đúng đáp án của bạn; giá trị sai hoặc thiếu thì
 giữ câu đó cho `questions --refill`. Bỏ qua, hết giờ hoặc không có công cụ native
 thì giữ câu hỏi cho lần sau; `questions --refill` thử lại lần điền bị lỗi.

@@ -2,11 +2,14 @@
 
 Each entry is an answer the user gave in the end-of-run popup, keyed by the
 exact question: its normalized label, its kind (choice, boolean or text), its
-option labels and the job's country and job type. Only a question about the
-candidate alone is shared across employers. A required checkbox, a yes/no or
+option labels and the job's country and job type. Only a question known to be
+about the candidate alone (education, skills, languages, clubs, projects and
+the like) is shared across employers; every other question keeps the employer
+and start date, and so does any question with one of these marks, whatever
+else it mentions. A required checkbox, a yes/no or
 agree/decline question, a question that refers to the employer or the role,
 and any wording about work authorization, sponsorship, consent, agreement,
-EEO or pay (in the label or in a money option) also keep the employer and
+contact or data permission, EEO or pay (in the label or in a money option) also keep the employer and
 start date, the full scope a profile answer needs. A question outside that
 scope is a different question and is asked again. The bank lives in the
 runtime root (``user/answer-bank.json``) and never holds inferred answers:
@@ -38,7 +41,18 @@ SENSITIVE = re.compile(
     # The employer or the role itself: the answer belongs to this application.
     r"\b(?:us|we|our|ours|here)\b|\b(?:this|the|your) (?:role|position|job|company|team|employer|firm|"
     r"organi[sz]ation|opportunity|opening|internship|program(?:me)?|posting|vacancy)\b|"
-    r"refer|relative|related to|conflict|previously|former|\bbefore\b|\bever\b|interview|appl(?:y|ied|ication)",
+    r"refer|relative|related to|conflict|previously|former|\bbefore\b|\bever\b|interview|appl(?:y|ied|ication)|"
+    # Contact and data permission: what one employer may do with the candidate.
+    r"contact|recruit|touch|communit|network|\bpool\b|alert|newsletter|subscri|marketing|communicat|notif|"
+    r"future|opportunit|\bmay\b|permi|allow|\bopt\b|share|shar\b|sharing|store|retain|\bkeep\b|on file|"
+    r"process|\bdata\b|personal information|reach|sms|text message|\bcall\b",
+    re.I,
+)
+# Topics whose answer is a fact about the candidate alone, whoever asks.
+CANDIDATE = re.compile(
+    r"\b(?:clubs?|societ(?:y|ies)|school|universit(?:y|ies)|college|degree|major|minor|gpa|grade|graduat\w*|"
+    r"languages?|skills?|experience|projects?|courses?|coursework|tools?|frameworks?|technolog(?:y|ies)|"
+    r"hobb(?:y|ies)|github|linkedin|portfolio|website|awards?|honou?rs?|publications?|hackathons?)\b",
     re.I,
 )
 # An option that only says yes or no, or accepts or declines something.
@@ -87,6 +101,8 @@ def employer_bound(field):
         kind(field) == "boolean"
         or (labels and all(VERDICT.match(normalize(label)) for label in labels))
         or SENSITIVE.search(" ".join([str(field.get("label", "")), *labels]))
+        # Anything not known to concern the candidate alone stays with the employer.
+        or not CANDIDATE.search(str(field.get("label", "")))
     )
 
 

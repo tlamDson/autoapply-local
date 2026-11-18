@@ -56,14 +56,16 @@ fit are `deferred` to the next popup); after the user's actual answers, `questio
 Skip, timeout or no native tool keeps them pending; a failed refill is retried
 with `questions --refill`. A banked answer is reused only for the same question
 wording, options, country and job type, and crosses employers only for a
-question about the candidate alone: a required checkbox, a yes/no or
-agree/decline question, a question that refers to the employer or the role, and
-authorization, sponsorship, consent, agreement, EEO and pay questions (including
-a money amount in the options) also keep employer and start date; it is never
-inferred. A refill never writes to a tab showing another application; Workday
+question known to be about the candidate alone (education, skills, languages,
+clubs, projects). Every other question keeps employer and start date, and so
+does any required checkbox, yes/no or agree/decline question, question that
+refers to the employer or the role, and authorization, sponsorship, consent,
+agreement, contact or data permission, EEO and pay question (including a money
+amount in the options); it is never inferred. A refill never writes to a tab showing another application; Workday
 is refilled by native engine interaction. A refilled field counts only when the
-fresh readback of the tab shows the user's own answer for it; a wrong, empty or
-missing value keeps that field for `questions --refill`.
+fresh readback of the tab shows the user's own answer for it (a review row is
+read as an option label only); a wrong, empty, ambiguous or missing value keeps
+that field for `questions --refill`.
 
 Never click a Submit control, through any command or raw browser action: the
 user reviews and submits each held form by hand. Follow normal engine/MCP
