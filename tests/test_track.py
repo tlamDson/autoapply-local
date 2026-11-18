@@ -306,6 +306,20 @@ class TrackTests(ReleaseCase):
         self.assert_email_held_back(self.reconcile(cdp, rows))
         self.assertEqual(self.tracker_ids(), ["n-1"])
 
+    def test_email_sent_days_before_a_legacy_job_was_seen_on_its_page_stays_held_back_on_later_runs(self):
+        # The confirmation page may have been open for days before track saw it.
+        self.held("n-1", "https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics", role="ML Intern",
+                  held_at=None)
+        self.held("n-2", "https://jobs.lever.co/northwind/n-2/apply", company="Northwind Analytics",
+                  role="Data Intern", held_at="2026-11-10T09:00:00+00:00")
+        cdp = FakeCDP([{"id": "tab-n-1", "url": "https://jobs.lever.co/northwind/1/thanks"},
+                       {"id": "tab-n-2", "url": "https://jobs.lever.co/northwind/n-2/apply"}])
+        rows = [mail("Northwind Analytics", thread="th-plain", date="Nov 15, 2026")]
+        self.assert_email_held_back(self.reconcile(cdp, rows), [("n-1", "page")])
+        for _ in range(2):
+            self.assert_email_held_back(self.reconcile(cdp, rows))
+        self.assertEqual(self.tracker_ids(), ["n-1"])
+
     def test_email_is_held_back_when_a_legacy_held_job_still_on_its_form_could_have_sent_it(self):
         self.held("n-1", "https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics", role="ML Intern",
                   held_at=None)
