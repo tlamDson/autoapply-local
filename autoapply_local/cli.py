@@ -100,6 +100,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     review.add_argument("selection")
     review.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("submitted").add_argument("selection")
+    commands.add_parser("track")
     commands.add_parser("status")
     commands.add_parser("update")
     try:

@@ -337,6 +337,10 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
     from .workflow import Workflow
 
     config = configuration(root)
+    from . import track as track_module
+
+    # Track first: forms the user already submitted leave the held-tab count.
+    tracked = track_module.run(root)
     selected = selected_engine(config, engine)
     base = Workflow(root, browser=None, engines={}, default_engine=selected)
     ids = base._selection(selection, "apply")
@@ -405,7 +409,7 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False, resume_a
             runner = runners[key]
             pdf = pdfs[job_id]
             results.append(runner.apply([job_id], pdf=pdf, engine=selected))
-    return {"results": results, **({"reason": reason} if reason else {}), **base.status()}
+    return {"track": tracked, "results": results, **({"reason": reason} if reason else {}), **base.status()}
 
 
 def review(*, root, selection, approve_browser_tools=False):
@@ -444,6 +448,13 @@ def submitted(*, root, selection):
     for job_id in ids:
         manual_submission.check(store.get(job_id))
     return {"jobs": [manual_submission.record(store, job_id) for job_id in ids], **status(root=root)}
+
+
+def track(*, root):
+    """Record held forms on a confirmation page and Gmail confirmations; list the rest."""
+    from . import track as track_module
+
+    return track_module.run(root)
 
 
 def status(*, root):
@@ -493,6 +504,7 @@ def services():
             "apply",
             "review",
             "submitted",
+            "track",
             "status",
             "update",
             "release_notice",

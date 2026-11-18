@@ -61,7 +61,10 @@ editor; Cancel keeps the original record, and unchanged facts retain metadata.
 `apply` fills and holds; `review` checks fresh live evidence. The tool never
 clicks a Submit control: no command, workflow, browser call or engine task may
 request one, and the user submits each held form by hand, then records it with
-`submitted ID,ID`, which frees its held-tab slot. Preserve held forms for
+`submitted ID,ID`, which frees its held-tab slot. `track` (also run first by
+`apply`) records a held form whose tab shows the ATS confirmation page or whose
+confirmation email is in the Gmail tab; it only lists or closes tabs already on
+a confirmation page and never runs a script in a job tab. Preserve held forms for
 sign-in, account creation, CAPTCHA, unknown questions, errors and manual
 inspection. There is no Gmail command or OAuth. Gmail is read only in the Gmail
 tab of the tool's own Chrome profile, signed in by the user, through the

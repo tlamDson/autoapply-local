@@ -80,6 +80,16 @@ def open_page(debug_url, url, opener=urlopen):
     return {"id": str(page["id"]), "url": page.get("url", url), "ws": page.get("webSocketDebuggerUrl", "")}
 
 
+def close_page(debug_url, tab_id, opener=urlopen):
+    """Close one tab of the same Chrome by its target id."""
+    _loopback(debug_url, ("http",))
+    target = "".join(ch for ch in str(tab_id) if ch.isalnum() or ch in "-_")
+    if not target or target != str(tab_id):
+        raise ValueError("Chrome tab id is malformed")
+    with opener(Request(debug_url.rstrip("/") + "/json/close/" + target), timeout=5) as response:
+        response.read()
+
+
 class _Socket:
     def __init__(self, sock):
         self.sock, self.buffer = sock, b""
