@@ -151,3 +151,58 @@ class BrowserTests(ReleaseCase):
         else:
             self.assertEqual(result["mcp_servers"][key], before["mcp_servers"][key])
         self.assertEqual(existing, before)
+
+
+VM_STAT_SAMPLE = """Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                               20000.
+Pages active:                            180000.
+Pages inactive:                          100000.
+Pages speculative:                         5000.
+Pages throttled:                              0.
+Pages wired down:                         80000.
+Pages purgeable:                           2000.
+"Translation faults":                  90000000.
+Pages copy-on-write:                     900000.
+File-backed pages:                       170000.
+Anonymous pages:                         150000.
+Pages stored in compressor:               30000.
+Pages occupied by compressor:             10000.
+"""
+
+
+class MacMemoryTests(ReleaseCase):
+    """macOS RAM estimate; recorded vm_stat/sysctl text, never a real command."""
+
+    def measure(self, vm_stat=VM_STAT_SAMPLE, memsize="7516192768\n"):
+        import subprocess
+
+        def run(command, **_options):
+            if command == ["vm_stat"]:
+                return subprocess.CompletedProcess(command, 0, stdout=vm_stat, stderr="")
+            if command == ["sysctl", "-n", "hw.memsize"]:
+                if memsize is None:
+                    raise subprocess.CalledProcessError(1, command)
+                return subprocess.CompletedProcess(command, 0, stdout=memsize, stderr="")
+            raise AssertionError(f"unexpected command {command}")
+
+        browser = self.module("browser")
+        with patch("platform.system", return_value="Darwin"), patch.object(browser.subprocess, "run", side_effect=run):
+            return browser.available_memory_mb()
+
+    def test_file_cache_and_purgeable_pages_count_as_available(self):
+        # 7 GiB runner: free+inactive+speculative is only ~1953 MB, but the file
+        # cache is reclaimable. Available = total - (anonymous - purgeable) - wired
+        # - compressor = 458752 - 148000 - 80000 - 10000 pages = 3449 MB.
+        self.assertEqual(self.measure(), 3449)
+
+    def test_older_vm_stat_without_anonymous_pages_counts_free_inactive_speculative(self):
+        legacy = "\n".join(
+            line for line in VM_STAT_SAMPLE.splitlines() if not line.startswith(("Anonymous", "File-backed"))
+        )
+        self.assertEqual(self.measure(vm_stat=legacy), (20000 + 100000 + 5000) * 16384 // (1024 * 1024))
+
+    def test_unknown_total_memory_counts_free_inactive_speculative(self):
+        self.assertEqual(self.measure(memsize=None), (20000 + 100000 + 5000) * 16384 // (1024 * 1024))
+
+    def test_unreadable_vm_stat_denies_admission(self):
+        self.assertEqual(self.measure(vm_stat="no page size here"), 0)

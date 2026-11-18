@@ -47,3 +47,38 @@ jobs:
         run: |
           cd "$AUTOAPPLY_EXPORT"
           python scripts/check_install.py --artifacts "$AUTOAPPLY_ARTIFACTS" --work-dir "$RUNNER_TEMP/install thử ünïcode $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+  install-smoke:
+    # Plan aa-22: the one-line installers on a clean runner, then doctor, scripted setup and the demo fill.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      AUTOAPPLY_LOCAL_NO_UPDATE_CHECK: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install with install.ps1 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./install.ps1 --no-setup
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install with install.sh (macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./install.sh
+          ./install.sh --no-setup
+      - name: Doctor, scripted setup and demo fill
+        shell: bash
+        run: python scripts/ci_smoke.py --work-dir "$RUNNER_TEMP/autoapply-smoke"
