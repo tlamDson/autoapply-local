@@ -21,6 +21,10 @@ claim. Unsupported controls and account challenges leave the form open for you.
 macOS has not been tested live: on macOS only the offline tests and the CI install
 job run.
 
+Job fetch (boards and `--url`) supports Greenhouse, Workday and Rippling only
+in v0.2.0a1. Ashby, Lever and Workable have fill drivers but no job fetch yet;
+their fetch comes in the next version.
+
 Native browser fill still carries
 real-engine risks and needs a live ATS gate before it can be considered stable.
 
@@ -114,7 +118,9 @@ python autoapply-local.py setup --terminal
    `main_pdf`/`main_tags` and `alternatives` in `config.json`.
 5. Jobs per run (default 10). The held-tab cap is computed from free RAM and shown.
 6. Gmail: the tool opens its own clean Chrome profile (`chrome/lane-1`) on Gmail;
-   you sign in there yourself. It then searches the last 183 days for
+   you sign in there yourself, on the Gmail web page only, and
+   do NOT turn on Chrome sync in that profile (sync installs your own extensions
+   there and opens their tabs). It then searches the last 183 days for
    application-confirmation emails and adds each application to the tracker once.
    You can skip this step.
 7. The selected engine opens in this terminal with `/setup` (Codex:
@@ -214,7 +220,7 @@ Without N it fills the jobs-per-run number from setup. One run, in order:
    one → `apply` asks once per role in the terminal and remembers it in
    `user/resume-choices.json`. Each choice and its reason are printed before filling.
 5. Fill with the ATS script driver: Greenhouse, Workday, Rippling, Ashby, Lever and
-   Workable. Workday signs in with the account stored for that Workday site in
+   Workable (Ashby, Lever and Workable jobs are not fetched yet). Workday signs in with the account stored for that Workday site in
    `secrets.json`, creates the account when sign-in fails, and types the
    verification code read from the Gmail tab. No setup step stores that account
    yet; without one the Workday tab is held for you to sign in.
@@ -335,7 +341,8 @@ commands and Codex skill use the same launcher. No command clicks Submit.
 - `history import PATH [--confirm]`: preview, then import, CSV/XLSX history.
 - `doctor [ENGINE]`: check executables and dependencies; sign-in and connectors
   stay `not_verified`.
-- `fetch [ENGINE] [--url URL]`: fetch the active boards, or one supported job URL.
+- `fetch [ENGINE] [--url URL]`: fetch the active boards, or one supported job URL
+  (Greenhouse, Workday and Rippling only).
 - `apply [ENGINE] [N|ID,ID]`: one run as described in
   [Daily use](#daily-use-apply); `--quick N` still works and
   `--approve-browser-tools` approves the browser tools for this command only.

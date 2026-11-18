@@ -32,7 +32,9 @@ MESSAGES = {
         "next": "Terminal setup saved. Next: open {engine} in {root} and run {command}.",
         "launching": "Starting {engine} with {command} for the rest of setup...",
         "gmail_connect": "Open the tool's own Chrome profile and sign in to Gmail there (reads application confirmations)?",
-        "gmail_opened": "Chrome opened with a clean profile in {profile}. Sign in to Gmail in that window.",
+        "gmail_opened": ("Chrome opened with a clean profile in {profile}. Sign in to Gmail on the web page only, "
+                         "and do NOT turn on Chrome sync in this profile (it would install your own extensions "
+                         "and open their tabs)."),
         "gmail_wait": "Press Enter after you signed in to Gmail, or type s to skip: ",
         "gmail_not_signed_in": "Gmail is not signed in yet in that Chrome window.",
         "gmail_failed": "Could not use the Gmail tab: {error}. Setup continues; run setup --terminal again later.",
@@ -69,7 +71,9 @@ MESSAGES = {
         "next": "Đã lưu phần setup trên terminal. Tiếp theo: mở {engine} trong {root} và chạy {command}.",
         "launching": "Đang mở {engine} với {command} cho phần setup còn lại...",
         "gmail_connect": "Mở profile Chrome riêng của tool và đăng nhập Gmail ở đó (để đọc mail xác nhận đơn)?",
-        "gmail_opened": "Đã mở Chrome với profile sạch tại {profile}. Đăng nhập Gmail trong cửa sổ đó.",
+        "gmail_opened": ("Đã mở Chrome với profile sạch tại {profile}. Chỉ đăng nhập Gmail trên trang web, "
+                         "và KHÔNG bật đồng bộ Chrome (Chrome sync) trong profile này (nó sẽ cài extension "
+                         "của bạn và mở tab của chúng)."),
         "gmail_wait": "Nhấn Enter sau khi đã đăng nhập Gmail, hoặc gõ s để bỏ qua: ",
         "gmail_not_signed_in": "Cửa sổ Chrome đó chưa đăng nhập Gmail.",
         "gmail_failed": "Không dùng được tab Gmail: {error}. Setup vẫn tiếp tục; chạy lại setup --terminal sau.",
