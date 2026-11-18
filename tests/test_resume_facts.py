@@ -165,6 +165,13 @@ class ResumeFactsTests(ReleaseCase):
                     self.assertEqual(facts["experience"][0]["description"], "Built a sensor dashboard")
                     self.assertEqual([s["name"] for s in facts["skills"]], ["Python", "PyTorch"])
 
+    def test_research_job_title_is_not_a_heading(self):
+        text = ("Experience\nExample Robotics                     Jun 2025 – Aug 2025\n"
+                "Research Assistant                   Remote\n• Labeled sonar data\n")
+        self.assertEqual(self.parse(text)["experience"], [{
+            "employer": "Example Robotics", "title": "Research Assistant", "location": "Remote",
+            "start": "2025-06", "end": "2025-08", "description": "Labeled sonar data"}])
+
     def test_entry_with_school_only_as_partner_is_not_a_school(self):
         records = self.parse(PARTNER_ONLY)["education"]["records"]
         self.assertEqual(len(records), 1)
