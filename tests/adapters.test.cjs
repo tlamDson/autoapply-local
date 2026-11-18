@@ -962,3 +962,54 @@ test('workable: audit reads chosen Yes/No buttons, saved entries and checkbox gr
 
 require('./ashby.test.cjs');
 require('./workday.test.cjs');
+
+/* Offline demo form (plan aa-09): autoapply_local/data/demo_form.json is the page
+ * setup fills to prove the stack works. The Greenhouse adapter must scan every
+ * field with its label and fill the planned ones without a click; the page has
+ * no Submit control at all.
+ */
+function demoForm() {
+  const spec = JSON.parse(
+    require('node:fs').readFileSync(path.join(__dirname, '..', 'autoapply_local', 'data', 'demo_form.json'), 'utf8'),
+  );
+  const { document, form } = makeDocument();
+  const fields = {};
+  for (const item of spec.fields) {
+    const el = item.tag === 'textarea' ? new TextArea(item.attrs) : new Input(item.attrs);
+    fields[item.attrs.id] = addField(form, el, item.label);
+  }
+  return { spec, document, fields };
+}
+
+test('demo form: greenhouse scan reads every field, label and required flag', () => {
+  const adapter = load('greenhouse');
+  const { spec, document } = demoForm();
+  const scanned = adapter.scan(document).fields.filter(field => field.type !== 'summary');
+  assert.deepEqual(
+    scanned.map(field => [field.id, field.label, field.type, Boolean(field.required)]),
+    spec.fields.map(item => [
+      item.attrs.id,
+      item.label.replace(/\*$/, '').trim(),
+      item.attrs.type || item.tag,
+      item.label.endsWith('*'),
+    ]),
+  );
+  assert.ok(!spec.fields.some(item => item.attrs.type === 'submit'));
+});
+
+test('demo form: fill sets the planned text fields and never clicks', async () => {
+  const adapter = load('greenhouse');
+  const { document, fields } = demoForm();
+  const answers = {
+    first_name: 'Alex',
+    last_name: 'Rivera',
+    email: 'alex.rivera@example.com',
+    phone: '+1 555 0100',
+    question_1: 'https://www.linkedin.com/in/alex-rivera-example',
+  };
+  const confirmed = Object.fromEntries(Object.entries(answers).map(([k, v]) => [k, { value: v, status: 'confirmed' }]));
+  const result = await adapter.fill(document, confirmed);
+  assert.deepEqual([...result.filled].sort(), Object.keys(answers).sort());
+  for (const [id, value] of Object.entries(answers)) assert.equal(fields[id].value, value, id);
+  assert.ok(allElements(document).every(el => el.clicks === 0));
+});

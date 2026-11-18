@@ -119,6 +119,23 @@ Add/Done từng trường. Danh sách lựa chọn dài có phân trang. Unknown
 biến thành No; EEO tùy chọn có thể từ chối. Có thể tiếp tục hoặc sửa câu đã hỏi
 bằng `setup --guided --edit QUESTION_ID --ui UI`.
 
+Sau phần setup trong terminal, setup có hướng dẫn trước hết hiện từng nhóm thông
+tin đọc từ resume (liên hệ, học tập, kinh nghiệm, kỹ năng) với Xác nhận / Sửa, rồi
+hỏi những gì resume không có (quyền làm việc, nhu cầu bảo lãnh, địa chỉ, EEO, kỳ
+tuyển dụng, role mong muốn), rồi hiện bộ lọc job suy ra từ các câu trả lời đó với
+Xác nhận / Sửa: cần bảo lãnh thì bỏ job ghi "no sponsorship", chỉ công dân Mỹ,
+clearance và ITAR; kỳ và loại công việc tạo bộ lọc tiêu đề (ví dụ chỉ thực tập,
+bỏ tiêu đề senior hoặc full-time); job đăng trong 7 ngày; các công ty bạn loại trừ.
+Bộ câu hỏi đầy đủ tiếp tục sau các bước này và vẫn là tùy chọn.
+
+Sau đó setup điền một form demo offline (`demo`: trang cục bộ không có nút Submit,
+mở trong Chrome riêng của tool) để chứng minh mọi thứ chạy được, rồi chạy `fetch`
+lần đầu; `report.summary` cho biết bao nhiêu job từ bao nhiêu board qua bộ lọc.
+Nguồn job là các board công khai đi kèm, chia hai nhóm S&P 500 (`sp500`) và
+unicorn (`unicorn`): `boards groups` liệt kê nhóm, `boards group NAME on|off` tắt
+hoặc bật cả nhóm mà không xoá board, `boards import PATH` thêm board của bạn (luôn
+được fetch).
+
 Để sửa record học tập, kinh nghiệm hoặc authorization đã có, chọn Edit an existing
 record rồi chọn đúng mục có số thứ tự trong popup. Sửa từng trường, chọn Done để
 giữ draft hoặc Cancel and keep original record để hủy thay đổi của record đó.
@@ -398,6 +415,9 @@ credential hay build output. Repo public chứa source test tổng hợp đã qu
 [Actions](https://github.com/tlamDson/autoapply-local/actions).
 Các kiểm tra cục bộ được ghi nhận ở đây chạy trên Windows; workflow khai báo Windows/macOS với Python 3.11 và 3.12,
 chưa khẳng định CI remote đã chạy hay đã kiểm phần cứng macOS.
+Job thứ hai, install-smoke, chạy install.ps1 (Windows) hoặc install.sh (macOS) trên runner sạch,
+rồi scripts/ci_smoke.py: doctor, setup terminal với câu trả lời định sẵn và một bản thay thế offline cho
+CLI engine, profile đã xác nhận của một ứng viên giả, và điền form demo offline.
 
 `pyproject.toml` là nguồn chuẩn cho tên project, version hiện tại, dependencies và
 glob package-data của wheel. Tên artifact và metadata phải khớp version đó.

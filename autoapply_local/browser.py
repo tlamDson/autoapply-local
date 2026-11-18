@@ -108,20 +108,42 @@ def available_memory_mb():
             return status.available // (1024 * 1024)
     elif platform.system() == "Darwin":
         try:
-            import re
-
             output = subprocess.run(["vm_stat"], capture_output=True, text=True, check=True, timeout=5).stdout
             page = int(re.search(r"page size of (\d+) bytes", output).group(1))
-            pages = sum(int(count) for count in re.findall(r"Pages (?:free|inactive|speculative):\s+(\d+)", output))
-            return page * pages // (1024 * 1024)
         except (OSError, subprocess.SubprocessError, AttributeError):
             return 0
+        return _darwin_available_pages(output, page) * page // (1024 * 1024)
     else:
         try:
             return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") // (1024 * 1024)
         except (ValueError, OSError, AttributeError):
             return 0
     return 0
+
+
+def _darwin_available_pages(vm_stat, page):
+    """Activity Monitor's view: total minus app memory, wired and compressed pages.
+
+    macOS keeps its file cache in active pages, so free + inactive alone reads far
+    below what the system can hand out (a 7 GB CI runner shows under 2 GB). Older
+    vm_stat output without the anonymous-page line falls back to that floor.
+    """
+
+    def count(label):
+        found = re.search(rf"^{re.escape(label)}:\s+(\d+)", vm_stat, re.MULTILINE)
+        return int(found.group(1)) if found else None
+
+    floor = sum(count(label) or 0 for label in ("Pages free", "Pages inactive", "Pages speculative"))
+    anonymous = count("Anonymous pages")
+    if anonymous is None:
+        return floor
+    try:
+        total = int(subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, check=True, timeout=5).stdout)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return floor
+    used = anonymous - (count("Pages purgeable") or 0) + (count("Pages wired down") or 0)
+    used += count("Pages occupied by compressor") or 0
+    return max(total // page - used, 0)
 
 
 def _launch_chrome(

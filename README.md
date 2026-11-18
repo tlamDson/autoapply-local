@@ -116,6 +116,24 @@ editors. Large choice lists paginate. Skip/unknown never becomes No, and optiona
 EEO can be declined. You can resume and edit previously issued question IDs.
 Setup is repeatable and preserves existing files.
 
+After terminal setup, guided setup first shows each group of facts read from
+your resumes (contact, education, experience, skills) with Confirm / Edit, then
+asks what a resume lacks (work authorization, sponsorship need, address, EEO,
+recruiting season, target roles), then shows the job filters derived from those
+answers with Confirm / Edit: needing sponsorship drops "no sponsorship", U.S.
+citizen, clearance and ITAR jobs; season and job types shape the title filter
+(for example interns only, no senior or full-time titles); postings within 7
+days; your excluded companies. The complete intake continues after these steps
+and stays optional.
+
+Setup then fills an offline demo form (`demo`: a local page with no Submit
+control, in the tool's own Chrome) to prove the stack works, and runs a first
+`fetch` whose `report.summary` says how many jobs from how many boards passed
+the filters. Job sources are the shipped public boards in two groups, S&P 500
+(`sp500`) and unicorns (`unicorn`): `boards groups` lists them, `boards group
+NAME on|off` turns a group off or on without deleting it, and `boards import
+PATH` adds your own boards, which are always fetched.
+
 Existing education, experience and authorization records also have an Edit an
 existing record option. Choose the numbered native record, change individual
 fields, and use Done or Cancel and keep original record. Similar names have
@@ -458,6 +476,9 @@ This is an experimental public prerelease; check
 [Actions](https://github.com/tlamDson/autoapply-local/actions) for recorded CI results.
 Local checks reported here were run on Windows; the workflow defines Windows/macOS jobs with Python
 3.11 and 3.12, without claiming a remote CI run or macOS hardware validation.
+A second job, install-smoke, runs install.ps1 (Windows) or install.sh (macOS) on a clean runner,
+then scripts/ci_smoke.py: doctor, terminal setup with scripted answers and an offline stand-in for the
+engine CLI, a confirmed profile for an invented candidate, and the offline demo form fill.
 
 `pyproject.toml` is the source of the project name, current version, dependencies
 and wheel package-data patterns. Artifact filenames and metadata must match that

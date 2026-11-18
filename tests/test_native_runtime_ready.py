@@ -462,7 +462,8 @@ class NativeRuntimeReadyTests(ReleaseCase):
             for line in block:
                 self.assertRegex(line, r"^  [a-z_]+:\s*$", "Triggers must have no filters or inputs")
             triggers = [line.strip().removesuffix(":") for line in block]
-        steps = re.findall(r"^      - (.+)$", text, re.MULTILINE)
+        test_job = text.split("\n  install-smoke:", 1)[0]  # the install smoke job (aa-22) has its own steps
+        steps = re.findall(r"^      - (.+)$", test_job, re.MULTILINE)
         self.assertEqual(
             steps,
             [

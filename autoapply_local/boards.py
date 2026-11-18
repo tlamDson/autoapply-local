@@ -1,4 +1,10 @@
-"""Validated public discovery sources and content-bound config imports."""
+"""Validated public discovery sources, seed groups and content-bound config imports.
+
+Shipped seeds carry a ``group`` (``sp500``, ``unicorn``); the user turns a whole
+group off in ``config.json`` ``board_groups`` without deleting its boards.
+Boards the user imports lose any ``group`` they carry (and an imported board
+that replaces a seed drops the seed's group), so they are always fetched.
+"""
 
 import hashlib
 import json
@@ -8,6 +14,9 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .storage import atomic_write_json, lock, read_json
+
+
+GROUP = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}")
 
 
 def identity(board):
@@ -33,11 +42,13 @@ def normalize(values):
         if ats not in ("greenhouse", "workday", "rippling"):
             raise ValueError("Choose greenhouse, workday or rippling boards")
         fields = ("host", "tenant", "site") if ats == "workday" else ("board",)
-        allowed = {"ats", "company", "endpoint", *fields}
+        allowed = {"ats", "company", "endpoint", "group", *fields}
         if ats == "workday":
             allowed.add("search")
         if set(board) - allowed:
             raise ValueError("Unsupported board fields")
+        if "group" in board and not GROUP.fullmatch(board["group"]):
+            raise ValueError("A board group is a short lowercase name (letters, digits, - or _)")
         for field in fields:
             value = board.get(field, "")
             if field == "host":
@@ -106,6 +117,11 @@ def _digest(content):
     return hashlib.sha256(content).hexdigest()
 
 
+def _user_boards(boards):
+    """Boards the user imports belong to no seed group, so a group switch never turns them off."""
+    return [{key: value for key, value in board.items() if key != "group"} for board in boards]
+
+
 def _merge(current, incoming):
     merged = {identity(board): board for board in normalize(current or [])}
     changes = []
@@ -121,7 +137,7 @@ def _merge(current, incoming):
 def preview_import(root, path):
     root, path = Path(root), Path(path).resolve()
     content = path.read_bytes()
-    incoming = normalize(json.loads(content.decode("utf-8-sig")))
+    incoming = _user_boards(normalize(json.loads(content.decode("utf-8-sig"))))
     _config(root)
     config_content = (root / "config.json").read_bytes()
     merged, changes = _merge(json.loads(config_content).get("boards"), incoming)
@@ -143,8 +159,47 @@ def apply_import(root, preview, confirm=False):
         config_content = (root / "config.json").read_bytes()
         if _digest(content) != preview["sha256"] or _digest(config_content) != preview["config_sha256"]:
             raise ValueError("Boards input or config changed; preview again")
-        incoming = normalize(json.loads(content.decode("utf-8-sig")))
+        incoming = _user_boards(normalize(json.loads(content.decode("utf-8-sig"))))
         config = json.loads(config_content)
         merged, changes = _merge(config.get("boards"), incoming)
         atomic_write_json(root / "config.json", {**config, "boards": merged})
         return {"applied": True, "boards": merged, "changes": changes}
+
+
+def _enabled(config):
+    value = config.get("board_groups")
+    return value if isinstance(value, dict) else {}
+
+
+def groups(root):
+    """Each seed group with its board count and on/off state, in first-seen order."""
+    config = _config(root)
+    enabled, counts = _enabled(config), {}
+    for board in normalize(config.get("boards") or []):
+        if "group" in board:
+            counts[board["group"]] = counts.get(board["group"], 0) + 1
+    return [{"group": name, "boards": count, "enabled": enabled.get(name, True) is not False}
+            for name, count in counts.items()]
+
+
+def active_boards(root):
+    """Boards to fetch: every board whose group is not turned off."""
+    config = _config(root)
+    enabled = _enabled(config)
+    return [board for board in normalize(config.get("boards") or []) if enabled.get(board.get("group"), True) is not False]
+
+
+def set_group(root, group, enabled):
+    if type(enabled) is not bool:
+        raise ValueError("A board group is turned on or off")
+    root = Path(root)
+    with lock(root / "profile-update.lock"):
+        known = [item["group"] for item in groups(root)]
+        if group not in known:
+            raise ValueError(f"Unknown board group {group!r}; choose " + ", ".join(known or ["none configured"]))
+        config = _config(root)
+        states = {**_enabled(config), group: enabled}
+        # Only an off group is stored; on is the default.
+        config["board_groups"] = {name: False for name, value in states.items() if value is False}
+        atomic_write_json(root / "config.json", config)
+    return {"group": group, "enabled": enabled, "groups": groups(root)}

@@ -1,0 +1,58 @@
+{
+  "note": "Recorded-shape public board responses (Greenhouse jobs API, Workday CXS jobs, Rippling board jobs) for an invented employer. Dates are relative to the test's fixed day 2026-11-18.",
+  "greenhouse": {
+    "jobs": [
+      {
+        "id": 4001,
+        "title": "Software Engineer Intern, Summer 2027",
+        "absolute_url": "https://job-boards.greenhouse.io/examplecorp/jobs/4001",
+        "location": {"name": "New York, NY, United States"},
+        "content": "&lt;p&gt;Build Python services with the platform team.&lt;/p&gt;",
+        "first_published": "2026-11-16T09:00:00-05:00",
+        "updated_at": "2026-11-17T10:00:00-05:00"
+      },
+      {
+        "id": 4002,
+        "title": "Software Engineer Intern, Summer 2027 (Infra)",
+        "absolute_url": "https://job-boards.greenhouse.io/examplecorp/jobs/4002",
+        "location": {"name": "Austin, TX, United States"},
+        "content": "&lt;p&gt;This role does not sponsor visas.&lt;/p&gt;",
+        "first_published": "2026-11-17T09:00:00-05:00"
+      },
+      {
+        "id": 4003,
+        "title": "Senior Software Engineer",
+        "absolute_url": "https://job-boards.greenhouse.io/examplecorp/jobs/4003",
+        "location": {"name": "Remote, US"},
+        "content": "&lt;p&gt;Lead the payments team.&lt;/p&gt;",
+        "updated_at": "2026-11-18T08:00:00Z"
+      }
+    ]
+  },
+  "workday": {
+    "total": 3,
+    "jobPostings": [
+      {
+        "title": "Software Engineering Intern - Summer 2027",
+        "externalPath": "/job/Seattle-WA/Software-Engineering-Intern---Summer-2027_R5001",
+        "locationsText": "Seattle, WA, United States",
+        "bulletFields": ["R5001"],
+        "postedOn": "Posted 2 Days Ago"
+      },
+      {
+        "title": "Software Engineering Intern - Summer 2027 (Tools)",
+        "externalPath": "/job/Seattle-WA/Software-Engineering-Intern---Summer-2027--Tools-_R5002",
+        "locationsText": "Seattle, WA, United States",
+        "bulletFields": ["R5002"],
+        "postedOn": "Posted 30+ Days Ago"
+      },
+      {
+        "title": "Software Engineer Intern, Summer 2027 (Mobile)",
+        "externalPath": "/job/Remote/Software-Engineer-Intern--Summer-2027--Mobile-_R5003",
+        "locationsText": "Remote, United States",
+        "bulletFields": ["R5003"],
+        "postedOn": "Posted Today"
+      }
+    ]
+  }
+}
