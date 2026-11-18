@@ -76,34 +76,45 @@ class _Tab:
             raise ValueError(f"The demo tab shows another page ({pages[0].get('url')}); nothing was filled there. "
                              "Run demo again")
         expression = (
-            "(async () => {\nif (location.href !== " + json.dumps(self.url) + ") return {wrong_document: true};\n"
+            "(async () => {\nif (location.href !== " + json.dumps(self.url) + ") return {wrong_document: true, href: location.href};\n"
             "return await (" + function + ")();\n})()"
         )
         result = self.cdp.evaluate(pages[0]["ws"], expression, timeout=60)
         if isinstance(result, dict) and result.get("wrong_document"):
-            raise ValueError("The demo tab shows another page; nothing was filled there. Run demo again")
+            raise ValueError(f"The demo tab shows another page ({result.get('href')}); nothing was filled there. "
+                             "Run demo again")
         return result
 
 
 NAVIGATION_TIMEOUT = 20
 BLANK_URLS = ("", "about:blank")
+DOCUMENT_STATE = "({href: location.href, ready: document.readyState})"
 
 
 def _wait_for_page(debug_url, cdp, tab_id, url, sleep, clock, timeout=NAVIGATION_TIMEOUT):
-    """Wait until the new tab shows the demo page; Chrome lists it as blank until the navigation commits."""
+    """Wait until the new tab's own document is the loaded demo page.
+
+    Chrome lists a new tab as blank until the navigation commits, and the tab
+    list can show the new URL while the page still runs the old blank document.
+    """
     deadline = clock() + timeout
     while True:
-        shown = [page.get("url") for page in cdp.pages(debug_url) if str(page.get("id")) == str(tab_id)]
-        if len(shown) != 1:
+        listed = [page for page in cdp.pages(debug_url) if str(page.get("id")) == str(tab_id)]
+        if len(listed) != 1:
             raise ValueError("The demo tab was closed; run demo again")
-        if shown[0] == url:
-            return
-        if shown[0] not in BLANK_URLS:
-            raise ValueError(f"The demo tab shows another page ({shown[0]}); nothing was filled there. "
+        shown, ready = listed[0].get("url") or "", None
+        if shown == url:
+            state = cdp.evaluate(listed[0]["ws"], DOCUMENT_STATE, timeout=10)
+            state = state if isinstance(state, dict) else {}
+            shown, ready = state.get("href") or "", state.get("ready")
+            if shown == url and ready == "complete":
+                return
+        if shown not in BLANK_URLS and shown != url:
+            raise ValueError(f"The demo tab shows another page ({shown}); nothing was filled there. "
                              "Run demo again")
         if clock() >= deadline:
-            raise ValueError(f"The demo tab still shows {shown[0] or 'nothing'} after {timeout} s; "
-                             "nothing was filled. Run demo again")
+            raise ValueError(f"The demo tab still shows {shown or 'nothing'} ({ready or 'not loaded'}) after "
+                             f"{timeout} s; nothing was filled. Run demo again")
         sleep(0.25)
 
 

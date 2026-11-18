@@ -33,7 +33,7 @@ def load_smoke():
 class TempCase(unittest.TestCase):
     def setUp(self):
         self.smoke = load_smoke()
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()  # macOS: /var is /private/var
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
 
 
@@ -215,7 +215,7 @@ class MainTests(TempCase):
         self.assertIn("Alex_Rivera_Resume.pdf", setup_kwargs["input"])
         self.assertTrue(setup_kwargs["env"]["PATH"].startswith(str((self.tmp / "work").resolve())))  # macOS: /var is /private/var
         for _, kwargs in calls:
-            self.assertEqual(Path(kwargs["cwd"]), repo)
+            self.assertEqual(Path(kwargs["cwd"]), repo.resolve())
         self.assertEqual(calls[0][0], ["doctor"])
         self.assertTrue(all(call[0] is not None for call in calls))
         self.assertEqual(killed, [4242])

@@ -61,6 +61,14 @@ class FakeCDP:
     def __init__(self):
         self.opened, self.expressions, self.fill_result, self.events = [], [], None, []
         self.not_ready = None
+        self.documents = []  # in-page (href, readyState) answers to the readiness probe, in turn
+
+    def document_state(self, expression):
+        """Answer the demo's readiness probe; ``None`` when ``expression`` is not that probe."""
+        if "document.readyState" not in expression or "AutoApply" in expression:
+            return None
+        href, ready = self.documents.pop(0) if self.documents else (self.page["url"], "complete")
+        return {"href": href, "ready": ready}
 
     def wait_ready(self, debug_url, timeout=20):
         self.events.append(("wait_ready", debug_url))
@@ -77,6 +85,9 @@ class FakeCDP:
         return [dict(self.page)] if self.opened else []
 
     def evaluate(self, ws, expression, timeout=60):
+        state = self.document_state(expression)
+        if state is not None:
+            return state
         self.expressions.append(expression)
         if "AutoApplyGreenhouse.audit" in expression:
             return recorded_scan()
@@ -118,6 +129,9 @@ class NodePageCDP(FakeCDP):
         self.node = shutil.which("node")
 
     def evaluate(self, ws, expression, timeout=60):
+        state = self.document_state(expression)
+        if state is not None:
+            return state
         self.expressions.append(expression)
         href = self.hrefs.pop(0) if self.hrefs else self.page["url"]
         payload = {
@@ -221,6 +235,23 @@ class DemoRunTests(ReleaseCase):
         self.assertEqual(len(sleeps), 2)
         self.assertIn("first_name", result["filled"])
 
+    def test_run_waits_until_the_page_document_itself_is_the_loaded_demo(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        cdp.documents = [("about:blank", "complete"), (None, "loading")]
+        cdp.documents[1] = (demo.write(self.root).resolve().as_uri(), "loading")
+        sleeps = []
+        result = demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp, sleep=sleeps.append)
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(sleeps), 2)
+
+    def test_run_stops_before_any_script_when_the_document_is_another_page(self):
+        demo, cdp = self.module("demo_form"), FakeCDP()
+        cdp.documents = [("https://job-boards.greenhouse.io/examplecorp/jobs/1", "complete")]
+        sleeps = []
+        with self.assertRaisesRegex(ValueError, "examplecorp"):
+            demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp, sleep=sleeps.append)
+        self.assertEqual((sleeps, cdp.expressions), ([], []))
+
     def test_run_stops_when_the_new_tab_never_shows_the_demo_page(self):
         demo, cdp = self.module("demo_form"), FakeCDP()
         real_pages = cdp.pages
@@ -247,7 +278,8 @@ class DemoRunTests(ReleaseCase):
 
         def navigate_after_audit(ws, expression, timeout=60):
             result = real_evaluate(ws, expression, timeout)
-            cdp.page["url"] = "https://job-boards.greenhouse.io/examplecorp/jobs/1"
+            if cdp.document_state(expression) is None:  # not the readiness probe before the audit
+                cdp.page["url"] = "https://job-boards.greenhouse.io/examplecorp/jobs/1"
             return result
 
         cdp.evaluate = navigate_after_audit
@@ -281,15 +313,16 @@ class DemoRunTests(ReleaseCase):
             demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
         self.assertEqual(len(cdp.pages_seen), 2, "the fill script reached the page; only its own guard can stop it")
         fill = cdp.pages_seen[1]
-        self.assertEqual(fill["result"], {"wrong_document": True})
+        self.assertEqual(fill["result"], {"wrong_document": True,
+                                          "href": "https://job-boards.greenhouse.io/examplecorp/jobs/1"})
         self.assertEqual(fill["writes"], 0)
         self.assertEqual(set(fill["values"].values()), {""})
         self.assertEqual(fill["clicks"], 0)
 
     def test_document_mismatch_inside_the_page_stops_the_demo(self):
         demo, cdp = self.module("demo_form"), FakeCDP()
-        cdp.evaluate = lambda ws, expression, timeout=60: (cdp.expressions.append(expression),
-                                                           {"wrong_document": True})[1]
+        cdp.evaluate = lambda ws, expression, timeout=60: cdp.document_state(expression) or (
+            cdp.expressions.append(expression), {"wrong_document": True})[1]
         with self.assertRaises(ValueError):
             demo.run(self.root, DEBUG_URL, candidate(), cdp=cdp)
         self.assertEqual(len(cdp.expressions), 1)
