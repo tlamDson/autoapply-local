@@ -551,7 +551,9 @@ class BrowserBridge:
         from .script_driver import driver_for, refill_script
 
         ats = job.get("ats", "greenhouse")
-        native = driver_for(ats) is None
+        # Workday is multi-step: the question may sit on a page other than the one
+        # showing, so only native engine interaction (Back/Next) can refill it.
+        native = ats == "workday" or driver_for(ats) is None
         if native and not isinstance(self.client, EngineMCPClient):
             raise ValueError("Unsupported ATS requires manual interaction")
         script = None if native else refill_script(ats, answers)

@@ -63,6 +63,19 @@ Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/w
 print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any
 secrets file; `scripts/check_release.py` fails when git tracks one.
 
+The Workday driver (`workday_driver.py`) fills each step from confirmed facts, uploads the
+selected resume on the step that asks for it and presses Next only through the guarded
+`press()` of `adapters/workday_steps.cjs` (fixed actions, never a control that says Submit,
+never on the last step); it stops on Review. Its account step (`workday_account.py`) runs over
+loopback CDP in the held tab, never through an engine: Apply, Apply Manually, sign-in with the
+stored credential, account creation when sign-in fails, and the one-time code read from the
+subject/snippet of Gmail result rows. The credential and code are typed only on the page just
+checked and only when the tab's host is the job's tenant; the code is typed and dropped, never
+stored or returned. The tenant's account terms box is never ticked: an unticked box holds the
+filled create-account form for the user. A resume upload counts only when the browser reports it
+and a fresh audit shows the file. CAPTCHA, a link-only verification mail, a rejected code, another
+host or an unknown page holds the tab.
+
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,
 Node adapter tests and scripts/check_release.py from this release root. Do not
@@ -80,6 +93,7 @@ claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks
 - Fixture ZIP đặt ZipInfo.filename trực tiếp để giữ nguyên dấu backslash trên Windows; zipfile tự chuẩn hóa tên khi nhận chuỗi nên ca traversal trước đó không chứa member mà assertion cần kiểm. Không đổi assertion.
 
 - Installer (aa-04): install.ps1/install.sh only locate Python 3.11+ and git, then hand off to scripts/install.py; a missing dependency prints its winget/brew command and exits 3, a failed pip install exits 4; system software is never installed.
+- Rippling driver (aa-13): `rippling_driver.RipplingDriver` uploads the resume first, waits for Rippling's own parse, then writes confirmed facts into the Formsy model (`adapters/rippling.cjs`), so they win over the parse; every written fact is read back (`modelCheck`) until two checks in a row are clean, a fact a late parse changed is rewritten at most twice and then reported `value_overwritten`, and the final scan must still show each written value or it is reported the same way; location is typed, the old place id is cleared first, and only the single matching Places suggestion is picked (mousedown first, click only if needed, never inside a button, link, label or other activating control), succeeding only with a fresh place id and matching location text; anything unknown, ambiguous or still required-empty is reported and the tab is held. No adapter action clicks a button.
 
 - Update (aa-21): `update` works only from a source checkout; it backs up user/ (skipping backups/, browser/, chrome/) before any change, pulls with `git pull --ff-only` or extracts the latest release zip (never into user/, .venv/ or .git/), reinstalls, then runs migrations recorded in user/migrations.json. `apply`'s release lookup is skipped when AUTOAPPLY_LOCAL_NO_UPDATE_CHECK is set; the offline suite sets it.
 

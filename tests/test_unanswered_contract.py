@@ -11,6 +11,7 @@ clicks Submit.
 import json
 import sys
 from pathlib import Path
+import unittest.mock
 from unittest.mock import Mock
 
 RELEASE = Path(__file__).resolve().parents[1]
@@ -283,3 +284,29 @@ class WorkEligibilityScopeTests(ReleaseCase):
                               {**may, "company": "Another Co", "start_date": "2030-08-01"}):
                     self.assertIsNone(bank.lookup(field, other))
                     self.assertNotIn(label, [item["question"] for item in bank.entries_for(other)])
+
+
+class WorkdayDriverBankTests(ReleaseCase):
+    def test_workday_driver_plans_each_step_with_the_answer_bank(self):
+        from autoapply_local import workday_steps
+        from autoapply_local.browser import BrowserBridge
+        from autoapply_local.workday_driver import WorkdayDriver
+
+        client = Mock(spec=["evaluate_script", "list_pages"])
+        client.list_pages.return_value = [{"id": "tab-1", "url": job(ats="workday")["url"]}]
+        client.evaluate_script.side_effect = [
+            {"page": "form", "step": {"index": 1, "total": 2, "title": "Questions"}},
+            {"pressed": True, "moved": True},
+            {"page": "review", "step": {"index": 2, "total": 2, "title": "Review"}},
+        ]
+        bank = self.module("answer_bank").AnswerBank(self.root)
+        page = {"driver": "workday", "filled": ["question_1"], "blocked": [], "uploads": [], "unknown": [],
+                "resume_field": None, "status": "filled"}
+        with unittest.mock.patch.object(WorkdayDriver, "fill_page", return_value=(page, {}, [])) as fill_page, \
+                unittest.mock.patch.object(WorkdayDriver, "_type_blocked"), \
+                unittest.mock.patch.object(workday_steps, "script", return_value="where"), \
+                unittest.mock.patch.object(workday_steps, "press_script", return_value="next"):
+            result = BrowserBridge(client).fill("tab-1", profile=candidate("authorized"), job=job(ats="workday"),
+                                                bank=bank)
+        self.assertEqual(result["status"], "filled")
+        self.assertIs(fill_page.call_args.kwargs["bank"], bank)

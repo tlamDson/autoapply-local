@@ -60,6 +60,7 @@
   "autoapply_local/questionnaire.py",
   "autoapply_local/release_audit.py",
   "autoapply_local/resume_choice.py",
+  "autoapply_local/rippling_driver.py",
   "autoapply_local/runtime.py",
   "autoapply_local/script_driver.py",
   "autoapply_local/storage.py",
@@ -82,6 +83,7 @@
   "tests/test_ashby.py",
   "tests/greenhouse_form.json",
   "tests/lever_form.json",
+  "tests/rippling.test.cjs",
   "tests/test_answer_identity.py",
   "tests/test_bootstrap.py",
   "tests/test_autoapply_local.py",
@@ -117,6 +119,7 @@
   "tests/test_package_manifest.py",
   "tests/test_release_complete.py",
   "tests/test_resume_choice.py",
+  "tests/test_rippling_driver.py",
   "tests/test_wd_cred.py",
   "tests/test_review_regressions.py",
   "tests/test_review_safety.py",
@@ -157,5 +160,13 @@
   "tests/test_unanswered.py",
   "tests/test_unanswered_contract.py",
   "tests/test_unanswered_flow.py",
-  "tests/test_unanswered_review.py"
+  "tests/test_unanswered_review.py",
+  "tests/workday.test.cjs",
+  "tests/workday_flow.json",
+  "tests/test_workday_driver.py",
+  "tests/test_workday_account.py",
+  "autoapply_local/adapters/workday_steps.cjs",
+  "autoapply_local/workday_steps.py",
+  "autoapply_local/workday_account.py",
+  "autoapply_local/workday_driver.py"
 ]
