@@ -126,6 +126,14 @@ citizen, clearance and ITAR jobs; season and job types shape the title filter
 days; your excluded companies. The complete intake continues after these steps
 and stays optional.
 
+Setup then fills an offline demo form (`demo`: a local page with no Submit
+control, in the tool's own Chrome) to prove the stack works, and runs a first
+`fetch` whose `report.summary` says how many jobs from how many boards passed
+the filters. Job sources are the shipped public boards in two groups, S&P 500
+(`sp500`) and unicorns (`unicorn`): `boards groups` lists them, `boards group
+NAME on|off` turns a group off or on without deleting it, and `boards import
+PATH` adds your own boards, which are always fetched.
+
 Existing education, experience and authorization records also have an Edit an
 existing record option. Choose the numbered native record, change individual
 fields, and use Done or Cancel and keep original record. Similar names have
