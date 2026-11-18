@@ -22,6 +22,7 @@ COMMANDS = (
     "fetch",
     "apply",
     "review",
+    "submitted",
     "status",
 )
 
@@ -66,6 +67,7 @@ class CliTests(ReleaseCase):
             "fetch",
             "apply",
             "review",
+            "submitted",
             "status",
         ):
             with self.subTest(command=command):

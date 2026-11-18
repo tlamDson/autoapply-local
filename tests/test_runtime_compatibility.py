@@ -791,9 +791,9 @@ class WorkflowCompatibilityTests(ReleaseCase):
                                     self.assertNotIn(
                                         record["tab_id"], [call.args[0] for call in bridge.snapshot.call_args_list]
                                     )
-                # The user submits reviewed tabs by hand, which frees the held-tab cap.
-                for job_id in ids:
-                    self.store.update(job_id, state="submitted")
+                # The user submits reviewed tabs by hand and records them, freeing the cap.
+                runtime.submitted(root=self.root, selection=ids)
+                self.assertEqual(runtime.status(root=self.root)["held_tabs"], [])
 
     def test_unsupported_login_redirect_retains_tab_and_actionable_manual_report(self):
         lanes = self.configure()

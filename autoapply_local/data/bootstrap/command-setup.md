@@ -100,7 +100,8 @@ before explicit --confirm; public examples are in examples/boards.json. Advanced
 intake resources.boards absent/null preserves choices; [] disables them.
 
 Apply fills existing role-selected PDFs and holds tabs. Review rereads live
-evidence. Nothing ever clicks Submit; the user submits each held form by hand.
+evidence. Nothing ever clicks Submit; the user submits each held form by hand
+and records it with `submitted ID,ID`, which frees its held-tab slot.
 Preserve every held form for sign-in, account creation, CAPTCHA, unknown facts
 and errors. Setup does not access Gmail. Never send/draft/archive/label mail,
 scrape browser Gmail, persist verification codes or read another workspace's

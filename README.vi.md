@@ -313,11 +313,14 @@ tab đang giữ rồi tự nộp.
 - `apply [ENGINE] --quick N|ID,ID`: chọn PDF theo role, điền và giữ tab; không nộp. Trước khi mở browser, stderr hiện role mục tiêu, kỳ/khoảng tuyển
   dụng và PDF của từng job đã chọn; stdout cuối vẫn là JSON.
 - `review ID,ID|all`: đọc lại form đang giữ, kiểm job/tab/field/fact/PDF còn mới.
+- `submitted ID,ID`: ghi lại các form đang giữ mà bạn đã tự nộp. Lệnh ghi dòng
+  tracker và giải phóng chỗ trong trần tab, không đụng browser hay engine; tab vẫn
+  mở tới khi bạn tự đóng.
 - `status`: xem tab đang giữ và đơn chưa giải quyết, không cần gọi engine.
 
 Mặc định một lane Chrome sạch và bền giữa các lệnh. Hai/ba lane cần opt-in.
 Kiểm RAM và giới hạn tab là heuristic, chưa phải benchmark máy 8 GB. Khi chạm trần,
-hãy kiểm và tự nộp các form đang giữ trước khi mở thêm. Khi cần tạo
+hãy tự nộp các form đang giữ và ghi lại bằng `submitted ID,ID` trước khi mở thêm. Khi cần tạo
 tài khoản, đăng nhập, CAPTCHA/MFA hoặc sửa control chưa hỗ trợ, thao tác trong tab
 đang giữ rồi tiếp tục. Không đóng form chưa nộp. Package không thu/lưu mật khẩu.
 Chạy lại `apply [ENGINE] --quick ID` với đúng ID để tiếp tục cùng tab sau khi xử lý

@@ -11,6 +11,7 @@ COMMANDS = (
     "fetch",
     "apply",
     "review",
+    "submitted",
     "status",
 )
 

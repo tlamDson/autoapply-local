@@ -6,6 +6,7 @@
   ".claude/commands/review.md",
   ".claude/commands/setup.md",
   ".claude/commands/status.md",
+  ".claude/commands/submitted.md",
   ".codex/skills/autoapply-local/SKILL.md",
   ".github/workflows/ci.yml",
   ".gitignore",
@@ -39,6 +40,7 @@
   "autoapply_local/data/bootstrap/command-apply.md",
   "autoapply_local/data/bootstrap/command-review.md",
   "autoapply_local/data/bootstrap/command-status.md",
+  "autoapply_local/data/bootstrap/command-submitted.md",
   "autoapply_local/engines.py",
   "autoapply_local/fetch.py",
   "autoapply_local/guided.py",
@@ -104,5 +106,7 @@
   "tests/test_workflow.py",
   "tests/test_workflow_complete.py",
   "autoapply_local/extraction.py",
-  "tests/test_quick_apply_scope.py"
+  "tests/test_quick_apply_scope.py",
+  "autoapply_local/manual_submission.py",
+  "tests/test_manual_submission.py"
 ]

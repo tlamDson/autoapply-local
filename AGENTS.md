@@ -28,7 +28,8 @@ editor; Cancel keeps the original record, and unchanged facts retain metadata.
 
 `apply` fills and holds; `review` checks fresh live evidence. The tool never
 clicks a Submit control: no command, workflow, browser call or engine task may
-request one, and the user submits each held form by hand. Preserve held forms for
+request one, and the user submits each held form by hand, then records it with
+`submitted ID,ID`, which frees its held-tab slot. Preserve held forms for
 sign-in, account creation, CAPTCHA, unknown questions, errors and manual
 inspection. There is no Gmail command in this release; never send, draft,
 archive, label, scrape browser Gmail, or persist verification codes.

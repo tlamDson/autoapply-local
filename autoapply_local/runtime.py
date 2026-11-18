@@ -303,7 +303,7 @@ def apply(*, root, selection, engine=None, approve_browser_tools=False):
             if record["state"] == "pending":
                 held = [item for item in base.store.jobs() if item.get("tab_id") and item["state"] != "submitted"]
                 if len(held) >= resources.get("held_tab_cap", 5):
-                    reason = "Held-tab cap reached; finish held forms before opening another job"
+                    reason = "Held-tab cap reached; submit held forms by hand and record them with submitted ID before opening another job"
                     break
                 if browser.available_memory_mb() < 2048 + lane_count * 1024:
                     reason = "Insufficient available memory for new browser work; held tabs are preserved"
@@ -364,6 +364,19 @@ def review(*, root, selection, approve_browser_tools=False):
     return {"reviews": reviews, **base.status()}
 
 
+def submitted(*, root, selection):
+    """Record held forms the user submitted by hand, freeing their held-tab slots."""
+    from . import manual_submission
+
+    store = Store(root)
+    ids = list(dict.fromkeys(selection))
+    if not ids or any(not isinstance(item, str) or not item for item in ids):
+        raise ValueError("Choose explicit job IDs")
+    for job_id in ids:
+        manual_submission.check(store.get(job_id))
+    return {"jobs": [manual_submission.record(store, job_id) for job_id in ids], **status(root=root)}
+
+
 def status(*, root):
     jobs = Store(root).jobs()
     return {
@@ -395,6 +408,7 @@ def services():
             "fetch",
             "apply",
             "review",
+            "submitted",
             "status",
         )
     }

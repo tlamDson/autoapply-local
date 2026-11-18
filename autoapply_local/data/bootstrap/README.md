@@ -91,7 +91,8 @@ Keep held forms open after any error.
 
 Quick apply reports target roles, recruiting season/window and selected PDFs on
 stderr before browser work. It fills and holds existing PDFs and never clicks
-Submit. Keep held tabs open, review each one and submit it yourself.
+Submit. Keep held tabs open, review each one, submit it yourself, then record
+it with `submitted ID,ID` to free its held-tab slot.
 
 ## Document drop folders / Thư mục tài liệu
 

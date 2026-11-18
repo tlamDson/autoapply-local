@@ -33,6 +33,7 @@ COMMANDS = (
     "fetch",
     "apply",
     "review",
+    "submitted",
     "status",
 )
 WRAPPERS = tuple(f".claude/commands/{name}.md" for name in COMMANDS) + (".codex/skills/autoapply-local/SKILL.md",)

@@ -31,7 +31,8 @@ preview profile updates and import only after explicit confirmation. Unknown
 authorization, sponsorship, consent and EEO answers must remain unknown.
 
 Apply fills existing role-selected PDFs and holds forms. Review rereads fresh
-evidence. Nothing ever clicks Submit; the user submits each held form by hand.
+evidence. Nothing ever clicks Submit; the user submits each held form by hand
+and records it with `submitted ID,ID`, which frees its held-tab slot.
 Keep unsubmitted tabs open for sign-in, account creation, CAPTCHA, missing
 answers and errors.
 

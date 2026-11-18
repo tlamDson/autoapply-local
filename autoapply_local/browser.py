@@ -143,7 +143,7 @@ def _launch_chrome(
     if memory < 2048 + lanes * 1024:
         raise ValueError("Insufficient available memory for new browser work; held tabs are preserved")
     if held_tab_cap < 1 or len(held_tabs) >= held_tab_cap:
-        raise ValueError("Held-tab cap reached; review or submit held tabs before starting new work")
+        raise ValueError("Held-tab cap reached; submit held forms by hand and record them with submitted ID before starting new work")
     if executable is None:
         executable = discover_chrome()
     root = Path(root).resolve()

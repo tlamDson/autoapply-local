@@ -92,6 +92,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     review = commands.add_parser("review")
     review.add_argument("selection")
     review.add_argument("--approve-browser-tools", action="store_true")
+    commands.add_parser("submitted").add_argument("selection")
     commands.add_parser("status")
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -133,7 +134,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
                 kwargs["selection"] = _selection(args.quick, "apply")
             if name == "fetch" and args.url:
                 kwargs["url"] = args.url
-        elif name == "review":
+        elif name in ("review", "submitted"):
             kwargs["selection"] = _selection(args.selection, name)
         if services is None:
             from .runtime import services as default_services

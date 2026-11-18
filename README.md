@@ -318,8 +318,8 @@ Offline tests do not establish live CLI, MCP handshake, ATS or Gmail readiness.
 
 One lane is the default. Two or three require explicit opt-in in the intake.
 Admission checks available RAM and held tabs; the memory rule is a heuristic,
-not an 8 GB benchmark. Review and submit held forms by hand before opening more
-when the cap is reached. Persistent clean profiles retain sign-in state between commands.
+not an 8 GB benchmark. When the cap is reached, submit held forms by hand and
+record them with `submitted ID,ID` before opening more. Persistent clean profiles retain sign-in state between commands.
 New jobs rotate through the opted-in lanes. Each job retains its lane and debug
 endpoint, so later commands restore its own browser. Admission rechecks RAM and
 held-tab capacity before every new job and retains partial results on refusal.
@@ -366,6 +366,9 @@ Submit capability; you review each held tab and submit it yourself.
   This command never submits.
 - `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
   freshness. It never submits or closes forms.
+- `submitted ID,ID`: record held forms you submitted by hand. It writes the
+  tracker row and frees the held-tab slot without touching the browser or an
+  engine; the tab stays open until you close it.
 - `status`: list held forms, counts and unresolved applications without an engine.
 
 For account creation, sign-in, CAPTCHA, MFA or unsupported dynamic controls,
