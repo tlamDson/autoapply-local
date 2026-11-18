@@ -106,6 +106,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     questions_action.add_argument("--answer", type=Path)
     questions_action.add_argument("--refill", action="store_true")
     questions.add_argument("--approve-browser-tools", action="store_true")
+    commands.add_parser("track")
     commands.add_parser("status")
     commands.add_parser("update")
     try:

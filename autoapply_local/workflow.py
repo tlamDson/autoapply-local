@@ -127,6 +127,7 @@ class Workflow:
                     self.store.update(
                         job_id,
                         tab_id=tab_id,
+                        held_at=(job.get("held_at") if continuing else None) or self.clock(),
                         pdf=str(pdf),
                         resume_sha256=_file_digest(pdf),
                         engine=selected,
