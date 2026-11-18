@@ -5,6 +5,13 @@ source. Follow the user's selected engine per task without model pinning or
 fallback. Use only confirmed facts and exact question-scoped answers. Never
 infer work authorization, sponsorship or consent from student status or filters.
 
+The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
+engine opens: language, engine with one small login/quota probe call, quota stop
+percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
+saved to `config.json`. It then hands the terminal to the selected engine with
+`/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
+interview subprocess. Inside an engine, never run `setup --terminal`.
+
 For first setup, including when the user only says setup, follow the native
 onboarding loop in `.claude/commands/setup.md` or
 `.codex/skills/autoapply-local/SKILL.md`. Bootstrap safely, discover the actual

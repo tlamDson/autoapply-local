@@ -11,6 +11,13 @@ install, auto-start setup). The source autoapply-local.py defaults to setup in
 <repo>/user; open the generated
 runtime and use its own root-bound launcher for subsequent commands.
 
+The terminal part of setup, `setup --terminal`, runs in a plain terminal before any
+engine opens: language, engine with one small login/quota probe call, quota stop
+percent, resume PDFs tagged with roles (copied to `resumes/`) and jobs per run,
+saved to `config.json`. It then hands the terminal to the selected engine with
+`/setup` (Codex: `$autoapply-local setup`); that interactive handoff is not an
+interview subprocess. Inside an engine, never run `setup --terminal`.
+
 For first setup or a plain setup request, follow `.claude/commands/setup.md`:
 discover the real native question tool in the top-level host, run
 `setup --guided --ui UI`, invoke the returned packet, wait for actual user input,

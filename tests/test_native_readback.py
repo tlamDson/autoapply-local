@@ -294,7 +294,10 @@ class NativeReadbackTests(ReleaseCase):
         generic.evaluate_script.side_effect = [{**self.audit, "fields": []}, filled]
         bridge = self.browser.BrowserBridge(generic)
         tab = bridge.open(job()["url"])
-        self.assertEqual(bridge.fill(tab, candidate(), job()), filled)
+        # Greenhouse goes through the script driver, whose report adds driver,
+        # unknown, resume_field and status to the adapter's fill result.
+        result = bridge.fill(tab, candidate(), job())
+        self.assertEqual({key: result[key] for key in filled}, filled)
         self.assertEqual(
             [item.kwargs for item in generic.evaluate_script.call_args_list],
             [{"operation": "audit"}, {"operation": "fill"}],
