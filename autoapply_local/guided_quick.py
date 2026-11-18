@@ -197,13 +197,13 @@ def refresh(state, question):
     derived = job_filters.derive(groups)
     draft = job_filters.intake_values(derived)
     question["_derived"] = {field: copy.deepcopy(draft[field]) for field in SYNCED}
-    record = (state.get("quick_filters") or {}).get("derived")
+    record = recorded(state)
     reference = record or state.get("quick_baseline") or {}
     for field in SYNCED:
         current = job_filters.raw(_value(groups, field))
-        # Before this session's first review an empty filter was never derived
-        # (legacy or advanced-only intake), so it is not an edit; after it, a
-        # cleared filter is one.
+        # Without a recorded derivation (legacy or advanced-only intake) an empty
+        # filter was never derived, so it is not an edit; once a review recorded
+        # one, in this session or a confirmed earlier one, a cleared filter is.
         if field in reference and isinstance(current, list) and current != reference[field] and (record or current):
             draft[field] = copy.deepcopy(current)
             derived[field.split(".")[1]] = list(current)
@@ -228,22 +228,32 @@ def baseline(groups):
     return {field: values[field] for field in SYNCED}
 
 
+def recorded(state):
+    """The derivation the last filter review recorded; it travels with the intake
+    (``derived_filters``), so a new session tells a saved clear from a legacy blank."""
+    record = state["document"].get("derived_filters")
+    if isinstance(record, dict) and set(record) == set(SYNCED) and all(
+            isinstance(value, list) and all(isinstance(item, str) for item in value) for value in record.values()):
+        return record
+    return None
+
+
 def sync_filters(state):
     """After answers change, replace derived filters the user has not edited and
     show the filter review again, so an answer such as Unknown sponsorship never
     leaves an exclusion that no longer follows from the answers."""
-    record = state.get("quick_filters")
+    record = recorded(state)
     if not record:
         return
     groups = state["document"]["groups"]
     derived = baseline(groups)
-    if derived == record["derived"]:
+    if derived == record:
         return
-    for field, old in record["derived"].items():
+    for field, old in record.items():
         group, name = field.split(".")
         if groups[group].get(name) == old:
             _put(state, field, derived[field])
-    record["derived"] = derived
+    state["document"]["derived_filters"] = derived
     if not any(pending.get("quick_step") == "filters" for pending in state["queue"]):
         review = copy.deepcopy(state["issued"].get(FILTERS_ID) or _review(FILTERS_ID, "filters", {"en": "", "vi": ""}, {}))
         review["_alone"] = True
@@ -261,8 +271,8 @@ def apply(state, question, status, value):
             _put(state, field, draft)
         if question["quick_step"] == "filters":
             # Record what the answers derived, not the draft: an edited filter stays an edit.
-            state["quick_filters"] = {"derived": copy.deepcopy(question.get("_derived") or {
-                field: question["_draft"][field] for field in SYNCED})}
+            state["document"]["derived_filters"] = copy.deepcopy(question.get("_derived") or {
+                field: question["_draft"][field] for field in SYNCED})
         if value == "edit":
             for field, draft in question["_draft"].items():
                 word = ("Suggested", "Gợi ý") if question["quick_step"] == "filters" else ("Resume shows", "Resume ghi")

@@ -324,24 +324,33 @@ class GuidedQuickReviewTests(ReleaseCase):
 
     def confirmed_and_restarted(self, answers, edits=()):
         self.confirmed_filters(answers)
-        for field, value in edits:
+        for field, value, status in edits:
             packet = self.run_guided(edit=field)
-            question = next(q for q in packet["questions"] if q["id"] == field)
-            # A typed empty list is how a host sends a cleared multi-choice.
-            self.reply(packet, [{"question_id": field, "status": "answered", "value": value}])
+            # A typed empty list or the native Unknown option clears a multi-choice.
+            entry = {"question_id": field, "status": status}
+            if status == "answered":
+                entry["value"] = value
+            self.reply(packet, [entry])
             self.assertEqual(self.document()[field.split(".")[0]][field.split(".")[1]], value)
         self.run_guided(finish=True)
         self.assertTrue(self.run_guided(confirm=True)["applied"])
         return self.run_guided(restart=True)
 
     def test_confirmed_intake_records_what_the_answers_derived(self):
-        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [])])
+        self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [], "answered")])
         saved = json.loads((self.root / "intake-import.json").read_text(encoding="utf-8"))
         self.assertEqual(saved["derived_filters"]["filters.jd_exclude"], ALL_JD)
         self.assertEqual(saved["groups"]["filters"]["jd_exclude"], [])
 
     def test_saved_filter_clear_survives_a_restarted_session(self):
-        packet = self.confirmed_and_restarted({"authorization.sponsorship_now": True}, [("filters.jd_exclude", [])])
+        self.saved_clear_survives_a_restart("answered")
+
+    def test_filter_cleared_with_unknown_survives_a_restarted_session(self):
+        self.saved_clear_survives_a_restart("unknown")
+
+    def saved_clear_survives_a_restart(self, status):
+        packet = self.confirmed_and_restarted({"authorization.sponsorship_now": True},
+                                              [("filters.jd_exclude", [], status)])
         self.assertEqual(self.document()["filters"]["jd_exclude"], [])
         base = {f"setup.quick.resume.{name}": "confirm" for name in ("contact", "education", "experience", "skills")}
         packet, _ = self.drive(packet, base, "setup.quick.filters")
