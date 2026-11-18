@@ -320,6 +320,7 @@ class BrowserRefillTests(unittest.TestCase):
 
         client = Mock(spec=["evaluate_script", "list_pages"])
         client.evaluate_script.return_value = {"filled": ["question_2"], "blocked": []}
+        client.list_pages.return_value = [{"id": "tab-1", "url": job()["url"]}]
         bridge = BrowserBridge(client)
         result = bridge.refill("tab-1", job=job(), answers={"question_2": "Robotics Society"})
         self.assertEqual(result["filled"], ["question_2"])

@@ -395,12 +395,13 @@ def _held_runner(root, record, runners, approve_browser_tools=False):
     return runners[key]
 
 
-def questions(*, root, ui="none", answer=None, approve_browser_tools=False):
+def questions(*, root, ui="none", answer=None, refill=False, approve_browser_tools=False):
     """The end-of-run popup for unanswered required questions, or its answers.
 
     Without ``answer`` this returns the native popup packet for every held job's
     open questions. With ``answer`` it saves the user's actual answers to the
-    answer bank and fills them into the held tabs; nothing is submitted.
+    answer bank, then fills every banked answer into the held tabs; ``refill``
+    retries that fill alone. Nothing is submitted.
     """
     if type(approve_browser_tools) is not bool:
         raise ValueError("approve_browser_tools must be a bool")
@@ -409,12 +410,14 @@ def questions(*, root, ui="none", answer=None, approve_browser_tools=False):
 
     batch = Questions(root)
     store = Workflow(root, browser=None, engines={}).store
-    if answer is None:
-        batch.collect(store.jobs())
-        return batch.packet(ui)
-    saved = batch.answer(answer)
+    if answer is not None and refill:
+        raise ValueError("Choose --answer or --refill")
+    if answer is None and not refill:
+        summary = batch.collect(store.jobs())
+        return {**batch.packet(ui), "refill_ready": summary["refill_ready"]}
+    saved = batch.answer(answer) if answer is not None else {}
     runners, refilled = {}, []
-    for job_id, values in saved["refill"].items():
+    for job_id, values in batch.refill_plan(store.jobs()).items():
         record = store.get(job_id)
         if record["state"] != "needs_manual" or not record.get("tab_id"):
             refilled.append({"job_id": job_id, "status": record["state"], "reason": "no held tab to refill"})
@@ -423,7 +426,9 @@ def questions(*, root, ui="none", answer=None, approve_browser_tools=False):
             refilled.append(_held_runner(root, record, runners, approve_browser_tools).refill(job_id, values))
         except Exception as error:  # one tab's failure never loses the saved answers
             refilled.append({"job_id": job_id, "status": "needs_manual", "reason": str(error) or type(error).__name__})
-    return {**{key: saved[key] for key in ("saved", "pending", "batch_id")}, "refilled": refilled,
+    summary = batch.collect(store.jobs())
+    return {"saved": saved.get("saved", 0), "pending": summary["pending"], "batch_id": summary["batch_id"],
+            "refilled": refilled,
             **Workflow(root, browser=None, engines={}).status()}
 
 

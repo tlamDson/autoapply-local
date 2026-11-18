@@ -97,7 +97,9 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     commands.add_parser("submitted").add_argument("selection")
     questions = commands.add_parser("questions")
     questions.add_argument("--ui", choices=("codex-async", "codex", "claude", "none"), default="none")
-    questions.add_argument("--answer", type=Path)
+    questions_action = questions.add_mutually_exclusive_group()
+    questions_action.add_argument("--answer", type=Path)
+    questions_action.add_argument("--refill", action="store_true")
     questions.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("status")
     commands.add_parser("update")
@@ -148,7 +150,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
             if name == "fetch" and args.url:
                 kwargs["url"] = args.url
         elif name == "questions":
-            kwargs.update(ui=args.ui, answer=args.answer)
+            kwargs.update(ui=args.ui, answer=args.answer, **({"refill": True} if args.refill else {}))
         elif name in ("review", "submitted"):
             kwargs["selection"] = _selection(args.selection, name)
         if services is None:

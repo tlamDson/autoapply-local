@@ -51,8 +51,10 @@ Required questions no confirmed fact or answer-bank entry covers are held,
 collected for the whole `apply` run and asked once at the end: `questions --ui UI`
 returns one native popup packet; after the user's actual answers, `questions
 --answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
-Skip, timeout or no native tool keeps them pending. A banked answer is reused
-only for the same question wording, options and country; it is never inferred.
+Skip, timeout or no native tool keeps them pending; a failed refill is retried
+with `questions --refill`. A banked answer is reused only for the same question
+wording, options, country and job type (authorization, sponsorship, consent,
+EEO and pay questions also keep employer and start date); it is never inferred.
 
 Use temporary synthetic fixtures for tests. Never run real external engines,
 browser automation or Gmail during offline tests. Run Python unittest discovery,

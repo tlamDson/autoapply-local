@@ -333,7 +333,7 @@ class EngineMCPClient:
             ["list_pages", "select_page", "take_snapshot", "upload_file"],
         )
 
-    def interact(self, tab_id, profile, job, blocked, pdf=None):
+    def interact(self, tab_id, profile, job, blocked, pdf=None, bank_answers=None):
         return self._run(
             "native_fill",
             {
@@ -342,11 +342,13 @@ class EngineMCPClient:
                 "job": job,
                 "blocked": blocked,
                 "pdf": str(pdf) if pdf is not None else None,
-                "instructions": "Use only confirmed exact scoped facts. Inspect the existing tab's DOM snapshot and identify actual fields and required questions. Fill supported controls; use native keyboard fill/type then blur for Workday names, employee ID, fieldOfStudy, phone code, textareas and dates. Scope option selection to the field's aria-controls listbox and verify selectedItem chips. Inspect Add/Remove controls before use; opaque record IDs are not profile indexes. Upload the selected PDF on the actual Resume page before Next advances or leaves that page. Observe the actual browser File name, size and SHA256 from File.arrayBuffer with crypto.subtle.digest; return that observed upload_receipt, never a hash copied from profile/job/local expectations. Missing file input or receipt means needs_manual. For multipage Workday, continue with Next/Back only, wait for current step transition or validation errors, and read values back on Review. Stop for account sign-in/creation challenges or unknown questions before uploading, returning needs_manual with blocked reasons. Preserve the tab. Never click Submit. Do not open another tab.",
+                **({"bank_answers": bank_answers} if bank_answers is not None else {}),
+                "instructions": "Use only confirmed exact scoped facts. A bank_answers entry answers a required question only when its question text, kind and option labels match exactly; never adapt it to a similar question. List every other required question no confirmed fact answers in unknown as {id, label, type, required, options:[{value,label}]}, keep filling the rest and upload the resume, then return needs_manual. Inspect the existing tab's DOM snapshot and identify actual fields and required questions. Fill supported controls; use native keyboard fill/type then blur for Workday names, employee ID, fieldOfStudy, phone code, textareas and dates. Scope option selection to the field's aria-controls listbox and verify selectedItem chips. Inspect Add/Remove controls before use; opaque record IDs are not profile indexes. Upload the selected PDF on the actual Resume page before Next advances or leaves that page. Observe the actual browser File name, size and SHA256 from File.arrayBuffer with crypto.subtle.digest; return that observed upload_receipt, never a hash copied from profile/job/local expectations. Missing file input or receipt means needs_manual. For multipage Workday, continue with Next/Back only, wait for current step transition or validation errors, and read values back on Review. Stop for account sign-in/creation challenges or unknown questions before uploading, returning needs_manual with blocked reasons. Preserve the tab. Never click Submit. Do not open another tab.",
             },
             {
                 "filled": {"type": "array", "items": {"type": "string"}},
                 "blocked": {"type": "array", "items": {"type": "object"}},
+                "unknown": {"type": "array", "items": {"type": "object"}},
                 "status": {"type": "string", "enum": ["filled", "needs_manual"]},
                 "upload_receipt": {
                     "type": "object",
@@ -431,7 +433,8 @@ class BrowserBridge:
         if isinstance(self.client, EngineMCPClient):
             # One engine-assisted fill operation owns scan, native interactions
             # and persisted Review readback; no duplicate pre-fill LLM pass.
-            result = self.client.interact(tab_id, profile, job, [], pdf=pdf)
+            extra = {"bank_answers": bank.entries_for(job)} if bank is not None else {}
+            result = self.client.interact(tab_id, profile, job, [], pdf=pdf, **extra)
             if result.get("status") == "filled" and pdf is not None:
                 path = Path(pdf)
                 receipt = result.get("upload_receipt")
@@ -476,6 +479,7 @@ class BrowserBridge:
         from .script_driver import refill_script
 
         script = refill_script(job.get("ats", "greenhouse"), answers)
+        self._native(tab_id)  # the held tab must still exist before anything is written
         return self.client.evaluate_script(tab_id, script, operation="fill")
 
     def upload_file(self, tab_id, path):

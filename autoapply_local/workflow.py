@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .storage import Store, lock, read_json
-from .unanswered import pending_fields
+from .unanswered import check_answers, pending_fields
 
 
 def _digest(value):
@@ -147,6 +147,7 @@ class Workflow:
                             state="needs_manual",
                             fill_result=fill_result,
                             unanswered=unanswered,
+                            **({"upload_receipt": fill_result["upload_receipt"]} if fill_result.get("upload_receipt") else {}),
                             problem=str(fill_result.get("blocked") or "Complete the held form manually"),
                         )
                         results.append({"job_id": job_id, "status": "needs_manual", "tab_id": tab_id,
@@ -193,6 +194,7 @@ class Workflow:
             record = self.store.get(job_id)
             if record["state"] != "needs_manual" or not record.get("tab_id"):
                 raise ValueError("Only a held tab waiting for answers can be refilled")
+            check_answers(record.get("unanswered") or [], answers)
             tab_id = record["tab_id"]
             result = self.browser.refill(tab_id, job=record, answers=answers)
             filled = set(result.get("filled", []))

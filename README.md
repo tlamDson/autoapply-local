@@ -223,8 +223,10 @@ one native popup for all of them (the same question from several jobs is asked
 once). Write the user's actual answers to a private file and run `questions
 --answer PATH`: the answers go to the answer bank `user/answer-bank.json` and
 are filled into the held tabs, which are never submitted. The next job that asks
-the same question (same wording, options and country) is filled from the bank
-without asking. Skip, timeout or no native tool keeps the questions for later.
+the same question (same wording, options, country and job type; questions about
+authorization, sponsorship, consent, EEO or pay also need the same employer and
+start date) is filled from the bank without asking. Skip, timeout or no native
+tool keeps the questions for later; `questions --refill` retries a failed refill.
 ## Quickstart: setup, sources, fetch and review
 
 After the installation/setup steps above, stay in the generated runtime root.

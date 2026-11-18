@@ -145,5 +145,6 @@
   "tests/test_terminal_gmail.py",
   "autoapply_local/answer_bank.py",
   "autoapply_local/unanswered.py",
-  "tests/test_unanswered.py"
+  "tests/test_unanswered.py",
+  "tests/test_unanswered_review.py"
 ]

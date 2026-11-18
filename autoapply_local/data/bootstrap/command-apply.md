@@ -16,6 +16,7 @@ private parent-workspace data, browser Gmail scraping or mail write actions.
 When the result shows `questions.pending`, run `python autoapply-local.py questions --ui UI`
 once, invoke its native calls as one popup, wait for the user's actual answers, write
 them to a private file and run `questions --answer PATH` to save them to the answer bank
-and refill the held tabs. Never answer for the user; skip or timeout keeps them pending.
+and refill the held tabs. Never answer for the user; skip or timeout keeps them pending. If a refill fails,
+run `questions --refill` to retry it from the answer bank.
 
 Report the command result and held tabs or unresolved items.
