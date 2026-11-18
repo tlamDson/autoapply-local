@@ -110,7 +110,7 @@ def boards_import(*, root, path, confirm=False):
 
 def source_extract(*, root, path):
     import uuid
-    from .tailor import extract_source
+    from .extraction import extract_source
 
     draft = extract_source(path)
     destination = Path(root) / "user/drafts" / (uuid.uuid4().hex + ".json")
@@ -364,177 +364,6 @@ def review(*, root, selection, approve_browser_tools=False):
     return {"reviews": reviews, **base.status()}
 
 
-def submit(*, root, selection, approve_browser_tools=False):
-    if type(approve_browser_tools) is not bool:
-        raise ValueError("approve_browser_tools must be a bool")
-    from .workflow import Workflow
-
-    base = Workflow(root, browser=None, engines={})
-    ids = base._selection(selection, "submit")
-    lane_path = Path(root) / "browser/active-lanes.json"
-    lanes = read_json(lane_path) if lane_path.exists() else []
-    runners, jobs = {}, []
-    for job_id in ids:
-        record = base.store.get(job_id)
-        owner = next(
-            (item for item in lanes if str(item.get("lane", 1)) == str(record.get("lane", 1))),
-            {"lane": record.get("lane", 1), "debug_url": "http://127.0.0.1:9222"},
-        )
-        owner = {**owner, "debug_url": record.get("debug_url", owner["debug_url"])}
-        key = (str(owner.get("lane", 1)), owner["debug_url"])
-        if key not in runners:
-            options = {"approve_browser_tools": True} if approve_browser_tools else {}
-            runners[key] = _workflow(root, lane=owner, **options)[0]
-        jobs.extend(runners[key].submit([job_id])["jobs"])
-    return {"jobs": jobs, **base.status()}
-
-
-def tailor(*, root, jd, engine=None):
-    from .engines import Engine
-    from .tailor import Tailor
-
-    config = configuration(root)
-    selected = selected_engine(config, engine, "tailor")
-    profile = read_json(Path(root) / "profile.json")
-    return Tailor(root, engines={selected: Engine(selected, cwd=root)}).run(
-        jd, profile, engine=selected, config=config.get("tailor", {})
-    )
-
-
-class NativeMailRuntime:
-    """Use selected-runtime native connectors; no browser or custom OAuth fallback."""
-
-    def __init__(self, engine):
-        self.engine = engine
-        self.capabilities = None
-
-    def _run(self, kind, prompt, schema, tools):
-        return self.engine.run({"kind": kind, "prompt": prompt, "schema": schema, "allowed_tools": tools})
-
-    def discover_capabilities(self):
-        schema = {
-            "type": "object",
-            "required": ["gmail"],
-            "additionalProperties": False,
-            "properties": {
-                "gmail": {
-                    "type": "object",
-                    "required": ["accounts", "permissions", "search_tool", "read_tool"],
-                    "additionalProperties": False,
-                    "properties": {
-                        "accounts": {"type": "array", "items": {"type": "string"}},
-                        "permissions": {"type": "array", "items": {"type": "string", "enum": ["search", "read"]}},
-                        "search_tool": {"type": "string"},
-                        "read_tool": {"type": "string"},
-                    },
-                }
-            },
-        }
-        response = self._run(
-            "mail_discovery",
-            "Discover native Gmail connector tools and explicitly available accounts. "
-            "Use tool discovery scoped to Gmail, then read-only Gmail account/profile metadata to verify accounts. "
-            "Do not search or read any messages, use a browser, configure OAuth, or infer an account. "
-            "Return the exact discovered callable search/read tool names, never resource-listing names. "
-            "If metadata or a callable read-only connector is unavailable return empty arrays and tool names.",
-            schema,
-            [
-                "ToolSearch" if self.engine.name == "claude" else "search_tool_bm25",
-                "mcp__gmail__get_profile",
-                "mcp__gmail__list_accounts",
-            ],
-        )
-        from .tool_gate import mail_tool_action
-
-        capabilities = response["gmail"]
-        if (
-            mail_tool_action(capabilities.get("read_tool")) != "read"
-            or mail_tool_action(capabilities.get("search_tool")) != "search"
-        ):
-            self.capabilities = None
-            raise PermissionError("Native Gmail tools/account metadata unavailable")
-        self.capabilities = capabilities
-        return response
-
-    def search_mail(self, account, query, lookback_days):
-        from .tool_gate import mail_tool_action
-
-        capabilities = self.capabilities or self.discover_capabilities()["gmail"]
-        tool = capabilities.get("search_tool")
-        if (
-            mail_tool_action(tool) != "search"
-            or account not in capabilities["accounts"]
-            or "search" not in capabilities.get("permissions", [])
-        ):
-            raise PermissionError("Native Gmail search/account unavailable")
-        schema = {
-            "type": "object",
-            "required": ["messages"],
-            "additionalProperties": False,
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "required": ["id", "account"],
-                        "additionalProperties": False,
-                        "properties": {"id": {"type": "string"}, "account": {"type": "string"}},
-                    },
-                }
-            },
-        }
-        return self._run(
-            "mail_search",
-            json.dumps(
-                {
-                    "action": "search only",
-                    "account": account,
-                    "query": query,
-                    "lookback_days": lookback_days,
-                    "no_write_actions": True,
-                }
-            ),
-            schema,
-            [tool],
-        )["messages"]
-
-    def read_mail(self, account, message_id):
-        from .tool_gate import mail_tool_action
-
-        capabilities = self.capabilities or self.discover_capabilities()["gmail"]
-        tool = capabilities.get("read_tool")
-        if (
-            mail_tool_action(tool) != "read"
-            or account not in capabilities["accounts"]
-            or "read" not in capabilities.get("permissions", [])
-        ):
-            raise PermissionError("Native Gmail read/account unavailable")
-        schema = {
-            "type": "object",
-            "required": ["id", "account", "subject", "body"],
-            "additionalProperties": False,
-            "properties": {key: {"type": "string"} for key in ("id", "account", "subject", "body", "received_at")},
-        }
-        return self._run(
-            "mail_read",
-            json.dumps({"action": "read only", "account": account, "message_id": message_id, "no_write_actions": True}),
-            schema,
-            [tool],
-        )
-
-
-def mail_check(*, root, engine=None):
-    from .engines import Engine
-    from .gmail import MailChecker
-
-    config = configuration(root)
-    resources = config.get("resources", {})
-    if not resources.get("gmail_opt_in"):
-        return {"status": "disabled", "reason": "Gmail is opt-in"}
-    selected = selected_engine(config, engine)
-    return MailChecker(root, runtime=NativeMailRuntime(Engine(selected, cwd=root))).check(resources)
-
-
 def status(*, root):
     jobs = Store(root).jobs()
     return {
@@ -565,10 +394,7 @@ def services():
             "doctor",
             "fetch",
             "apply",
-            "tailor",
             "review",
-            "submit",
-            "mail_check",
             "status",
         )
     }

@@ -61,7 +61,7 @@ class NativeRuntimeReadyTests(ReleaseCase):
         patch.object(self.engines, "resolve_executable", return_value=["synthetic-engine"]).start()
 
     def invoke(self, arguments):
-        names = ("apply", "review", "submit", "fetch", "doctor", "tailor", "mail_check", "status")
+        names = ("apply", "review", "fetch", "doctor", "status")
         services = {name: Mock(return_value={}) for name in names}
         output, error = io.StringIO(), io.StringIO()
         code = self.module("cli").main(
@@ -69,11 +69,10 @@ class NativeRuntimeReadyTests(ReleaseCase):
         )
         return code, services, error.getvalue()
 
-    def test_cli_opt_in_dispatches_true_only_to_apply_review_submit(self):
+    def test_cli_opt_in_dispatches_true_only_to_apply_and_review(self):
         cases = [
             (["apply", "codex", "--quick", "2"], "apply", {"engine": "codex", "selection": 2}),
             (["review", "all"], "review", {"selection": "all"}),
-            (["submit", "all-reviewed"], "submit", {"selection": "all-reviewed"}),
         ]
         for arguments, name, kwargs in cases:
             with self.subTest(command=name):
@@ -91,7 +90,6 @@ class NativeRuntimeReadyTests(ReleaseCase):
                 {"engine": "codex", "selection": ["first", "second"]},
             ),
             (["review", "all"], "review", {"selection": "all"}),
-            (["submit", "first"], "submit", {"selection": ["first"]}),
         ]
         for arguments, name, kwargs in cases:
             with self.subTest(command=name):
@@ -100,7 +98,7 @@ class NativeRuntimeReadyTests(ReleaseCase):
                 services[name].assert_called_once_with(root=self.root, **kwargs)
 
     def test_cli_rejects_flag_for_other_commands_without_dispatch(self):
-        for arguments in (["fetch", "codex"], ["doctor"], ["tailor", "synthetic-jd.txt"], ["mail-check"], ["status"]):
+        for arguments in (["fetch", "codex"], ["doctor"], ["status"]):
             with self.subTest(command=arguments[0]):
                 code, services, error = self.invoke([*arguments, "--approve-browser-tools"])
                 self.assertEqual(code, 2, error)
@@ -129,7 +127,7 @@ class NativeRuntimeReadyTests(ReleaseCase):
             for index in (1, 2)
         ]
         self.write_json("browser/active-lanes.json", lanes)
-        state = {"apply": "pending", "review": "filled", "submit": "reviewed"}[operation]
+        state = {"apply": "pending", "review": "filled"}[operation]
         records = {
             name: {
                 **job(name),
@@ -146,11 +144,10 @@ class NativeRuntimeReadyTests(ReleaseCase):
         base.store.jobs.return_value = list(records.values())
         base._profile.return_value = candidate()
         base.status.return_value = {"held_tabs": []}
-        runners = [Mock(spec=["apply", "review", "submit"]) for _ in lanes]
+        runners = [Mock(spec=["apply", "review"]) for _ in lanes]
         for runner in runners:
             runner.apply.return_value = {"jobs": []}
             runner.review.return_value = {"reviews": []}
-            runner.submit.return_value = {"jobs": []}
         return pdf, lanes, records, base, runners
 
     def assert_no_persisted_approval(self):
@@ -180,7 +177,7 @@ class NativeRuntimeReadyTests(ReleaseCase):
             names = ("first", "third") if index == 0 else ("second",)
             calls = [call([name], pdf=pdf, engine="codex") if operation == "apply" else call([name]) for name in names]
             self.assertEqual(getattr(runner, operation).call_args_list, calls)
-            for other in {"apply", "review", "submit"} - {operation}:
+            for other in {"apply", "review"} - {operation}:
                 getattr(runner, other).assert_not_called()
         self.assert_no_persisted_approval()
         if operation == "apply":
@@ -194,17 +191,14 @@ class NativeRuntimeReadyTests(ReleaseCase):
     def test_runtime_review_propagates_opt_in_to_both_lanes(self):
         self.runtime_lane_case("review", True)
 
-    def test_runtime_submit_propagates_opt_in_to_both_lanes(self):
-        self.runtime_lane_case("submit", True)
-
     def test_runtime_default_and_false_preserve_old_workflow_calls(self):
-        for operation in ("apply", "review", "submit"):
+        for operation in ("apply", "review"):
             for opt_in in (None, False):
                 with self.subTest(operation=operation, flag=opt_in):
                     self.runtime_lane_case(operation, opt_in)
 
     def test_runtime_rejects_non_bool_before_any_side_effect(self):
-        for operation in ("apply", "review", "submit", "_workflow"):
+        for operation in ("apply", "review", "_workflow"):
             for invalid in ("true", 1, None):
                 with self.subTest(operation=operation, value=invalid):
                     with (
@@ -253,7 +247,7 @@ class NativeRuntimeReadyTests(ReleaseCase):
         store.enqueue(job())
         digest = hashlib.sha256(pdf.read_bytes()).hexdigest()
         live = snapshot(resume_sha256=digest)
-        bridge = Mock(spec=["restore", "open", "fill", "upload_file", "snapshot", "submit"])
+        bridge = Mock(spec=["restore", "open", "fill", "upload_file", "snapshot"])
         bridge.open.return_value = "tab-1"
         bridge.fill.return_value = {"status": "filled"}
         bridge.snapshot.side_effect = lambda *args, **kwargs: copy.deepcopy(live)
@@ -266,18 +260,9 @@ class NativeRuntimeReadyTests(ReleaseCase):
         ):
             self.runtime.apply(root=self.root, selection=[job()["id"]], approve_browser_tools=True)
             self.assertEqual(store.get(job()["id"])["state"], "filled")
-            bridge.submit.assert_not_called()
-            with self.assertRaisesRegex(ValueError, "previously reviewed"):
-                self.runtime.submit(root=self.root, selection=[job()["id"]], approve_browser_tools=True)
-            bridge.submit.assert_not_called()
+            self.assertFalse(hasattr(self.runtime, "submit"))
             self.runtime.review(root=self.root, selection=[job()["id"]], approve_browser_tools=True)
             self.assertEqual(store.get(job()["id"])["state"], "reviewed")
-            bridge.submit.assert_not_called()
-            # Editing a reviewed observation must still invalidate explicit Submit.
-            live["fields"][0]["extension"] = "changed after review"
-            with self.assertRaisesRegex(ValueError, "changed after review"):
-                self.runtime.submit(root=self.root, selection=[job()["id"]], approve_browser_tools=True)
-            bridge.submit.assert_not_called()
         self.assert_no_persisted_approval()
 
     def engine_case(self, name="codex", payload=None, options=None, inventory=None):
@@ -315,7 +300,7 @@ class NativeRuntimeReadyTests(ReleaseCase):
         return normalized
 
     def test_engine_codex_grants_only_requested_browser_tools_in_invocation(self):
-        for kind in ("browser_evaluate", "submit"):
+        for kind in ("browser_evaluate",):
             with self.subTest(kind=kind):
                 default = self.engine_case(payload=task(kind), options={"debug_url": readback.ENDPOINT})
                 granted = self.engine_case(

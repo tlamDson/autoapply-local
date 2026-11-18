@@ -1,7 +1,8 @@
 # AutoApply Local 0.1.0a1 — experimental
 
 Local job-search tools with guided native-popup onboarding, confirmed facts,
-role-selected PDF resumes and an explicit fill → review → submit workflow.
+role-selected PDF resumes and a fill → hold → review workflow. The tool never
+clicks Submit: you submit each held form yourself.
 English and Vietnamese instructions: [Tiếng Việt](README.vi.md).
 
 Changed dependent facts require fresh confirmation of affected answers; analysis failures before browser actions return newly claimed jobs to `pending` for a manual retry, while held tabs stay open.
@@ -11,15 +12,10 @@ Gmail, both-engine end-to-end operation, macOS hardware and an 8 GB machine have
 **not** been validated. This is an experimental release, not a stable automation
 claim. Unsupported controls and account challenges leave the form open for you.
 
-Automated Gmail requires account binding enforced on every call. Currently only
-Claude supports search/read with an explicit account; Codex search/read remains
-`manual_required` until a transport can enforce that binding. Quick apply remains
-available; handle mail manually with Codex. Native browser fill still carries
+Native browser fill still carries
 real-engine risks and needs a live ATS gate before it can be considered stable.
 
-Gmail tự động cần ép đúng account ở từng lời gọi. Hiện chỉ Claude hỗ trợ search/read
-với account tường minh; Codex giữ `manual_required` tới khi transport ép được account.
-Quick apply vẫn chạy; dùng Codex thì xử lý mail tay. Fill browser native còn rủi ro
+Fill browser native còn rủi ro
 với engine thật, cần qua cổng ATS live sau và chưa được coi là ổn định.
 
 ## Repository
@@ -60,9 +56,9 @@ For a downloaded wheel, replace `python -m pip install .` with
 installed package can run setup from any directory without the checkout. Outside
 the source tree, choose a runtime explicitly, for example
 `python -m autoapply_local --user-dir ./autoapply-user setup`, then open that folder.
-Dependencies are pinned in pyproject.toml and requirements.txt. Optional tailoring
-needs a TeX installation with pdflatex plus Poppler (`pdftoppm`, `pdfinfo`,
-`pdftotext`). Quick application with your existing PDF does not need TeX.
+Dependencies are pinned in pyproject.toml and requirements.txt. Quick application
+uses your existing PDFs and does not need TeX; `source extract` on a PDF needs
+Poppler's `pdftotext`.
 
 The browser connector pins chrome-devtools-mcp 0.14.0. npm may download that
 version when you first approve and start the connector. Do not use a private
@@ -274,7 +270,7 @@ External-tool tasks on Claude require CLI 2.1.295 or newer for the blocking
 command-hook boundary. The runtime probes the resolved selected executable
 before dispatch. Older or unparseable versions return `unsupported_version` and
 need a manual update through the CLI's official installation instructions.
-Tool-free analysis/tailoring can run without that external-tool hook. Only the
+Tool-free analysis can run without that external-tool hook. Only the
 exact internal `StructuredOutput` tool is admitted for JSON formatting; output
 must be a successful CLI envelope with schema-valid structured output.
 Nonempty native `permission_denials` returns `permission_required` before any
@@ -298,7 +294,7 @@ tasks expose only their selected MCP operations. Model/provider selection,
 authentication storage and ordinary approvals are preserved.
 Codex enables `features.code_mode_host` and `features.workspace_dependencies`
 only for explicitly requested MCP/native connector tools. These are broker
-infrastructure; analysis/tailoring and empty tool lists keep both off, while
+infrastructure; analysis and empty tool lists keep both off, while
 `features.code_mode` and the other restricted capabilities remain disabled.
 Before inference,
 `mcp list --json` probes the effective MCP inventory through the same resolved
@@ -315,15 +311,15 @@ Diagnostics distinguish `login_required`, `quota_exhausted`, `timeout`,
 `configuration`, `permission_required`, `unsupported_version`, `invalid_response` and `engine_failure`
 without echoing sensitive CLI output. Probes are bounded to 10 seconds and task
 calls to 300 seconds. CLI runtime failures return exit 3; invalid response/schema
-returns exit 2. There is no automatic engine fallback or submission retry.
+returns exit 2. There is no automatic engine fallback.
 `doctor` reports executable presence, resolved launch arguments and dependency
 presence separately; login and connector/capability checks remain `not_verified`.
 Offline tests do not establish live CLI, MCP handshake, ATS or Gmail readiness.
 
 One lane is the default. Two or three require explicit opt-in in the intake.
 Admission checks available RAM and held tabs; the memory rule is a heuristic,
-not an 8 GB benchmark. Review/submit held forms before opening more when the cap
-is reached. Persistent clean profiles retain sign-in state between commands.
+not an 8 GB benchmark. Review and submit held forms by hand before opening more
+when the cap is reached. Persistent clean profiles retain sign-in state between commands.
 New jobs rotate through the opted-in lanes. Each job retains its lane and debug
 endpoint, so later commands restore its own browser. Admission rechecks RAM and
 held-tab capacity before every new job and retains partial results on refusal.
@@ -336,12 +332,12 @@ The local slash commands and Codex skill use this same root-bound launcher.
 If invoking the installed module or entrypoint directly, put `--user-dir PATH`
 before the subcommand.
 
-For `apply`, `review` and `submit`, `--approve-browser-tools` explicitly opts in
+For `apply` and `review`, `--approve-browser-tools` explicitly opts in
 for the current command only. It approves only the local browser MCP tools that
 each task requests and is never saved. Existing policy, including managed policy,
-permission denials and the review gate, still applies. It does not approve Gmail,
-analysis or tailor tools. `apply --quick` and `review` never submit automatically;
-submission still requires an explicit `submit` command after review.
+permission denials and the review gate, still applies. It does not approve Gmail
+or analysis tools. No command clicks Submit, and no engine task may request a
+Submit capability; you review each held tab and submit it yourself.
 
 - `setup`: bootstrap local state safely and show the guided next step.
 - `setup --guided [--edit QUESTION_ID] --ui UI`: start/resume native questions or
@@ -367,24 +363,16 @@ submission still requires an explicit `submit` command after review.
 - `apply [ENGINE] --quick N|ID,ID`: choose a role-mapped existing PDF, fill,
   upload, and hold tabs. Target roles, recruiting season/window and each selected
   job's PDF mapping appear on stderr before browser work; final stdout stays JSON.
-  This command never submits or tailors.
-- `tailor [ENGINE] JD_FILE_OR_URL`: produce a unique new TEX/PDF/changes run
-  from confirmed facts using your tailoring scope/policy, with at most one repair.
-  No form is opened. Missing visual inspection leaves `needs_review`.
+  This command never submits.
 - `review ID,ID|all`: read held forms again and bind job/tab/values/profile/PDF
   freshness. It never submits or closes forms.
-- `submit ID,ID|all-reviewed`: explicitly permit one Submit click per fresh
-  reviewed job. Durable intent precedes clicking; tracker is written only after
-  a definite matched confirmation. An uncertain outcome blocks automatic retry.
-- `mail-check [ENGINE]`: opt-in native connector search/read for one verified
-  account. Missing connector/account permission returns manual fallback.
 - `status`: list held forms, counts and unresolved applications without an engine.
 
 For account creation, sign-in, CAPTCHA, MFA or unsupported dynamic controls,
 complete the requested interaction in the held clean Chrome tab and resume.
 Resume with an explicit `apply [ENGINE] --quick ID` after resolving the blocker.
 It uses the same held tab, and unresolved login/CAPTCHA/data keeps its manual
-state. A submission intent or uncertain outcome always needs reconciliation.
+state.
 Passwords are not collected or stored by this package. Do not close unsubmitted
 forms. Unknown required questions need your exact scoped confirmation.
 
@@ -393,15 +381,10 @@ before advancing. Review needs fresh observed label/value text and an attachment
 that matches the browser-observed upload receipt; an expected local hash alone
 is insufficient. Missing evidence leaves the form held for manual inspection.
 
-Gmail never falls back to browser scraping or custom OAuth. Enable account,
-read/search and optional current-job verification separately in the intake.
-Verification codes are transient; no send/draft/archive/label action is allowed.
-Ambiguous messages and missing mail never mean an application failed.
-Analysis/tailoring disable external tools; browser operations use the selected
-lane's connector and operation tools. Native Gmail discovery may inspect account
-metadata only after opt-in; message reads wait for the selected account and
-read/search tools to be verified. Ordinary runtime approvals still apply. Missing
-metadata or a usable read-only connector returns manual fallback.
+This release ships no Gmail command; it never scrapes Gmail in the browser or
+uses custom OAuth. Analysis disables external tools; browser operations use the
+selected lane's connector and operation tools. Ordinary runtime approvals still
+apply.
 
 The local XLSX tracker is authoritative for application history. JSON ledger
 recovery reconciles from all historical tracker stages. CSV/XLSX history import

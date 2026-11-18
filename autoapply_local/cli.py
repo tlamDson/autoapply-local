@@ -36,10 +36,8 @@ def _selection(value, operation):
         return count
     if operation == "review" and value == "all":
         return value
-    if operation == "submit" and value == "all-reviewed":
-        return value
     if value in ("all", "all-reviewed"):
-        raise ValueError("Choose explicit IDs or the supported reviewed selection")
+        raise ValueError("Choose explicit job IDs")
     ids = value.split(",")
     if any(not item.strip() for item in ids):
         raise ValueError("Job IDs cannot be blank")
@@ -83,7 +81,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
     history_import = history.add_parser("import")
     history_import.add_argument("path", type=Path)
     history_import.add_argument("--confirm", action="store_true")
-    for name in ("doctor", "fetch", "apply", "mail-check"):
+    for name in ("doctor", "fetch", "apply"):
         command = commands.add_parser(name)
         command.add_argument("engine", nargs="?", choices=("codex", "claude"))
         if name == "apply":
@@ -91,12 +89,9 @@ def main(argv=None, services=None, stdout=None, stderr=None):
             command.add_argument("--approve-browser-tools", action="store_true")
         if name == "fetch":
             command.add_argument("--url")
-    tailor = commands.add_parser("tailor")
-    tailor.add_argument("operands", nargs="+")
-    for name in ("review", "submit"):
-        command = commands.add_parser(name)
-        command.add_argument("selection")
-        command.add_argument("--approve-browser-tools", action="store_true")
+    review = commands.add_parser("review")
+    review.add_argument("selection")
+    review.add_argument("--approve-browser-tools", action="store_true")
     commands.add_parser("status")
     try:
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -107,7 +102,7 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         name = args.command.replace("-", "_")
         root = args.user_dir if args.user_dir is not None else _default_user_dir()
         kwargs = {"root": root.expanduser().resolve()}
-        if name in ("apply", "review", "submit") and args.approve_browser_tools:
+        if name in ("apply", "review") and args.approve_browser_tools:
             kwargs["approve_browser_tools"] = True
         if name == "setup":
             if args.edit and not args.guided:
@@ -132,20 +127,14 @@ def main(argv=None, services=None, stdout=None, stderr=None):
         elif name == "history":
             name = "history_import"
             kwargs.update(path=args.path, confirm=args.confirm)
-        elif name in ("doctor", "fetch", "apply", "mail_check"):
+        elif name in ("doctor", "fetch", "apply"):
             kwargs["engine"] = args.engine
             if name == "apply":
                 kwargs["selection"] = _selection(args.quick, "apply")
             if name == "fetch" and args.url:
                 kwargs["url"] = args.url
-        elif name in ("review", "submit"):
+        elif name == "review":
             kwargs["selection"] = _selection(args.selection, name)
-        elif name == "tailor":
-            operands = args.operands
-            engine = operands.pop(0) if operands[0] in ("codex", "claude") else None
-            if len(operands) != 1:
-                raise ValueError("tailor requires one JD file or URL and an optional engine")
-            kwargs.update(engine=engine, jd=operands[0])
         if services is None:
             from .runtime import services as default_services
 

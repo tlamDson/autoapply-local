@@ -17,7 +17,7 @@ while `[]` intentionally disables them. Setup preserves existing source choices.
 Without configured sources or `--url`, report the actionable error and guide the
 user through boards list/import/setup. Configured sources may return zero jobs.
 Boards/fetch need only relevant fields, not unrelated complete onboarding.
-This command does not authorize Submit. Preserve any held form tab and return manual-interaction states to the user.
+This tool never clicks Submit; the user submits held forms by hand. Preserve any held form tab and return manual-interaction states to the user.
 Use confirmed facts/exact scoped answers and normal MCP approvals. Never use
 private parent-workspace data, browser Gmail scraping or mail write actions.
 Report the command result and held tabs or unresolved items.

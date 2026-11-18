@@ -756,7 +756,7 @@ class WorkflowCompatibilityTests(ReleaseCase):
         self.bridges[endpoint] = bridge
         return bridge
 
-    def test_two_and_three_lanes_persist_assignment_and_restore_review_submit_to_owner(self):
+    def test_two_and_three_lanes_persist_assignment_and_restore_review_to_owner(self):
         for count in (2, 3):
             with self.subTest(lanes=count):
                 lanes = self.configure(count, cap=count)
@@ -791,11 +791,9 @@ class WorkflowCompatibilityTests(ReleaseCase):
                                     self.assertNotIn(
                                         record["tab_id"], [call.args[0] for call in bridge.snapshot.call_args_list]
                                     )
-                        runtime.submit(root=self.root, selection=ids)
-                        for record in records:
-                            self.bridges[record["debug_url"]].submit.assert_called_with(
-                                record["tab_id"], job_id=record["id"]
-                            )
+                # The user submits reviewed tabs by hand, which frees the held-tab cap.
+                for job_id in ids:
+                    self.store.update(job_id, state="submitted")
 
     def test_unsupported_login_redirect_retains_tab_and_actionable_manual_report(self):
         lanes = self.configure()
@@ -893,170 +891,6 @@ class WorkflowCompatibilityTests(ReleaseCase):
         for bridge in self.bridges.values():
             bridge.open.assert_not_called()
             bridge.close.assert_not_called()
-
-
-class NativeMailCompatibilityTests(ReleaseCase):
-    def test_verified_account_uses_explicit_discovered_read_search_tools_on_each_engine(self):
-        account = "alex@example.invalid"
-        for name in ("claude", "codex"):
-            with self.subTest(engine=name):
-                engines = self.module("engines")
-                capabilities = {
-                    "accounts": [account],
-                    "permissions": ["read", "search"],
-                    "search_tool": "mcp__gmail__search_email_ids",
-                    "read_tool": "mcp__gmail__read_email",
-                }
-                message = {"id": "message-1", "account": account, "subject": "Unrelated", "body": "Synthetic"}
-                tasks = []
-
-                def process(argv, **kwargs):
-                    if "mcp" in argv and "list" in argv:
-                        return subprocess.CompletedProcess(argv, 0, "[]", "")
-                    payload = json.loads(kwargs["input"].split("\n", 1)[1])
-                    tasks.append(payload)
-                    response = {
-                        "mail_discovery": {"gmail": capabilities},
-                        "mail_search": {"messages": [{"id": "message-1", "account": account}]},
-                        "mail_read": message,
-                    }[payload["kind"]]
-                    if name == "claude":
-                        response = {
-                            "type": "result",
-                            "subtype": "success",
-                            "is_error": False,
-                            "structured_output": response,
-                        }
-                    return subprocess.CompletedProcess(argv, 0, json.dumps(response), "")
-
-                runner = Mock(side_effect=process)
-                engine = engines.Engine(name, runner=runner, cwd=self.root)
-                native = self.module("runtime").NativeMailRuntime(engine)
-                checker = self.module("gmail").MailChecker(self.root, native)
-                with (
-                    patch.object(engines, "resolve_executable", return_value=["synthetic-" + name]),
-                    patch.object(engines, "probe_version", return_value=(2, 1, 312)),
-                    patch.object(engines, "_app_plugin_names", return_value=({}, set())),
-                    patch("subprocess.Popen", side_effect=AssertionError("No live engine")),
-                ):
-                    report = checker.check(
-                        {"gmail_opt_in": True, "gmail_account": account, "gmail_permissions": ["read", "search"]}
-                    )
-                    if name == "codex":
-                        self.assertEqual(report["status"], "manual_required")
-                        self.assertEqual(report["events"], [])
-                        self.assertEqual([item["kind"] for item in tasks], ["mail_discovery"])
-                        for kind, tool in (
-                            ("mail_search", capabilities["search_tool"]),
-                            ("mail_read", capabilities["read_tool"]),
-                        ):
-                            runner.reset_mock()
-                            with self.assertRaises(engines.EngineError) as caught:
-                                engine.run(
-                                    {
-                                        "kind": kind,
-                                        "allowed_tools": [tool],
-                                        "schema": task()["schema"],
-                                        "prompt": json.dumps({"account": account}),
-                                    }
-                                )
-                            self.assertEqual(caught.exception.category, "configuration")
-                            self.assertIn("manual_required", str(caught.exception))
-                            runner.assert_not_called()
-                    else:
-                        self.assertEqual(report["status"], "ok")
-                        self.assertEqual(
-                            [item["kind"] for item in tasks], ["mail_discovery", "mail_search", "mail_read"]
-                        )
-                        self.assertEqual(tasks[1]["allowed_tools"], [capabilities["search_tool"]])
-                        self.assertEqual(tasks[2]["allowed_tools"], [capabilities["read_tool"]])
-                        self.assertEqual(json.loads(tasks[1]["prompt"])["account"], account)
-                        self.assertEqual(json.loads(tasks[2]["prompt"])["account"], account)
-                self.assertNotEqual(
-                    set(tasks[0]["allowed_tools"]),
-                    {"list_mcp_resources", "list_mcp_resource_templates"},
-                    "Resource enumeration alone cannot discover callable Gmail tools/accounts",
-                )
-
-    def test_discovered_write_or_non_gmail_tool_cannot_be_dispatched_as_read_or_search(self):
-        for engine_name in ("claude", "codex"):
-            for action in ("read", "search"):
-                for tool in ("mcp__gmail__send_email", "mcp__gmail__draft_email", "mcp__drive__read_file"):
-                    with self.subTest(engine=engine_name, action=action, tool=tool):
-                        engine = Mock(name=engine_name, spec=["name", "run"])
-                        engine.name = engine_name
-                        engine.run.return_value = {"messages": []}
-                        native = self.module("runtime").NativeMailRuntime(engine)
-                        native.capabilities = {
-                            "accounts": ["alex@example.invalid"],
-                            "permissions": ["read", "search"],
-                            "read_tool": tool,
-                            "search_tool": tool,
-                        }
-                        with self.assertRaises(PermissionError):
-                            if action == "read":
-                                native.read_mail("alex@example.invalid", "message-1")
-                            else:
-                                native.search_mail("alex@example.invalid", "application", 7)
-                        engine.run.assert_not_called()
-
-    def test_opt_in_precedes_discovery_and_missing_account_never_reads_mail(self):
-        runtime = self.module("runtime")
-        for name in ("claude", "codex"):
-            for enabled, accounts in ((False, ["alex@example.invalid"]), (True, []), (True, ["other@example.invalid"])):
-                with self.subTest(engine=name, enabled=enabled, accounts=accounts):
-                    self.write_json(
-                        "config.json",
-                        {
-                            "runtime": {"apply_engine": name},
-                            "resources": {
-                                "gmail_opt_in": enabled,
-                                "gmail_account": "alex@example.invalid",
-                                "gmail_permissions": ["read", "search"],
-                            },
-                        },
-                    )
-                    engine = Mock(spec=["name", "run"])
-                    engine.name = name
-                    engine.run.return_value = {
-                        "gmail": {
-                            "accounts": accounts,
-                            "permissions": ["read", "search"],
-                            "search_tool": "",
-                            "read_tool": "",
-                        }
-                    }
-                    with patch("autoapply_local.engines.Engine", return_value=engine):
-                        report = runtime.mail_check(root=self.root)
-                    self.assertEqual(report["status"], "manual_required" if enabled else "disabled")
-                    self.assertEqual(
-                        [call.args[0]["kind"] for call in engine.run.call_args_list],
-                        ["mail_discovery"] if enabled else [],
-                    )
-
-    def test_resource_listing_alone_does_not_establish_gmail_readiness(self):
-        for name in ("claude", "codex"):
-            with self.subTest(engine=name):
-                engine = Mock(spec=["name", "run"])
-                engine.name = name
-                engine.run.return_value = {
-                    "gmail": {
-                        "accounts": ["alex@example.invalid"],
-                        "permissions": ["read", "search"],
-                        "read_tool": "list_mcp_resources",
-                        "search_tool": "list_mcp_resource_templates",
-                    }
-                }
-                checker = self.module("gmail").MailChecker(self.root, self.module("runtime").NativeMailRuntime(engine))
-                report = checker.check(
-                    {
-                        "gmail_opt_in": True,
-                        "gmail_account": "alex@example.invalid",
-                        "gmail_permissions": ["read", "search"],
-                    }
-                )
-                self.assertEqual(report["status"], "manual_required")
-                self.assertEqual([call.args[0]["kind"] for call in engine.run.call_args_list], ["mail_discovery"])
 
 
 class PrereleaseMetadataTests(ReleaseCase):
