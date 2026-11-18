@@ -12,7 +12,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 RELEASE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RELEASE))
@@ -217,10 +217,13 @@ class SubmitGuardTests(unittest.TestCase):
 
     def test_a_driver_whose_adapter_can_click_is_refused(self):
         class Clicking(script_driver.ScriptDriver):
-            name = "workday"  # workday.cjs clicks Next/Back, so it cannot be a script driver
+            name = "workday"
 
-        with self.assertRaisesRegex(ValueError, "click"):
-            Clicking().script("fill", {})
+        # An adapter that clicks (as workday_steps.cjs does for Next) can never be a fill script.
+        clicking = "async () => {\ndocument.querySelector('button').click();\n}"
+        with patch.object(script_driver, "adapter_script", return_value=clicking):
+            with self.assertRaisesRegex(ValueError, "click"):
+                Clicking().script("fill", {})
 
 
 class RegistryAndBridgeTests(unittest.TestCase):

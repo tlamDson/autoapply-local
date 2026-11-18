@@ -3,11 +3,14 @@
 The user signs in to Gmail once in that clean profile. Afterwards the tool
 only searches and reads result rows through the read-only ``gmail.cjs``
 adapter: confirmation search for one company, and the history scan that pages
-through six months of confirmations. It never opens, sends, drafts, archives
-or labels a message, and verification codes are not read here.
+through six months of confirmations, plus the Workday account step's search
+for a verification code, read from the subject and snippet of the result
+rows. It never opens, sends, drafts, archives or labels a message, and a code
+is only returned to the caller, never stored.
 """
 
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -19,6 +22,20 @@ MAX_PAGES = 20
 _VERIFY_TERMS = ('"candidate account"', "subject:verify", "subject:verification", "subject:activate", '"security code"')
 _CONFIRM_TERMS = ("subject:application", "subject:applying", "subject:applied", 'subject:"thank you"',
                   '"received your application"', '"got your application"')
+
+
+_CODE_AFTER_WORD = re.compile(r"\b(?:code|passcode|pin)\b(?=(?:\s*(?:is|:|-))?\s*([A-Z0-9]{4,8})\b)", re.I)
+_SIX_DIGITS = re.compile(r"(?<![\d-])\d{6}(?![\d-])")
+
+
+def verification_code(row):
+    """The one-time code in a result row's subject or snippet, or None."""
+    text = " ".join(str(row.get(key) or "") for key in ("subject", "snippet"))
+    for match in _CODE_AFTER_WORD.finditer(text):
+        if any(ch.isdigit() for ch in match.group(1)):
+            return match.group(1)
+    found = _SIX_DIGITS.search(text)
+    return found.group(0) if found else None
 
 
 def search_query(kind="confirm", company="", days=2):
@@ -91,6 +108,15 @@ class GmailTab:
                     seen.add(key)
                     rows.append(row)
         return rows
+
+    def verification_codes(self, company, days=1):
+        """Codes in the newest verification mails (newest first); nothing is kept."""
+        codes = []
+        for row in self.search(search_query("verify", company, days)).get("rows") or []:
+            code = verification_code(row)
+            if code and code not in codes:
+                codes.append(code)
+        return codes
 
     def find_confirmation(self, company, days=2):
         """The newest confirmation from ``company`` in the last ``days`` days, or None."""

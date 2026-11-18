@@ -153,5 +153,13 @@
   "tests/test_gmail_tab.py",
   "tests/test_mail_history.py",
   "tests/test_track.py",
-  "tests/test_terminal_gmail.py"
+  "tests/test_terminal_gmail.py",
+  "tests/workday.test.cjs",
+  "tests/workday_flow.json",
+  "tests/test_workday_driver.py",
+  "tests/test_workday_account.py",
+  "autoapply_local/adapters/workday_steps.cjs",
+  "autoapply_local/workday_steps.py",
+  "autoapply_local/workday_account.py",
+  "autoapply_local/workday_driver.py"
 ]
