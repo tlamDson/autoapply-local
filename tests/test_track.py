@@ -366,6 +366,37 @@ class TrackTests(ReleaseCase):
         self.assert_email_held_back(self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain")]))
         self.assertEqual(self.tracker_ids(), ["n-1"])
 
+
+    def recorded_legacy_job(self, **fields):
+        # Recorded before `held_at` existed: only its own `created_at` (if any) dates it.
+        self.store.enqueue(job("n-1", url="https://jobs.lever.co/northwind/1/apply", company="Northwind Analytics",
+                               role="ML Intern"))
+        self.store.update("n-1", state="claimed", **fields)
+        self.store.record_submit_intent("n-1", {"review_id": "r"})
+        self.store.mark_submitted("n-1", {"status": "confirmed", "job_id": "n-1", "text": "page",
+                                          "url": "https://jobs.lever.co/northwind/1/thanks",
+                                          "confirmed_at": "2026-11-16T09:30:00+00:00"})
+        self.held("n-2", "https://jobs.lever.co/northwind/n-2/apply", company="Northwind Analytics",
+                  role="Data Intern", held_at="2026-11-10T09:00:00+00:00")
+        return FakeCDP([{"id": "tab-n-2", "url": "https://jobs.lever.co/northwind/n-2/apply"}])
+
+    def test_recorded_legacy_job_does_not_hold_back_an_email_sent_before_it_was_created(self):
+        cdp = self.recorded_legacy_job(created_at="2026-11-14T08:00:00+00:00")
+        report = self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain", date="Nov 12, 2026")])
+        self.assertEqual([(item["job_id"], item["via"]) for item in report["submitted"]], [("n-2", "email")])
+        self.assertEqual(report["held_back_emails"], 0)
+
+    def test_recorded_legacy_job_still_holds_back_an_email_sent_after_it_was_created(self):
+        cdp = self.recorded_legacy_job(created_at="2026-11-14T08:00:00+00:00")
+        self.assert_email_held_back(
+            self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain", date="Nov 15, 2026")]))
+        self.assertEqual(self.tracker_ids(), ["n-1"])
+
+    def test_recorded_legacy_job_without_any_day_still_holds_back_an_older_email(self):
+        cdp = self.recorded_legacy_job()
+        self.assert_email_held_back(
+            self.reconcile(cdp, [mail("Northwind Analytics", thread="th-plain", date="Nov 12, 2026")]))
+        self.assertEqual(self.tracker_ids(), ["n-1"])
     def test_legacy_held_job_matches_an_exact_role_confirmation_from_the_last_two_weeks(self):
         # Held before `held_at` existed: no held day, so the email must name the exact role.
         self.held("ab-1", "https://jobs.ashbyhq.com/acme/1/application", company="Acme Robotics",

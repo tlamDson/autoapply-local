@@ -4,8 +4,9 @@
 // required questions on the entry heading and renders Boolean questions as
 // Yes/No toggle buttons, not inputs. The adapter never clicks (script drivers
 // refuse any script that can): a confirmed answer whose option is not already
-// active is handed back as native_click_required with that option, and an
-// option that is a submit control is refused. Scripted clicks also do not stick
+// active is handed back as native_click_required with that option, an
+// option that is a submit control is refused, and a disabled option is
+// refused as option_disabled. Scripted clicks also do not stick
 // on Ashby's React toggles, so the native browser tool clicks them.
 (function install(root) {
   const base = typeof module !== 'undefined' && module.exports ? require('./common.cjs') : root.AutoApplyDOM;
@@ -118,7 +119,9 @@
     const choices = group.buttons.filter(button => clean(button.innerText).toLowerCase() === wanted);
     if (choices.length !== 1) return 'option_not_found';
     const [button] = choices;
-    if (isSubmitControl(button) || button.disabled) return 'submit_control';
+    if (isSubmitControl(button)) return 'submit_control';
+    // A disabled option cannot submit anything; it is only unanswerable here.
+    if (button.disabled) return { reason: 'option_disabled', option: clean(button.innerText) };
     if (isOn(button)) return null;
     return { reason: 'native_click_required', option: clean(button.innerText) };
   }

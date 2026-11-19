@@ -150,6 +150,30 @@ test('ashby: an option that is a submit control is never clicked', async () => {
   assert.equal(submit.clicks, 0);
 });
 
+test('ashby: a disabled type=button option is reported as option_disabled, not as a submit control', async () => {
+  const adapter = load('ashby');
+  const { document, sponsor, submit } = ashbyForm();
+  sponsor[1].setAttribute('disabled', '');
+  const id = byLabel(adapter.scan(document).fields, SPONSOR).id;
+  const result = await adapter.fill(document, { [id]: confirmed('No') });
+  assert.deepEqual(result.blocked, [{ id, reason: 'option_disabled', option: 'No' }]);
+  assert.equal(sponsor[1].clicks, 0);
+  assert.equal(submit.clicks, 0);
+});
+
+test('ashby: a typeless BUTTON option is still a submit control, disabled or not', async () => {
+  const adapter = load('ashby');
+  const { document, sponsor } = ashbyForm({ sponsor: { type: null } });
+  sponsor[1].setAttribute('disabled', '');
+  const fields = adapter.scan(document).fields;
+  const id = byLabel(fields, SPONSOR).id;
+  const result = await adapter.fill(document, { [id]: confirmed('Yes') });
+  assert.deepEqual(result.blocked, [{ id, reason: 'submit_control' }]);
+  const disabled = await adapter.fill(document, { [id]: confirmed('No') });
+  assert.deepEqual(disabled.blocked, [{ id, reason: 'submit_control' }]);
+  assert.equal(sponsor[0].clicks + sponsor[1].clicks, 0);
+});
+
 test('ashby: the submit guard recognises the Submit button by type, class and words', () => {
   const adapter = load('ashby');
   const { submit } = ashbyForm();

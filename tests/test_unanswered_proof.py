@@ -115,6 +115,43 @@ class RefillProofTests(ReleaseCase):
         self.assertIn("Never click Submit", REFILL_RULE)
 
 
+class BlockedRefillTests(ReleaseCase):
+    """The engine reports blocked although the readback proves every answer."""
+
+    held = RefillProofTests.held
+    kept = RefillProofTests.kept
+
+    def blocked(self, field_id, reason="control_not_supported"):
+        runner = self.held()
+        self.browser.refill.return_value = {"filled": list(ANSWERS), "blocked": [{"id": field_id, "reason": reason}]}
+        self.browser.snapshot.return_value = shown(question_1="12", question_2="Robotics Society", question_3=True)
+        result = runner.refill("synthetic-1", ANSWERS)
+        return runner, result
+
+    def test_a_blocked_field_stays_held_listed_and_retryable(self):
+        runner, result = self.blocked("question_2")
+        record = runner.store.get("synthetic-1")
+        self.assertEqual((result["status"], result["questions"]), ("needs_manual", 1))
+        self.assertEqual((record["state"], self.kept(runner)), ("needs_manual", ["question_2"]))
+        self.assertIn("control_not_supported", record["problem"])
+        questions = self.module("unanswered").Questions(self.root)
+        self.assertEqual([item["id"] for item in questions._held([record])], ["synthetic-1"])
+        self.assertEqual(questions.collect([record])["pending"], 1)
+
+    def test_an_unknown_blocked_id_keeps_every_field(self):
+        runner, result = self.blocked(None, "form_not_readable")
+        self.assertEqual(result["questions"], 3)
+        self.assertEqual(self.kept(runner), ["question_1", "question_2", "question_3"])
+        self.assertIn("form_not_readable", runner.store.get("synthetic-1")["problem"])
+
+    def test_a_later_clean_refill_moves_the_blocked_job_to_filled(self):
+        runner, _ = self.blocked("question_2")
+        self.browser.refill.return_value = {"filled": ["question_2"], "blocked": []}
+        result = runner.refill("synthetic-1", {"question_2": "Robotics Society"})
+        record = runner.store.get("synthetic-1")
+        self.assertEqual((result["status"], record["state"], record["unanswered"]), ("filled", "filled", []))
+
+
 class WrongOptionChrome(FakeChrome):
     """The engine reports the field filled, yet the tab shows the other option."""
 
