@@ -58,13 +58,14 @@ class ImportRealForms(unittest.TestCase):
             path = Path(source.name) / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
-        written, _ = module.import_forms(source.name, Path(dest.name) / "real", names)
+        written, self.dropped = module.import_forms(source.name, Path(dest.name) / "real", names)
         return {path.relative_to(Path(dest.name) / "real").as_posix(): json.loads(path.read_text(encoding="utf-8"))
                 for path in written}
 
     def test_json_form_keeps_only_structure_and_numbers_the_file(self):
         out = self.run_import({"gh/northwind-swe-p1.json": json.dumps(CAPTURED)}, ["Rivera"])
         self.assertEqual(list(out), ["gh/01.json"])
+        self.assertEqual(self.dropped, 3)  # resume file name, email in a label, city shown as its label
         self.assertEqual(set(out["gh/01.json"]), {"fields"})
         self.assertEqual(
             out["gh/01.json"]["fields"],

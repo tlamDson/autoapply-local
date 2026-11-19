@@ -196,7 +196,7 @@ def html_fields(text):
 
 
 def forms(path):
-    """Field lists found in one captured file, keyed by an employer name to scrub."""
+    """(employer name to scrub, fields, fields left out for showing a filled value) per form in a file."""
     name = path.name.split(".")[0]
     employer = name.split("-")[0].strip("_")
     if path.suffix == ".html":
@@ -207,7 +207,7 @@ def forms(path):
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             text = raw.decode("cp1252", errors="replace")
-        return [(employer, html_fields(text))]
+        return [(employer, html_fields(text), 0)]
     if path.suffix == ".jsonl":
         grouped = {}
         for line in path.read_text(encoding="utf-8").splitlines():
@@ -219,7 +219,7 @@ def forms(path):
                 field({"id": spec.get("path") or spec.get("id"), "label": spec.get("title"),
                        "kind": ASHBY_KINDS.get(spec.get("type"), "text"), "req": entry["entry"].get("isRequired")})
             )
-        return [("", items) for items in grouped.values()]
+        return [("", items, 0) for items in grouped.values()]
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("fields"), list):
         return []
@@ -232,7 +232,7 @@ def forms(path):
         # A label holding a filled value is the answer shown in place of the question.
         if not any(value in item["label"].casefold() and value not in options for value in typed):
             kept.append(item)
-    return [(meta.get("company") or employer, kept)]
+    return [(meta.get("company") or employer, kept, len(items) - len(kept))]
 
 
 def scrub(items, employer, names):
@@ -264,9 +264,9 @@ def import_forms(source, dest=DEST, names=()):
         for path in sorted((source / ats).glob("*")) if (source / ats).is_dir() else []:
             if path.suffix not in (".json", ".jsonl", ".html") or path.name.startswith("_"):
                 continue
-            for employer, items in forms(path):
+            for employer, items, shown in forms(path):
                 kept, lost = scrub(items, employer, names)
-                dropped += lost
+                dropped += lost + shown
                 if not kept:
                     continue
                 number += 1
