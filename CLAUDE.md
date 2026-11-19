@@ -7,7 +7,7 @@ with unknown facts; there are no personal defaults.
 Module commands choose --user-dir, then AUTOAPPLY_LOCAL_HOME, then a detected
 source checkout's user/, then ~/.autoapply-local outside source.
 Install with install.ps1 / install.sh (dependency check, repo .venv, editable
-install, auto-start setup). The source autoapply-local.py defaults to setup in
+install, auto-start `setup --terminal`, or plain `setup` with no terminal). The source autoapply-local.py defaults to setup in
 <repo>/user; open the generated
 runtime and use its own root-bound launcher for subsequent commands.
 
