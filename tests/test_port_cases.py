@@ -84,12 +84,87 @@ KIND_TYPES = {
 }
 
 # Known gaps: why this repo picks no rule for labels the original answers, by original key.
-GAP_GROUPS = {}
+GAP_GROUPS = {
+    "authorization, sponsorship, citizenship, visa and export status are never inferred from wording; "
+    "they come only from an answer the user confirmed for this exact question": (
+        "auth_any auth_canada auth_change auth_change_explain auth_country_live auth_country_located "
+        "auth_expiring auth_non_us auth_permanent auth_permanent_any_employer auth_statement_select auth_uk "
+        "auth_us citizenship_country citizenship_country_text citizenship_status clearance_able currently_cpt "
+        "currently_f1_holder deemed_export i9_verification irca_ack live_in_us opt_stem_eligible require_auth "
+        "right_to_work_text select_one_citizen sponsor sponsor_3to7 sponsor_followup sponsor_note sponsor_other "
+        "sponsor_text sponsorship_type student_visa temp_work_auth unrestricted us_person us_person_export "
+        "visa_details visa_exp visa_status_text work_auth_status work_eligibility_type work_live_us work_proof"
+    ),
+    "voluntary self-identification fills only the ATS's fixed EEO field ids (Greenhouse, Lever) "
+    "from confirmed answers, never a label": (
+        "accommodation age_category disability first_gen gender hispanic military_service military_status "
+        "orientation pronouns pronouns_text race socio_economic transgender veteran"
+    ),
+    "contact facts match only an exact common label or the ATS's fixed field id "
+    "(Rippling: field names only); other wordings are held for the user": (
+        "address address_full alt_email city_state_text city_text contact_best_text country country_res county "
+        "current_location_text email first full_name github github_username last legal_first legal_last "
+        "linkedin location name_pronunciation perm_city perm_state phone phone_digits10 phone_type "
+        "preferred_first preferred_last ssn state state_text website zip"
+    ),
+    "education facts fill only through a record binding (school, degree, major); "
+    "every other education question is held for the user": (
+        "class_standing class_standing_next coop_term degree degree_program_text degrees_completed discipline "
+        "edu_completed edu_end_month edu_end_year edu_end_year_choice edu_highest edu_start_month edu_start_year "
+        "edu_start_year_choice enrolled enrolled_during final_internship gpa gpa_choice gpa_major gpa_major_choice "
+        "gpa_other gpa_scale gpa_scale_text gpa_threshold grad_before grad_between grad_choice grad_mmyy "
+        "grad_mmyyyy grad_month grad_month_choice grad_text grad_year high_school highest_edu_text hs_year "
+        "hs_year_choice major_minor_text major_text masters_gap_job minor minor_choice months_remaining "
+        "other_school program_year pursue_masters pursuing_grad recent_grad_or_student returning_program "
+        "scholar school school_approval school_choice school_email senior_or_grad_future stem_studying "
+        "student_in_area student_level_list study_level transcript_avail tutored_ta"
+    ),
+    "start dates, schedules, location, relocation and role preferences are employer-scoped; "
+    "only the user's answer bank answers them": (
+        "ack_no_housing avail_fulltime driver eng_role fall_2027 fulltime40 fulltime_start fulltime_start_month "
+        "hours_school_year housing intern_duration intern_end intern_location intern_schedule_statement "
+        "intern_timeframe intern_track location_pref location_requirement notice_period notice_period_text "
+        "office_days_text onsite onsite_days_text onsite_requirements open_locations_text other_positions "
+        "overtime_weekends reloc_assist relocate_cities_text relocate_willing role_preference service_line "
+        "shift_availability start_availability_text start_date start_date_month_year term_start_fall2027 "
+        "time_constraints transportation travel travel_assist weeks_available work_location_status"
+    ),
+    "pay expectations are never inferred": "comp_bucket comp_comfort pay_range_align salary salary_choice salary_numeric",
+    "consent, agreements, background and employer-history questions bind to one employer "
+    "and are never inferred": (
+        "age18 ai_consent ai_consent_screening ai_interview associate_status background basic_requirements "
+        "biometric conflict_of_interest current_contractor dismissed employee_id explicit_consent felony "
+        "felony_explain finra_certs finra_detail finra_exam former_worker_record full_legal_name_ack gov_coi "
+        "gov_entity gov_exclusion gov_official id_match inquire_employer interview_recording license_denied "
+        "limiting_agreement meets_min_qual no_impediment noncompete outstanding_offers own_business people_screening "
+        "political_contrib prev_applied prev_interviewed privacy_ack regulatory relatives relatives_text "
+        "securities_conviction securities_license securities_license_detail share_resume_clients sms "
+        "sms_marketing third_party_survey"
+    ),
+    "skills, experience, languages, referrals and free-form answers come from the user's answer bank, "
+    "not from a rule": (
+        "actuarial_exams assessment_lang assessment_lang_text assessment_type bilingual bilingual_text "
+        "career_fair conferences current_company employed_before_text english_level followup "
+        "github_proud_project hear_choice hear_specify hear_text lang_fluent_box lang_level "
+        "lang_other_than_english languages_choice licenses licenses_detail linux_install optional_detail "
+        "preferred prior_internship prior_internships references referral referral_text skill_exp "
+        "tech_proficiency years_exp years_exp_choice"
+    ),
+}
 GAPS = {key: reason for reason, keys in GAP_GROUPS.items() for key in keys.split()}
 # Known gaps by (ats, Workday field id, label): the repo matches a different key than the original.
-LABEL_GAPS = {}
+LABEL_GAPS = {
+    ("wd", "name--legalName--firstName", "First Name"): (
+        "the original fills Workday's legal name outside its rule table (k=null); "
+        "this repo maps the fixed field id to the confirmed first name"
+    ),
+    ("wd", "name--preferredName--firstName", "First Name"): (
+        "the original leaves the preferred-name block to its name step (k=null); this repo's exact "
+        "'first name' label puts the legal first name there (follow-up: map the field id to preferred_name)"
+    ),
+}
 # (ats, label) pairs that pick the same key as the original today; a drop means a matcher regressed.
-AGREE_FLOOR = 0
+AGREE_FLOOR = 456
 
 
 def profile():
