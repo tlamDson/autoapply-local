@@ -367,7 +367,9 @@ def _edit(state, question_id):
         raise ValueError("Choose a catalog question or a previously issued record question")
     question.pop("_terminal", None)
     question.pop("_existing_editor", None)
-    state["queue"] = [question]
+    # The edited question goes first; the rest of the pending queue still follows.
+    rest = [pending for pending in state["queue"] if pending["id"] != question["id"]]
+    state["queue"] = [question, *rest]
     state["pages"][question["id"]] = 0
     state["preview"] = None
     state["revision"] += 1
