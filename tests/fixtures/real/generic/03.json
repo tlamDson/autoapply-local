@@ -1,0 +1,32 @@
+{
+ "fields": [
+  {
+   "id": "fn",
+   "label": "First name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "ln",
+   "label": "Last name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "em",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "ph",
+   "label": "Phone",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

@@ -1,0 +1,151 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061726007",
+   "label": "Current Mailing Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_13061727007",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061728007",
+   "label": "Website",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061729007",
+   "label": "How did you hear about this position?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061730007",
+   "label": "When are you available for employment?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061731007",
+   "label": "Willing to travel?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061732007",
+   "label": "Do you have any employment restrictions such as a non-compete?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_13061733007",
+   "label": "If so, please explain",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061734007",
+   "label": "Do you currently in or in the future require work sponsorship?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_13061735007",
+   "label": "If so, please explain",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13061736007",
+   "label": "Candidate Notice: Please read and accept the Global Personal Data Privacy Notice for Candidates.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

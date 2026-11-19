@@ -1,0 +1,144 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "start-year--0",
+   "label": "Start date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_68182831",
+   "label": "Are you legally authorized to work in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_68182832",
+   "label": "Do you require sponsorship for employment visa status?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_68182833",
+   "label": "What is your anticipated graduation date?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_68182834",
+   "label": "Have you tutored or TA'd for any classes?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_68182835",
+   "label": "If yes, please list what courses or subject areas you tutored/TA'd for",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_68239120",
+   "label": "What is your undergraduate GPA?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_68182836",
+   "label": "What about quantitative finance appeals to you?",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_68182837",
+   "label": "Are you especially proud of any GitHub repositories or personal projects? We’d welcome links.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_68182838",
+   "label": "If you have any time constraints or competing offer deadlines you'd like to make us aware of, please list them here.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

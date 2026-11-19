@@ -1,0 +1,57 @@
+{
+ "fields": [
+  {
+   "id": "selfIdentifiedDisabilityData--disabilityForm",
+   "label": "Language",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "selfIdentifiedDisabilityData--name",
+   "label": "Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "selfIdentifiedDisabilityData--employeeId",
+   "label": "Employee ID (if applicable)",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "selfIdentifiedDisabilityData--dateSignedOn-dateSectionMonth-input",
+   "label": "Date",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "selfIdentifiedDisabilityData--dateSignedOn-dateSectionDay-input",
+   "label": "Date",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "selfIdentifiedDisabilityData--dateSignedOn-dateSectionYear-input",
+   "label": "Date",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "64cbff5f364f10000ae7a421cf210000-disabilityStatus",
+   "label": "Please check one of the boxes below:",
+   "kind": "checks",
+   "req": true,
+   "opts": [
+    "Yes, I have a disability, or have had one in the past",
+    "No, I do not have a disability and have not had one in the past",
+    "I do not want to answer"
+   ]
+  }
+ ]
+}

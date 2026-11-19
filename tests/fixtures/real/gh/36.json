@@ -1,0 +1,165 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_12763078008",
+   "label": "Transcript",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "start-month--0",
+   "label": "Start date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "start-year--0",
+   "label": "Start date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_18189405008",
+   "label": "Please list your current or most recent GPA:",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_18189406008",
+   "label": "Please specify the GPA scale:",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_12749571008",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_12749573008",
+   "label": "How did you hear about Example Co?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_12749574008",
+   "label": "Are you legally authorized to work in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_12749575008",
+   "label": "Will you now, or in the future, require sponsorship for employment visa status (e.g. H1B status)?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_13183928008",
+   "label": "Do you have any outstanding offers or deadlines?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

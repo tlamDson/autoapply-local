@@ -1,0 +1,46 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3db9b6827c0000",
+   "label": "Are you legally authorized to work in the country where the position is based?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dc500df6d0000",
+   "label": "Do you now, or will you in the future, require sponsorship to obtain or maintain employment authorization in the country where the position is based?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dd03b74b10000",
+   "label": "Have you ever applied for a position at a Example Co entity?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dd98ef9dd0000",
+   "label": "Have you ever been employed at a Example Co entity?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dec0c5af20000",
+   "label": "How do you know if you have a disability?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3de7d009110000",
+   "label": "Please list the names of any relatives currently employed by a Example Co entity.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

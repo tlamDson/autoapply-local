@@ -1,0 +1,102 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_8686418006",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_8686419006",
+   "label": "Website",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

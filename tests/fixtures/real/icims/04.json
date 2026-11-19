@@ -1,0 +1,139 @@
+{
+ "fields": [
+  {
+   "id": "PortalProfileFields.Resume_File",
+   "label": "Please upload your resume (Max size: 5 MB)",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "PersonProfileFields.FirstName",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "PersonProfileFields.LastName",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "rcf2012",
+   "label": "Preferred Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "PersonProfileFields.Email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "rcf2013",
+   "label": "Desired Salary",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.PhoneType",
+   "label": "Type",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Mobile",
+    "Home"
+   ]
+  },
+  {
+   "id": "-1_PersonProfileFields.PhoneNumber",
+   "label": "Number",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressType",
+   "label": "Type",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Home",
+    "Other",
+    "shipping"
+   ]
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressStreet1",
+   "label": "Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressStreet2",
+   "label": "Address 2",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressCity",
+   "label": "City",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressZip",
+   "label": "Zip/Postal Code",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressCountry",
+   "label": "Country",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "-1_PersonProfileFields.AddressState",
+   "label": "State/Province",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "Please select a country"
+   ]
+  },
+  {
+   "id": "PersonProfileFields.Login",
+   "label": "Email/Login",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "PersonProfileFields.Password",
+   "label": "Password: Minimum 8 characters, 1 alphabetic, 1 lowercase, 1 uppercase, 1 numeric, 1 special character(s)",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "PersonProfileFields.Password_Confirm",
+   "label": "Password (Re-enter): Minimum 8 characters, 1 alphabetic, 1 lowercase, 1 uppercase, 1 numeric, 1 special character(s)",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

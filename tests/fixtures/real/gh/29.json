@@ -1,0 +1,235 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8031583009",
+   "label": "School Name",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8031584009",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8031585009",
+   "label": "Major",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8031586009",
+   "label": "Graduation Month/Year",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7684997009",
+   "label": "What is your cumulative GPA?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7684998009",
+   "label": "If applicable, when does your Fall 2027 term start?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7684999009",
+   "label": "What is your permanent residence home city?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685000009",
+   "label": "What is your permanent residence home state?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685001009",
+   "label": "What is your permanent residence zip code?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685002009",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685004009",
+   "label": "Portfolio Link, if applicable",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_7685005009",
+   "label": "If you are not local to the job location, are you willing to relocate?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685006009",
+   "label": "How did you hear about the internship program?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685007009",
+   "label": "Are you available to work for the entire duration of the 2027 summer internship program, June 14—August 20, 2027?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685008009",
+   "label": "Will you require housing accommodation during the internship program?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7685010009",
+   "label": "Will you now or in the future require employer sponsorship for employment in the U.S.?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

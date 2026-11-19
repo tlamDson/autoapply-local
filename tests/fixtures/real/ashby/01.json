@@ -1,0 +1,39 @@
+{
+ "fields": [
+  {
+   "id": "_systemfield_education_history-degree",
+   "label": "e.g. Bachelor of Science",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "_systemfield_education_history-major",
+   "label": "e.g. Computer Science",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "_systemfield_education_history-isCurrent",
+   "label": "Still Student?",
+   "kind": "box",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "5aa40baa-323b-490d-a090-1dfa94433f44",
+   "label": "https://example.com...",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "36938aba-a7f6-4fa3-a447-bd1c63aa9360",
+   "label": "https://example.com...",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

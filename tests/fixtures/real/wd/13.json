@@ -1,0 +1,34 @@
+{
+ "fields": [
+  {
+   "id": "personalInfoUS--ethnicity",
+   "label": "Race/Ethnicity",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--hispanicOrLatino",
+   "label": "Hispanic or Latino",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "termsAndConditions--acceptTermsAndAgreements",
+   "label": "Yes, I have read and consent to the terms and conditions",
+   "kind": "box",
+   "req": true,
+   "opts": [
+    "Yes, I have read and consent to the terms and conditions*"
+   ]
+  }
+ ]
+}

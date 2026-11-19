@@ -13,6 +13,7 @@
       const identity = id + ' ' + (el?.getAttribute('data-automation-id') || '');
       if (
         /name--|employee.?id|fieldOfStudy|countryPhoneCode|dateSection|roleDescription/i.test(identity) ||
+        base.checkGroup(el) ||
         (observed && el?.tagName === 'TEXTAREA')
       )
         blocked.push({ id, reason: 'agent_interaction_required' });
@@ -22,7 +23,10 @@
     result.blocked.push(...blocked);
     return result;
   }
-  const api = { ...base, fill };
+  // A multi-select checkbox question is one field (common.cjs groupChecks).
+  const scan = document => base.groupChecks(document, base.scan(document));
+  const audit = document => base.groupChecks(document, base.audit(document));
+  const api = { ...base, scan, audit, fill };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.AutoApplyWorkday = api;
 })(globalThis);

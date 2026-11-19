@@ -1,0 +1,116 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_13030788007",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_13030789007",
+   "label": "I acknowledge that Example Co BioTech Corp. will collect and process my personal information (such as contact details, work history, and resume data) for recruitment and employment purposes. I understand this information will be accessed only by authorized personnel, handled securely, and retained as part of my employment record if I am hired.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "fields": [
+  {
+   "id": "secondaryQuestionnaire--670d74fc22081041d3d999df54190000",
+   "label": "What will your academic classification be during the next academic year?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "secondaryQuestionnaire--670d74fc22081041d3d99a78d7290000",
+   "label": "Are you willing to relocate to the location of this internship? Please note that a housing stipend will be provided to eligible candidates.",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

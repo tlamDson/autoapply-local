@@ -1,0 +1,64 @@
+{
+ "fields": [
+  {
+   "id": "CandProfileFields.Gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "— Make a Selection —",
+    "Male",
+    "Female",
+    "Opt Out"
+   ]
+  },
+  {
+   "id": "CandProfileFields.Race",
+   "label": "Race",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "— Make a Selection —",
+    "Hispanic or Latino",
+    "American Indian or Alaska Native (Not Hispanic or Latino)",
+    "Asian (Not Hispanic or Latino)",
+    "Black or African American (Not Hispanic or Latino)",
+    "Native Hawaiian or Other Pacific Islander (Not Hispanic or Latino)",
+    "Two or More Races (Not Hispanic or Latino)",
+    "White (Not Hispanic or Latino)",
+    "Opt Out"
+   ]
+  },
+  {
+   "id": "CandProfileFields.Disability",
+   "label": "Disability",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "— Make a Selection —",
+    "No",
+    "Yes",
+    "Opt Out"
+   ]
+  },
+  {
+   "id": "CandProfileFields.Veteran",
+   "label": "Veteran",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "— Make a Selection —",
+    "No",
+    "Yes",
+    "Opt Out"
+   ]
+  },
+  {
+   "id": "CandProfileFields.SSN",
+   "label": "PIN/SIN/Primary National ID",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

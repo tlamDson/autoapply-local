@@ -1,0 +1,357 @@
+{
+ "fields": [
+  {
+   "id": "education-5--degree",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "language-6--language",
+   "label": "Language",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "language-6--1bce55c0f541018569c79c2b4334af0d",
+   "label": "Overall",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "language-6--1bce55c0f541019a550c9d2b4334b10d",
+   "label": "Reading",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "language-6--1bce55c0f5410150c89d9c2b4334ae0d",
+   "label": "Speaking",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "language-6--1bce55c0f5410144bbea9c2b4334b00d",
+   "label": "Writing",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "formField-fieldOfStudy",
+   "label": "Field of Study",
+   "kind": "multi",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-7--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-8--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-9--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-10--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-10--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "education-5--schoolName",
+   "label": "School or University",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "education-5--gradeAverage",
+   "label": "Overall Result (GPA)",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "language-6--native",
+   "label": "I am fluent in this language.",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I am fluent in this language."
+   ]
+  },
+  {
+   "id": "skills--skills",
+   "label": "Type to Add Skills",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "webAddress-4--url",
+   "label": "URL",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "socialNetworkAccounts--linkedInAccount",
+   "label": "By providing my LinkedIn account I acknowledge FME may access it for recruiting purposes.",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

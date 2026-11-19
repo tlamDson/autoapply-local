@@ -1,0 +1,32 @@
+{
+ "fields": [
+  {
+   "id": "eda5514a-4c14-4a8c-b0b7-77a7bfbd3312",
+   "label": "Linkedin?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "638d2df3-7fb9-4fd6-a3ff-97be54cb1e31",
+   "label": "Please link your Github profile",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "e589b405-94bf-421a-ae26-06c217b3dc1b",
+   "label": "What can we look at?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "81496894-ad86-426e-a473-0c8fea1a2121",
+   "label": "Tell us about the most recent user-facing feature you personally shipped. Use three bullets:",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

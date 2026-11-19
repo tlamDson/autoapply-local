@@ -1,0 +1,165 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116980005",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9116981005",
+   "label": "Website",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9117262005",
+   "label": "Are you a current or former student of Northeastern University?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9117263005",
+   "label": "Are you eligible for Northeastern University's Co-op Program?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116983005",
+   "label": "Are you authorized to work in the US?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116984005",
+   "label": "Will you now or in the future require Example Co to commence (\"sponsor\") an immigration case in order to employ you (for example, H-1B or other employment-based immigration case)?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116985005",
+   "label": "Street Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116986005",
+   "label": "Address Line 2",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9116987005",
+   "label": "City",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116988005",
+   "label": "State",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116989005",
+   "label": "Zip Code",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9116990005",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

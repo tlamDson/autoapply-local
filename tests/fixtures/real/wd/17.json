@@ -1,0 +1,46 @@
+{
+ "fields": [
+  {
+   "id": "secondaryQuestionnaire--4b5686623ca41001a00d056fefe30000",
+   "label": "When do you anticipate graduating? (Month & Year)",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "secondaryQuestionnaire--4b5686623ca41001a00d056fefe30001",
+   "label": "What would be your earliest start date after graduation? (Month & Year)",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "secondaryQuestionnaire--4b5686623ca41001a00d056fefe30002",
+   "label": "If you are open to locations outside of the one you applied, please select from our list of office locations (please list up to three) from the link below:",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "secondaryQuestionnaire--4b5686623ca41001a00d056fefe30003",
+   "label": "What is your overall GPA? Please put N/A if this doesn't apply",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "secondaryQuestionnaire--4b5686623ca41001a00d056fefe30004",
+   "label": "What is your major GPA? Please put N/A if this doesn't apply",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "secondaryQuestionnaire--4b5686623ca41001a00d060a1b2b0000",
+   "label": "What is your Accounting GPA? Please put N/A if this doesn't apply",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

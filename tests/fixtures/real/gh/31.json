@@ -1,0 +1,137 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_8164313009",
+   "label": "City",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8164314009",
+   "label": "State",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8164315009",
+   "label": "Zip",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8164316009",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8164317009",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_8164318009",
+   "label": "If you are not local to the job location, are you willing to relocate?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8164320009",
+   "label": "Will you now or in the future require employer sponsorship for employment in the U.S.?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

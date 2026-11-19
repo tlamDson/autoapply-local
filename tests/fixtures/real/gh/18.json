@@ -1,0 +1,102 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8189620009",
+   "label": "Will you now or in the future require sponsorship for employment visa status (e.g., H-1B visa status)?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8189621009",
+   "label": "Do you currently reside within the continental United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8189622009",
+   "label": "Are you able to work in the specified job location, or are you willing to relocate for this position?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8189623009",
+   "label": "Why Lila, why this role, and why at this moment in your life?",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8189624009",
+   "label": "Privacy Notice",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

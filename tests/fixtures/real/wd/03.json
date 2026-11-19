@@ -1,0 +1,74 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598240267c00002",
+   "label": "Are you legally authorized to work in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598249c4fa20000",
+   "label": "A comprehensive background check may consist of prior employment verification, professional reference checks, education confirmation and/or criminal record and credit checks. If extended a job offer, are you willing to submit to a comprehensive background check?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598249c4fa20003",
+   "label": "Are you at least eighteen (18) years of age?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598249c4fa20006",
+   "label": "For residents of Virginia applicants only, for purposes of compliance with Section 40.1-11.1 of the Code of Virginia, are you legally eligible for employment in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598253653b90002",
+   "label": "Will you now or in the future require sponsorship for employment visa status (e.g., H-1B visa status)?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a1002159825d084580001",
+   "label": "Do you have any family members currently employed by Example Co or any of its affiliates or subsidiaries?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a1002159825d084580004",
+   "label": "Have you previously worked for Example Co or any of its affiliates or subsidiaries?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598240267c00001-dateSectionMonth-input",
+   "label": "What is your desired start date?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598240267c00001-dateSectionDay-input",
+   "label": "What is your desired start date?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--ec506cdc7b4a10021598240267c00001-dateSectionYear-input",
+   "label": "What is your desired start date?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

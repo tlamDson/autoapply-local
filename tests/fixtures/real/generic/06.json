@@ -1,0 +1,46 @@
+{
+ "fields": [
+  {
+   "id": "application_form_application_first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_email",
+   "label": "Email Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_linkedin_url",
+   "label": "LinkedIn URL",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personal-summary",
+   "label": "Personal Summary This section is optional. Use it to tell us a little more about yourself.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "application_process_information",
+   "label": "Allow us to process your personal information.",
+   "kind": "box",
+   "req": true,
+   "opts": []
+  }
+ ]
+}
