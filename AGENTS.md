@@ -147,6 +147,16 @@ Node adapter tests and scripts/check_release.py from this release root. Do not
 claim live ATS, Gmail, both-engine, macOS hardware or 8 GB validation from mocks.
 macOS has not been tested live; README.md and README.vi.md say so.
 
+`tests/fixtures/real/<ats>/` holds the structure of forms captured on real ATS
+pages (only `id`, `label`, `kind`, `req`, `opts` per field), made by
+`scripts/import_real_forms.py --source DIR`; rerun it to refresh, never edit
+by hand. `tests/test_real_forms_export.py` refuses any value, email, phone,
+street address or a name listed in `AUTOAPPLY_PRIVATE_NAMES` or the untracked
+`.private-names` file. `tests/real_forms.test.cjs` lists every core question
+(authorization, sponsorship, EEO, education, contact) an adapter's scan misses.
+A fieldset of checkboxes with a legend is one `checkbox-group` question on
+Greenhouse and Workday, held for native engine interaction.
+
 ## Implementation notes
 
 - The runtime CLI returns exit 2 for invalid input or schema and exit 3 for a missing dependency or engine error; `doctor` reports only executables and leaves login/connector state unverified.
