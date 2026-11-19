@@ -230,5 +230,61 @@ class Driver(unittest.TestCase):
         self.assertIn({"id": "yesno:1", "reason": "submit_control"}, result["blocked"])
         self.assertEqual(result["status"], "needs_manual")
 
+    def test_run_holds_a_disabled_option_for_the_user_and_names_it(self):
+        from unittest.mock import Mock
+
+        from autoapply_local.ashby_driver import AshbyDriver
+
+        question = "Will you now or in the future require visa sponsorship?"
+        client = Mock(spec=["evaluate_script"])
+        client.evaluate_script.side_effect = [
+            copy.deepcopy(self.SCAN),
+            {
+                "filled": ["_systemfield_name", "_systemfield_email"],
+                "blocked": [{"id": "yesno:1", "reason": "option_disabled", "option": "No"}],
+                "uploads": [],
+            },
+        ]
+        result = AshbyDriver().run(client, "tab-1", profile(scoped(question, False)), JOB, pdf="resume.pdf")
+        self.assertNotIn("yesno:1", {item["id"] for item in result["unknown"]})
+        self.assertIn({"id": "yesno:1", "reason": "option_disabled", "option": "No"}, result["blocked"])
+        self.assertNotIn("submit_control", json.dumps(result))
+        self.assertEqual(result["status"], "needs_manual")
+
+
+class AshbyHeldRecordTests(test_support.ReleaseCase):
+    def test_held_record_problem_names_the_disabled_option(self):
+        from unittest.mock import Mock
+
+        from autoapply_local.ashby_driver import AshbyDriver
+
+        question = "Will you now or in the future require visa sponsorship?"
+        client = Mock(spec=["evaluate_script"])
+        client.evaluate_script.side_effect = [
+            copy.deepcopy(Driver.SCAN),
+            {"filled": ["_systemfield_name"], "blocked": [{"id": "yesno:1", "reason": "option_disabled", "option": "No"}],
+             "uploads": []},
+        ]
+        report = AshbyDriver().run(client, "tab-1", profile(scoped(question, False)), JOB, pdf="resume.pdf")
+        workflow = self.module("workflow")
+        self.write_json("profile.json", test_support.candidate("authorized"))
+        pdf = self.root / "synthetic.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n% synthetic\n%%EOF")
+        browser = Mock(spec=["open", "fill", "upload_file", "snapshot", "refill", "close"])
+        browser.open.return_value = "tab-1"
+        browser.fill.return_value = report
+        runner = workflow.Workflow(self.root, browser=browser, engines={"codex": self.fake_engine()},
+                                   default_engine="codex", clock=lambda: test_support.NOW)
+        runner.store.enqueue(test_support.job(ats="ashby", url=URL))
+        result = runner.apply(["synthetic-1"], pdf=pdf)
+        self.assertEqual(result["jobs"][0]["status"], "needs_manual")
+        record = runner.store.get("synthetic-1")
+        self.assertEqual(record["state"], "needs_manual")
+        self.assertIn("option_disabled", record["problem"])
+        self.assertIn("'option': 'No'", record["problem"])
+        self.assertNotIn("submit_control", record["problem"])
+        browser.close.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
