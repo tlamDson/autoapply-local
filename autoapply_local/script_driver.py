@@ -23,6 +23,8 @@ ADAPTERS = {
 CLICKS = re.compile(r"\.click\s*\(|requestSubmit|\.submit\s*\(")
 CHOICE_TYPES = {"select", "select-one", "radio"}
 WIDGET_TYPES = {"combobox", "listbox", "checkbox-group"}
+# Blocked reasons the engine must never act on: the user answers them in the held tab.
+HELD_REASONS = {"submit_control", "option_disabled"}
 
 AUDIT_READBACK = """
 for (const field of result.fields) {
@@ -203,9 +205,10 @@ class ScriptDriver:
         described = {field.get("id"): field for field in fields}
         held = False
         for item in result.get("blocked", []):
-            if item.get("reason") == "submit_control":
-                # The control could submit the form: never hand it to the
-                # engine's native click; the user answers it by hand.
+            if item.get("reason") in HELD_REASONS:
+                # The control could submit the form, or its option is disabled:
+                # never hand it to the engine's native click; the user answers
+                # it by hand.
                 held = True
                 unknown = [entry for entry in unknown if entry["id"] != item.get("id")]
                 listed.add(item.get("id"))
