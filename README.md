@@ -369,7 +369,10 @@ commands and Codex skill use the same launcher. No command clicks Submit.
   otherwise it is held back. A Workday page that names no job waits for its email.
   Tabs still on their form are listed as waiting; tabs gone without evidence are
   listed with their URL. It never runs a script in a job tab and changes nothing
-  when the tool's Chrome is not running.
+  when the tool's Chrome is not running. A job recorded from its email alone (its
+  tab shows no confirmation page) is listed under "Recorded from email only, check
+  it" with its ID, company, role and email date; if you did not submit that form,
+  `track --undo ID` holds the job again and removes its tracker row.
 - `status`: list held forms, counts and unresolved applications without an engine.
 - `update`: back up, update and migrate (see [Update](#update)).
 

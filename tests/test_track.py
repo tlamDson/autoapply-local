@@ -137,6 +137,72 @@ class TrackTests(ReleaseCase):
         self.assertEqual(again["submitted"], [])
         self.assertEqual(self.tracker_ids(), ["ab-1"])
 
+    def test_email_only_match_is_listed_to_check_with_its_undo(self):
+        self.held("ab-1", "https://jobs.ashbyhq.com/acme/0b1c/application", company="Acme Robotics",
+                  role="Software Engineer Intern")
+        cdp = FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/0b1c/application"}])
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern", thread="th-ab")])
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["ab-1"])
+        self.assertEqual(report["check"], [{
+            "job_id": "ab-1", "company": "Acme Robotics", "role": "Software Engineer Intern",
+            "email_date": "2026-11-18", "undo": "track --undo ab-1",
+        }])
+        self.assertEqual(self.tracker_ids(), ["ab-1"], "an email-only match is still recorded")
+
+    def test_match_backed_by_the_tabs_confirmation_page_is_not_listed_to_check(self):
+        self.held("wd-1", "https://acme.wd5.myworkdayjobs.com/en-US/Ext/job/Remote/Intern_R1/apply",
+                  company="Acme Robotics", role="Software Engineer Intern")
+        done = "https://acme.wd5.myworkdayjobs.com/en-US/Ext/jobTasks/completed/application"
+        cdp = FakeCDP([{"id": "tab-wd-1", "url": done}])
+        report = self.reconcile(cdp, [mail("Acme Robotics", "Software Engineer Intern", thread="th-wd")])
+        self.assertEqual([item["job_id"] for item in report["submitted"]], ["wd-1"])
+        self.assertEqual(report["check"], [])
+
+    def test_job_confirmed_by_its_page_alone_is_not_listed_to_check(self):
+        self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
+        report = self.reconcile(FakeCDP([{"id": "tab-gh-1",
+                                          "url": "https://job-boards.greenhouse.io/acme/jobs/1/confirmation"}]))
+        self.assertEqual(report["check"], [])
+
+    def test_undo_returns_an_email_only_match_to_its_held_state_and_never_rematches_that_email(self):
+        self.held("ab-1", "https://jobs.ashbyhq.com/acme/0b1c/application", company="Acme Robotics",
+                  role="Software Engineer Intern", state="reviewed")
+        cdp = FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/0b1c/application"}])
+        rows = [mail("Acme Robotics", "Software Engineer Intern", thread="th-ab")]
+        self.reconcile(cdp, rows)
+        result = self.track.undo(self.root, "ab-1")
+        self.assertEqual(result, {"job_id": "ab-1", "state": "reviewed"})
+        record = self.store.get("ab-1")
+        self.assertEqual(record["state"], "reviewed")
+        self.assertNotIn("confirmation", record)
+        self.assertEqual(record["tab_id"], "tab-ab-1")
+        self.assertEqual(self.tracker_ids(), [])
+        again = self.reconcile(cdp, rows)
+        self.assertEqual(again["submitted"], [])
+        self.assertEqual([item["job_id"] for item in again["waiting"]], ["ab-1"])
+        self.assertEqual(self.tracker_ids(), [])
+
+    def test_undo_refuses_a_job_not_recorded_from_email(self):
+        self.held("gh-1", "https://job-boards.greenhouse.io/acme/jobs/1")
+        self.held("gh-2", "https://job-boards.greenhouse.io/acme/jobs/2")
+        self.reconcile(FakeCDP([{"id": "tab-gh-1",
+                                 "url": "https://job-boards.greenhouse.io/acme/jobs/1/confirmation"}]))
+        for job_id in ("gh-1", "gh-2"):
+            with self.subTest(job_id=job_id), self.assertRaises(ValueError):
+                self.track.undo(self.root, job_id)
+        self.assertEqual(self.store.get("gh-1")["state"], "submitted")
+        self.assertEqual(self.tracker_ids(), ["gh-1"])
+
+    def test_undo_refuses_an_application_that_moved_to_a_later_stage(self):
+        self.held("ab-1", "https://jobs.ashbyhq.com/acme/0b1c/application", company="Acme Robotics",
+                  role="Software Engineer Intern")
+        self.reconcile(FakeCDP([{"id": "tab-ab-1", "url": "https://jobs.ashbyhq.com/acme/0b1c/application"}]),
+                       [mail("Acme Robotics", "Software Engineer Intern", thread="th-ab")])
+        self.store.update_tracker_status("ab-1", "interview", "2026-11-19")
+        with self.assertRaises(ValueError):
+            self.track.undo(self.root, "ab-1")
+        self.assertEqual(self.tracker_ids(), ["ab-1"])
+
     def test_email_for_another_role_does_not_match_but_unrelated_confirmations_join_history(self):
         self.held("wk-1", "https://apply.workable.com/acme/j/ABC/apply/", company="Acme Robotics",
                   role="Data Engineer Intern")
@@ -572,6 +638,31 @@ class TrackCommandTests(ReleaseCase):
         self.assertEqual(code, 0, err.getvalue())
         self.assertEqual(calls, [{"root": self.root}])
         self.assertEqual(json.loads(out.getvalue()), {"submitted": []})
+
+    def test_cli_dispatches_track_undo(self):
+        calls = []
+        services = {"track": lambda **kwargs: calls.append(kwargs) or {"job_id": "ab-1"}}
+        out, err = io.StringIO(), io.StringIO()
+        code = self.module("cli").main(["--user-dir", str(self.root), "track", "--undo", "ab-1"], services=services,
+                                       stdout=out, stderr=err)
+        self.assertEqual(code, 0, err.getvalue())
+        self.assertEqual(calls, [{"root": self.root, "undo": "ab-1"}])
+
+    def test_runtime_track_undo_calls_track_undo(self):
+        runtime = self.module("runtime")
+        with patch("autoapply_local.track.undo", return_value={"job_id": "ab-1"}) as undo:
+            self.assertEqual(runtime.track(root=self.root, undo="ab-1"), {"job_id": "ab-1"})
+        undo.assert_called_once_with(self.root, "ab-1")
+
+    def test_apply_end_table_lists_email_only_matches_with_their_undo(self):
+        text = self.module("apply_run").table({"track": {
+            "submitted": [{"job_id": "ab-1", "company": "Acme Robotics", "role": "Software Engineer Intern"}],
+            "check": [{"job_id": "ab-1", "company": "Acme Robotics", "role": "Software Engineer Intern",
+                       "email_date": "2026-11-18", "undo": "track --undo ab-1"}],
+        }})
+        self.assertIn("Recorded from email only, check it:", text)
+        self.assertIn("ab-1 | Acme Robotics | Software Engineer Intern | 2026-11-18 | undo: track --undo ab-1", text)
+        self.assertNotIn("check it", self.module("apply_run").table({"track": {"submitted": [], "check": []}}))
 
     def test_runtime_exposes_track(self):
         runtime = self.module("runtime")
