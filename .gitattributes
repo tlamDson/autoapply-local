@@ -1,0 +1,13 @@
+# Store every text file with LF so Windows checkouts cannot flood diffs with CRLF.
+* text=auto eol=lf
+
+# Windows scripts run with CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files are never converted or diffed as text.
+*.pdf binary
+*.png binary
+*.xlsx binary
+*.zip binary

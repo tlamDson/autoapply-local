@@ -9,6 +9,7 @@
   ".claude/commands/submitted.md",
   ".codex/skills/autoapply-local/SKILL.md",
   ".github/workflows/ci.yml",
+  ".gitattributes",
   ".gitignore",
   "AGENTS.md",
   "CLAUDE.md",
