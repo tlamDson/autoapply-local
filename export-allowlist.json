@@ -205,6 +205,7 @@
   "tests/test_workable_driver.py",
   "tests/test_workable_engine_path.py",
   "tests/test_script_client.py",
+  "tests/test_script_handoff_engine_ids.py",
   "autoapply_local/demo_form.py",
   "autoapply_local/fetch_screen.py",
   "autoapply_local/posting_dates.py",

@@ -52,9 +52,13 @@ def script_then_engine(bridge, driver, tab_id, profile, job, pdf, bank=None):
     left, engine_status = [], "filled"
     if pending:
         result = bridge.client.interact_fields(tab_id, pending)
-        engine_filled = list(result.get("filled", []))
+        # Trust only IDs the engine was asked to fill; a stray ID holds the tab.
+        requested = {item["id"] for item in pending}
+        reported = list(result.get("filled", []))
+        engine_filled = [key for key in reported if key in requested]
         filled += [key for key in engine_filled if key not in filled]
         blocked += list(result.get("blocked", []))
+        blocked += [{"id": key, "reason": "unrequested_field"} for key in dict.fromkeys(reported) if key not in requested]
         engine_status = result.get("status")
         left = [item for item in pending if item["id"] not in engine_filled]
     # Optional fields with no confirmed fact stay empty; required ones wait for
