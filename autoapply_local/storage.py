@@ -308,6 +308,32 @@ class Store:
             record.update(state="submitted", confirmation=copy.deepcopy(evidence))
             self._save(ledger)
 
+    def undo_email_submission(self, job_id):
+        """Return a job recorded from a Gmail email alone to its held state; the email stays seen."""
+        with lock(self.lock_path):
+            ledger = self._load()
+            record = ledger["jobs"].get(str(job_id))
+            confirmation = record.get("confirmation") if record else None
+            if (record is None or record.get("state") != "submitted" or not isinstance(confirmation, dict)
+                    or confirmation.get("channel") != "gmail" or not confirmation.get("previous_state")):
+                raise ValueError(f"Job {job_id} was not recorded from an email alone; nothing to undo")
+            workbook = load_workbook(self.tracker)
+            columns = {cell.value: cell.column for cell in workbook.active[1]}
+            for row in workbook.active.iter_rows(min_row=2):
+                if str(row[columns["id"] - 1].value) == str(job_id):
+                    if str(row[columns["status"] - 1].value or "").lower() != "submitted":
+                        workbook.close()
+                        raise ValueError(f"Job {job_id} moved to a later stage in the tracker; nothing to undo")
+                    workbook.active.delete_rows(row[0].row)
+                    self._save_workbook(workbook)
+                    break
+            else:
+                workbook.close()
+            del record["confirmation"]
+            record["state"] = confirmation["previous_state"]
+            self._save(ledger)
+            return copy.deepcopy(record)
+
     def tracker_rows(self):
         with lock(self.lock_path):
             return self._tracker_rows()

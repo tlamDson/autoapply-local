@@ -617,10 +617,15 @@ def submitted(*, root, selection):
     return {"jobs": [manual_submission.record(store, job_id) for job_id in ids], **status(root=root)}
 
 
-def track(*, root):
-    """Record held forms on a confirmation page and Gmail confirmations; list the rest."""
+def track(*, root, undo=None):
+    """Record held forms on a confirmation page and Gmail confirmations; list the rest.
+
+    With ``undo``, return a job recorded from an email alone to its held state instead.
+    """
     from . import track as track_module
 
+    if undo is not None:
+        return track_module.undo(root, undo)
     return track_module.run(root)
 
 

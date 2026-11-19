@@ -162,6 +162,11 @@ def table(report):
               for item in track.get("history_entries") or []]
     if found:
         lines += ["", "Confirmations found in Gmail:", *("  " + item for item in found)]
+    check = [f"{item.get('job_id')} | {item.get('company')} | {item.get('role')} | {item.get('email_date')}"
+             f" | undo: {item.get('undo')}" for item in track.get("check") or []]
+    if check:
+        lines += ["", "Recorded from email only, check it:", *("  " + item for item in check),
+                  "  Not your application from the tool's tab? Run the undo command to hold the job again."]
     skipped = [f"{item.get('company')} | {item.get('role')} | {item.get('reason')}"
                for item in report.get("skipped") or []]
     summary = ((report.get("fetch") or {}).get("report") or {}).get("summary")
