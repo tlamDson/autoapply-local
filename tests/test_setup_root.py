@@ -126,7 +126,7 @@ class SetupRootCase(ReleaseCase):
             self.skipTest("Git is unavailable; synthetic repository integration requires Git")
         completed = subprocess.run(
             [executable, "-C", str(source), *arguments], capture_output=True,
-            text=True, encoding="utf-8", timeout=15,
+            text=True, encoding="utf-8", timeout=120,  # hang guard only: a cold Windows runner can take >15 s to git add
         )
         return completed
 
