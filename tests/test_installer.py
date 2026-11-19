@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from test_support import RELEASE
 
@@ -48,9 +49,10 @@ class InstallerFlowTests(unittest.TestCase):
         python.parent.mkdir(parents=True, exist_ok=True)
         python.write_text("synthetic interpreter\n", encoding="utf-8")
 
-    def install(self, arguments=(), report=OK, run=None):
+    def install(self, arguments=(), report=OK, run=None, interactive=True):
         output = io.StringIO()
-        with redirect_stdout(output):
+        stdin = mock.Mock(isatty=mock.Mock(return_value=interactive))
+        with redirect_stdout(output), mock.patch("sys.stdin", stdin):
             code = self.installer.main(
                 list(arguments), root=self.repo, run=run or self.fake_run,
                 create_venv=self.fake_create, detect=lambda: report,
@@ -76,8 +78,17 @@ class InstallerFlowTests(unittest.TestCase):
         # A user-level pip config with user = true must not break a venv install.
         self.assertEqual(pip_options["env"]["PIP_USER"], "0")
         self.assertEqual(Path(pip_options["cwd"]), self.repo)
-        self.assertEqual(setup, [python, str(self.repo / "autoapply-local.py"), "setup"])
+        # Part 1 of setup is the terminal part (README "Setup, part 1: terminal").
+        self.assertEqual(setup, [python, str(self.repo / "autoapply-local.py"), "setup", "--terminal"])
         self.assertEqual(Path(setup_options["cwd"]), self.repo)
+
+    def test_without_a_terminal_bootstraps_setup_and_names_the_terminal_part(self):
+        # CI and piped runs have no terminal to answer the prompts: bootstrap the runtime only.
+        code, output = self.install(interactive=False)
+        self.assertEqual(code, 0, output)
+        (_, _), (setup, _) = self.calls
+        self.assertEqual(setup[-1], "setup")
+        self.assertIn("autoapply-local.py setup --terminal", output)
 
     def test_rerun_reuses_venv_and_repeats_the_same_steps(self):
         self.assertEqual(self.install()[0], 0)
@@ -90,10 +101,11 @@ class InstallerFlowTests(unittest.TestCase):
         self.assertIn("reusing", output.lower())
 
     def test_no_setup_flag_skips_auto_start(self):
-        code, _ = self.install(["--no-setup"])
+        code, output = self.install(["--no-setup"])
         self.assertEqual(code, 0)
         self.assertEqual(len(self.calls), 1)
         self.assertIn("pip", self.calls[0][0])
+        self.assertIn("autoapply-local.py setup --terminal", output)
 
     def test_failed_pip_install_stops_before_setup(self):
         def failing(argv, **options):
