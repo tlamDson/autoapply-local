@@ -250,7 +250,43 @@
     ].map(item => item.validationMessage || item.innerText || item.getAttribute('aria-label') || 'Invalid field');
     return current;
   }
-  const api = { scan, fill, audit, resolve, missing };
+  // A fieldset with a legend and two or more checkboxes is one multi-select
+  // question: the legend is its label and each box an option. Only native
+  // engine interaction sets it, so an ATS adapter that groups them holds fills.
+  const checkGroup = el => {
+    if (el?.type !== 'checkbox') return null;
+    const set = el.closest('fieldset');
+    const legend = set?.querySelector('legend');
+    const boxes = set ? set.querySelectorAll('input').filter(box => box.type === 'checkbox') : [];
+    return legend && boxes.length > 1 ? { set, legend, boxes } : null;
+  };
+  function groupChecks(document, result) {
+    const elements = new Map(bindings(document).map(item => [item.id, item.el]));
+    const done = new Set();
+    const fields = [];
+    for (const field of result.fields) {
+      const group = field.type === 'checkbox' ? checkGroup(elements.get(field.id)) : null;
+      if (!group) fields.push(field);
+      else if (!done.has(group.set)) {
+        done.add(group.set);
+        const legend = String(group.legend.innerText || group.legend.textContent || '').trim();
+        fields.push({
+          ...field,
+          label: legend.replace(/\s*\*$/, ''),
+          type: 'checkbox-group',
+          required:
+            /\*$/.test(legend) || group.boxes.some(box => box.required || box.getAttribute('aria-required') === 'true'),
+          value: group.boxes.filter(box => box.checked).map(box => box.value),
+          options: group.boxes.map(box => ({ value: box.value, label: label(box) })),
+        });
+      }
+    }
+    result.fields = fields;
+    if (result.required_unknown)
+      result.required_unknown = fields.filter(item => item.required && missing(item)).map(item => item.id);
+    return result;
+  }
+  const api = { scan, fill, audit, resolve, missing, checkGroup, groupChecks };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.AutoApplyDOM = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

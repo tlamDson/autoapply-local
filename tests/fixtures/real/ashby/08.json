@@ -1,0 +1,11 @@
+{
+ "fields": [
+  {
+   "id": "a0bcdb1c-b371-4edd-8b78-4837da16de65",
+   "label": "If no, is your home country listed below?",
+   "kind": "radio",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

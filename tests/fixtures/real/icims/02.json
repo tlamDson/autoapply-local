@@ -1,0 +1,18 @@
+{
+ "fields": [
+  {
+   "id": "email",
+   "label": "Primary Email",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "accept_gdpr",
+   "label": "Click here to acknowledge the above disclosure.",
+   "kind": "box",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--577a8ce98ca20143935a19096d1baa75",
+   "label": "Are you legally authorized to work in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--577a8ce98ca2011803b319096d1bad75",
+   "label": "Will you now or in the future require sponsorship? For purposes of the question, “sponsorship for an immigration-related employment benefit” means things such as “an H-1B visa petition, TN status, Adjustment of Status portability etc.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

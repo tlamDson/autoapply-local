@@ -1,0 +1,43 @@
+{
+ "fields": [
+  {
+   "id": "personalInfoUS--gender",
+   "label": "Self-Identification of Gender:",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--veteranStatus",
+   "label": "Self-Identification of Veteran and Military Spouse Status:",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "156fb9a2f01c10bed7c258338f729192-ethnicityMulti",
+   "label": "Self-Identification of Ethnicity:",
+   "kind": "checks",
+   "req": false,
+   "opts": [
+    "American Indian or Alaska Native (United States of America)",
+    "Asian (United States of America)",
+    "Black or African American (United States of America)",
+    "Decline to state (United States of America)",
+    "Hispanic or Latino (United States of America)",
+    "Middle Eastern or North Aftrican (United States of America)",
+    "Native Hawaiian or Other Pacific Islander (United States of America)",
+    "White (United States of America)"
+   ]
+  },
+  {
+   "id": "termsAndConditions--acceptTermsAndAgreements",
+   "label": "Acknowledged",
+   "kind": "box",
+   "req": true,
+   "opts": [
+    "Acknowledged*"
+   ]
+  }
+ ]
+}

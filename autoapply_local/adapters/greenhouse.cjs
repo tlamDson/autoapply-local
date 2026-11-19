@@ -32,9 +32,9 @@
     }
     return result;
   }
-  const scan = document => decorate(document, base.scan(document));
+  const scan = document => decorate(document, base.groupChecks(document, base.scan(document)));
   function audit(document) {
-    const result = decorate(document, base.audit(document));
+    const result = decorate(document, base.groupChecks(document, base.audit(document)));
     const values = new Map(result.fields.map(field => [field.id, field]));
     const chosen = id => values.get(id)?.type === 'combobox' && !empty(values.get(id).value);
     const unknown = new Set(result.required_unknown.filter(id => !chosen(id)));
@@ -46,7 +46,8 @@
     const blocked = [],
       safe = {};
     for (const [id, value] of Object.entries(answers)) {
-      if (isWidget(base.resolve(document, id))) blocked.push({ id, reason: 'agent_interaction_required' });
+      const el = base.resolve(document, id);
+      if (isWidget(el) || base.checkGroup(el)) blocked.push({ id, reason: 'agent_interaction_required' });
       else safe[id] = value;
     }
     const result = await base.fill(document, safe);

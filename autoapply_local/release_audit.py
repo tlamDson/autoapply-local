@@ -12,6 +12,7 @@ import csv
 import fnmatch
 import hashlib
 import io
+import json
 import os
 import re
 import shutil
@@ -65,6 +66,32 @@ def _private(pure):
     if any("secret" in part for part in parts) or name.startswith(".env") or name.endswith(".review.md"):
         return True
     return pure.suffix.lower() in _BINARY_OUTPUTS
+
+
+_REAL_FORM_KEYS = {"id", "label", "kind", "req", "opts"}
+
+
+def _real_form(pure):
+    """tests/fixtures/real/<ats>/*.json: the structure of a captured form, checked field by field."""
+    return tuple(pure.parts[:3]) == ("tests", "fixtures", "real") and len(pure.parts) == 5 and pure.suffix == ".json"
+
+
+def _real_member(entry, pure):
+    """A real-form fixture inside the source ZIP, under its single top-level folder."""
+    return entry.endswith(".zip") and len(pure.parts) > 1 and _real_form(PurePosixPath(*pure.parts[1:]))
+
+
+def _structure_only(text):
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return False
+    fields = data.get("fields") if isinstance(data, dict) else None
+    return (
+        set(data) == {"fields"}
+        and isinstance(fields, list)
+        and all(isinstance(item, dict) and set(item) <= _REAL_FORM_KEYS for item in fields)
+    )
 
 
 def _content_violations(text, pure):
@@ -147,7 +174,8 @@ def _archive_violations(payload, entry, permitted, denied, members=None):
             in {"PKG-INFO", "SOURCES.txt", "dependency_links.txt", "entry_points.txt", "requires.txt", "top_level.txt"}
             and name in permitted
         )
-        if _private(pure) and not metadata:
+        real = _real_member(entry, pure)
+        if _private(pure) and not metadata and not real:
             reject("private or generated archive member")
         total += len(data)
         if total > 100_000_000:
@@ -159,6 +187,8 @@ def _archive_violations(payload, entry, permitted, denied, members=None):
         except UnicodeDecodeError:
             reject("non-text archive member requires explicit safe handling")
             return
+        if real and not _structure_only(content):
+            reject("real form fixture holds more than id, label, kind, req, opts")
         for reason in _content_violations(content, pure):
             reject(reason)
         if members is not None:
@@ -410,7 +440,7 @@ def audit(root, export_files, allowlist, deny_fingerprints=()):
         seen.add(entry)
         if entry not in permitted:
             violations.append({"path": entry, "reason": "not on explicit allowlist"})
-        if _private(pure):
+        if _private(pure) and not _real_form(pure):
             violations.append({"path": entry, "reason": "private or generated data path"})
         if not path.is_file():
             violations.append({"path": entry, "reason": "missing export file"})
@@ -426,6 +456,8 @@ def audit(root, export_files, allowlist, deny_fingerprints=()):
         except UnicodeDecodeError:
             violations.append({"path": entry, "reason": "non-text release file requires explicit safe handling"})
             continue
+        if _real_form(pure) and not _structure_only(text):
+            violations.append({"path": entry, "reason": "real form fixture holds more than id, label, kind, req, opts"})
         for reason in _content_violations(text, pure):
             violations.append({"path": entry, "reason": reason})
     return {"ok": not violations, "violations": violations, "files_checked": len(seen)}

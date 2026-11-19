@@ -1,0 +1,25 @@
+{
+ "fields": [
+  {
+   "id": "aaedddcd-9751-48b6-86d6-10f5c5220606",
+   "label": "Tell me an example of excellence you have demonstrated that is NOT on your CV (could be academic or non academic related!)",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "2d609253-d6ba-4c70-b114-173f1b2d4e42",
+   "label": "Gender",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "228a3c86-48be-4943-9bde-26c0f5eefa2b",
+   "label": "Please list your GPA",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "fields": [
+  {
+   "id": "9b891c53-9628-426b-8cd0-72ade1d4390d",
+   "label": "Portfolio",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

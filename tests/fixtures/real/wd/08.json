@@ -1,0 +1,53 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69aedc9a320001",
+   "label": "Are you applying for an Engineering Role?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69af762e4b0004",
+   "label": "Have you already applied for one of our intern/graduate/apprenticeship programmes this academic year? We ask that candidates make one application per recruitment cycle, therefore check whether you have made an application since August 2026.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69b00fb5f80001",
+   "label": "Please confirm your highest level of study.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69b00fb5f80004",
+   "label": "Please confirm your current year of study?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69b0a93a2f0000",
+   "label": "Please confirm what year you are due to complete your degree/qualification (this includes any post graduate studies).",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69b0a93a2f0006",
+   "label": "Are you legally authorized or have a valid work permit, to be employed in the country for which you are applying?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--d14aab00d4e4102bfc69b142db6a0000",
+   "label": "Do you now, or will you in future, require Company (Example Co) sponsorship to secure or maintain an employment VISA in the country for which you are applying?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

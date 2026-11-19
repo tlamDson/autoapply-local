@@ -1,0 +1,11 @@
+{
+ "fields": [
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

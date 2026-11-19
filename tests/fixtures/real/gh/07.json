@@ -1,0 +1,137 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69544748",
+   "label": "Do you currently have legal US work authorization?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69544749",
+   "label": "Do you currently require this company’s immigration sponsorship for work authorization in order to onboard and work with this company? This includes if you require support for H-1B (including transfer, amendment, extension, and/or annual quota/lottery), H-1B1, O-1, E-3, TN, F-1 STEM, F-1 CPT, or similar.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69544750",
+   "label": "In order to maintain your continued ability to work, will you in the future require this company’s immigration sponsorship for work authorization? This includes if you will in the future require support for H-1B (including transfer, amendment, extension, and/or annual quota/lottery), H-1B1, O-1, E-3, TN, F-1 STEM, F-1 CPT, or similar.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69544751",
+   "label": "This role is based out of our Boston, MA office since Example Co operates in a hybrid model. You will need to be within a commutable distance to the office. Are you comfortable with this requirement?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69544752",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "331",
+   "label": "Gender identity",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "332",
+   "label": "Transgender identity",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "333",
+   "label": "LGBTQIA+ identity",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "334",
+   "label": "Race/ethnicity (select all that apply)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "335",
+   "label": "Veteran status",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "336",
+   "label": "I have a disability (physical or non-physical)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

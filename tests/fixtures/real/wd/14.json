@@ -1,0 +1,111 @@
+{
+ "fields": [
+  {
+   "id": "country--country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "address--countryRegion",
+   "label": "State",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phoneNumber--phoneType",
+   "label": "Phone Device Type",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "formField-source",
+   "label": "How Did You Hear About Us?*",
+   "kind": "multi",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "formField-countryPhoneCode",
+   "label": "Country Phone Code*",
+   "kind": "multi",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "name--legalName--firstName",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "name--legalName--lastName",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "name--preferredCheck",
+   "label": "I have a preferred name",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I have a preferred name"
+   ]
+  },
+  {
+   "id": "name--preferredName--firstName",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "name--preferredName--lastName",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "address--addressLine1",
+   "label": "Address Line 1",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "address--city",
+   "label": "City",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "address--postalCode",
+   "label": "Postal Code",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phoneNumber--phoneNumber",
+   "label": "Phone Number",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phoneNumber--extension",
+   "label": "Phone Extension",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

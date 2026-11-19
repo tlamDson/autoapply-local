@@ -1,0 +1,221 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "start-year--0",
+   "label": "Start date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593931",
+   "label": "LinkedIn",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_69593932",
+   "label": "Personal website / Blog",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_69593933",
+   "label": "Links to projects / Github",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_69593934",
+   "label": "Will you now, or in the future, require sponsorship to work in the U.S.?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593935",
+   "label": "If you answered 'Yes' above, please provide additional details on the sponsorship you require.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_69593936",
+   "label": "Are you able to work/live within the United States or Canada for the duration of your internship? Where will you be working from?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593937",
+   "label": "How did you hear about this internship?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593939[]",
+   "label": "What is your expected graduation date?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69594555",
+   "label": "Have you completed an internship in Software Engineering?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593940",
+   "label": "What is your current major, and what inspired you to choose this field of study?",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593941",
+   "label": "Have you used Example Co before? What excites you about the opportunity to intern at Example Co, and how do you see our mission aligning with your personal goals or values?",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593942",
+   "label": "Can you provide a link to a recent project you’ve worked on? Please include a brief description of the project, any challenges you faced, and the link to it.",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69593943",
+   "label": "Is there anything else you'd like us to know about you?",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "disability_status",
+   "label": "Disability Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

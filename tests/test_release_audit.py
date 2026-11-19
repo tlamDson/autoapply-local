@@ -72,6 +72,26 @@ class ReleaseAuditTests(ReleaseCase):
                 self.assertIs(report["ok"], False)
                 self.assertIn(name, str(report["violations"]))
 
+    def test_real_form_structure_is_public_but_any_value_in_it_is_not(self):
+        root, allowed = self.tree()
+        field = {"id": "q1", "label": "Will you require sponsorship?", "kind": "choice", "req": True, "opts": ["Yes", "No"]}
+        cases = {
+            "tests/fixtures/real/gh/01.json": ({"fields": [field]}, True),
+            "tests/fixtures/real/gh/02.json": ({"fields": [{**field, "val": "No"}]}, False),
+            "tests/fixtures/real/gh/03.json": ({"fields": [field], "meta": {"url": "https://example.com"}}, False),
+            "tests/fixtures/real/gh/04.json": ({"fields": [{**field, "label": "Write to someone@personal.example"}]}, False),
+            "tests/fixtures/real/gh/notes.md": ("Synthetic notes", False),
+            "tests/fixtures/realistic/01.json": ({"fields": [field]}, False),
+        }
+        for name, (content, public) in cases.items():
+            with self.subTest(name=name):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content if isinstance(content, str) else json.dumps(content), encoding="utf-8")
+                requested = allowed + [name]
+                report = self.module("release_audit").audit(root, export_files=requested, allowlist=requested)
+                self.assertIs(report["ok"], public, report["violations"])
+
     def test_allowlisted_readme_contents_are_scanned_for_personal_contact_data(self):
         root, allowed = self.tree()
         (root / "README.md").write_text(

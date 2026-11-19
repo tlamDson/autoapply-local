@@ -1,0 +1,151 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_4468413007",
+   "label": "I understand this is an in-person role in Philadelphia, PA.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7747836007",
+   "label": "What is your anticipated graduation year?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_4468414007",
+   "label": "How did you hear about us?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_10051040007",
+   "label": "Did you attend a fall career fair this year?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_4468415007",
+   "label": "What excites you about this opportunity?",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_11184349007",
+   "label": "Describe a situation and your response to it that shows how you demonstrate a high level of grit.",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_11184350007",
+   "label": "Tell us about a time you took full ownership of a challenging moment (outside of your schoolwork), and saw it through to the end.",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_5344156007",
+   "label": "Will you now or in the future require sponsorship for employment visa status?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_5344264007",
+   "label": "Are you legally authorized to work in the United States on a full-time basis?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}
