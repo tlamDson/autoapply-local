@@ -25,7 +25,7 @@ sys.path.insert(0, str(RELEASE))
 
 from autoapply_local import rippling_driver  # noqa: E402
 from autoapply_local.greenhouse_driver import GreenhouseDriver  # noqa: E402
-from autoapply_local.profile import fact  # noqa: E402
+from autoapply_local.profile import BOOLEAN_FIELDS, fact, validate_profile  # noqa: E402
 from autoapply_local.workday_driver import WorkdayDriver  # noqa: E402
 
 CORPUS = json.loads((RELEASE / "tests" / "cases" / "corpus.json").read_text(encoding="utf-8"))
@@ -57,7 +57,31 @@ RENAMED = {
     "eeo.veteran_status": "veteran",
     "eeo.disability_status": "disability",
     "resume": "resume",
+    # Authorization and sponsorship facts, so a matcher that starts answering them shows up.
+    "authorization_details.current_status": "work_auth_status",
+    "authorization_details.restrictions": "unrestricted",
+    "authorization_details.authorized_now": "auth_us",
+    "authorization_details.authorized_at_start": "auth_us",
+    "authorization_details.sponsorship_now": "sponsor",
+    "authorization_details.sponsorship_future": "sponsor",
+    "authorization.current_status": "work_auth_status",
+    "authorization.authorized_now": "auth_us",
+    "authorization.authorized_at_start": "auth_us",
+    "authorization.sponsorship_now": "sponsor",
+    "authorization.sponsorship_future": "sponsor",
+    "international_student.status": "student_visa",
+    "international_student.intended_mechanism": "work_eligibility_type",
+    "international_student.cpt": "currently_cpt",
+    "international_student.opt": "temp_work_auth",
+    "international_student.stem_opt": "opt_stem_eligible",
+    "international_student.school_support": "school_approval",
+    "international_student.dso_support": "school_approval",
+    "international_student.employer_support": "sponsor",
 }
+# Boolean facts cannot carry their own name; picked() finds which one answered by elimination.
+BOOLEAN_FACTS = [
+    name for name in RENAMED if name.rsplit(".", 1)[-1] in BOOLEAN_FIELDS
+]
 CONTACT = [name.split(".", 1)[1] for name in RENAMED if name.startswith("contact.")]
 EEO = [name.split(".", 1)[1] for name in RENAMED if name.startswith("eeo.")]
 # Original keys whose answer says the candidate needs visa sponsorship.
@@ -167,13 +191,29 @@ LABEL_GAPS = {
 AGREE_FLOOR = 456
 
 
-def profile():
-    """A synthetic candidate whose every fact's value is its own name."""
+def _own(name, only=None):
+    """A confirmed fact naming itself; a boolean fact is True, or unknown unless it is ``only``."""
+    if name in BOOLEAN_FACTS:
+        return fact(True) if only in (None, name) else fact(None, "unknown")
+    return fact(name)
+
+
+def _group(prefix, only=None):
+    return {
+        name.split(".", 1)[1]: _own(name, only) for name in RENAMED if name.startswith(prefix + ".")
+    }
+
+
+def profile(only=None):
+    """A synthetic candidate whose every fact names itself (booleans: all True, or only ``only``)."""
     return {
         "schema_version": 1,
         "revision": 1,
         "contact": {name: fact("contact." + name) for name in CONTACT},
         "compensation": {"eeo": fact({name: "eeo." + name for name in EEO})},
+        "authorization": [{"id": "auth-1", **_group("authorization", only)}],
+        "authorization_details": _group("authorization_details", only),
+        "international_student": _group("international_student", only),
     }
 
 
@@ -190,7 +230,18 @@ def field(row, index):
 
 def picked(ats, row, index, candidate):
     """The original rule key this repo's planner matches for the row's label, or None."""
-    item = field(row, index)
+    value = _planned(ats, field(row, index), candidate)
+    if isinstance(value, bool):
+        # Only a boolean fact answers True: find which one by confirming it alone.
+        found = [name for name in BOOLEAN_FACTS if _planned(ats, field(row, index), profile(only=name)) is True]
+        value = found[0] if len(found) == 1 else "boolean:" + ",".join(found)
+    if value is None:
+        return None
+    return RENAMED.get(value, "unmapped:" + str(value))
+
+
+def _planned(ats, item, candidate):
+    """The value the ATS's planner plans for one field, or None."""
     if ats == "rp":
         supplied = rippling_driver.plan(candidate, [item], JOB)["answers"].get(item["id"], {})
         value = supplied.get("value") if isinstance(supplied, dict) else None
@@ -204,9 +255,7 @@ def picked(ats, row, index, candidate):
             for entry in plan["unknown"]:
                 if entry["id"] == item["id"] and "value" in entry:
                     value = entry["value"]
-    if value is None:
-        return None
-    return RENAMED.get(value, "unmapped:" + str(value))
+    return value
 
 
 def expected(row, ats):
@@ -275,6 +324,15 @@ class PortCasesTest(unittest.TestCase):
                 self.assertNotIn(expected(row, ats), SPONSORSHIP_NEEDED)
                 self.assertNotIn(picked(ats, row, index, candidate), SPONSORSHIP_NEEDED)
                 self.assertIsNone(picked(ats, row, index, candidate))
+
+    def test_synthetic_profile_is_valid_and_holds_sponsorship_facts(self):
+        # Without these facts a matcher that answers SEL with sponsorship would plan nothing and pass.
+        candidate = validate_profile(profile())
+        self.assertIs(candidate["authorization_details"]["sponsorship_now"]["value"], True)
+        self.assertIs(candidate["authorization"][0]["sponsorship_future"]["value"], True)
+        self.assertIn("international_student.employer_support", BOOLEAN_FACTS)
+        for name in BOOLEAN_FACTS:
+            validate_profile(profile(only=name))
 
     def test_rename_table_maps_every_fact_the_planner_can_pick(self):
         # A planner that picks a fact outside the table shows up as "unmapped:<fact>".

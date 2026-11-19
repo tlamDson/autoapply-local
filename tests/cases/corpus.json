@@ -77,7 +77,7 @@
   {"q":"Are you able to work out of our Hillcrest office 4 days a week without housing or relocation assistance?","kind":"text","k":"office_days_text"},
   {"q":"Are you able to work/live within the United States or Canada for the duration of your internship? Where will you be working from?","kind":"text","k":"work_live_us"},
   {"q":"Are you actively looking for a high-intensity startup with nights and weekends during key sprints?","kind":"choice","k":null},
-  {"q":"Are you an alumnus of the University of Michigan?","kind":"choice","k":"other_school"},
+  {"q":"Are you an alumnus of Lakeside College?","kind":"choice","k":"other_school"},
   {"q":"Are you applying for an Engineering Role?","kind":"choice","k":"eng_role"},
   {"q":"Are you at least 18 years old and located in the New York metro area?","kind":"choice","k":"age18"},
   {"q":"Are you at least 18 years old?","kind":"choice","k":"age18"},
