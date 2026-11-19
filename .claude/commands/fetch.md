@@ -9,9 +9,12 @@ AUTOAPPLY_LOCAL_HOME conflicts. Route related CLI commands through the same laun
 Use the selected engine only; do not launch another engine as fallback.
 Inspect `boards list` when sources need configuration. Use `boards import PATH`
 to validate/normalize/deduplicate a JSON list and preview additions/changes;
-apply the merge with `--confirm` only when requested. The editable public defaults
-are Anthropic/Greenhouse, NVIDIA/Workday (`software` search), SpreeAI/Rippling;
-they do not guarantee eligibility or sponsorship. Users can also set
+apply the merge with `--confirm` only when requested. Discovery seeds are the shipped public boards in 2 groups, all on by default:
+`sp500` (S&P 500 companies: Workday and Greenhouse) and `unicorn` (unicorns:
+Greenhouse and Rippling). `boards groups` lists them and `boards group NAME on|off`
+turns a whole group off or on without deleting its boards; imported boards
+belong to no group and are always fetched. Seeds do not guarantee eligibility
+or sponsorship. Users can also set
 `resources.boards` in the full intake: absent/null preserves existing sources,
 while `[]` intentionally disables them. Setup preserves existing source choices.
 Without configured sources or `--url`, report the actionable error and guide the

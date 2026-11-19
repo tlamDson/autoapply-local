@@ -114,9 +114,13 @@ full-time authorization/sponsorship are independent; exact form answers still
 require country, job type, employer, question and effective time.
 
 Setup preserves existing files and board choices, including explicit [].
-Discovery seeds are Anthropic/Greenhouse, NVIDIA/Workday (software search) and
-SpreeAI/Rippling only when config has no boards key; they do not guarantee
-eligibility or sponsorship. `source extract PATH` produces draft source text,
+Discovery seeds are the shipped public boards in 2 groups, all on by default:
+`sp500` (S&P 500 companies: Workday and Greenhouse) and `unicorn` (unicorns:
+Greenhouse and Rippling). Setup installs them only when config has no boards
+key; `boards group NAME on|off` turns a whole group off or on (saved in config
+`board_groups`) without deleting its boards, and boards the user imports belong
+to no group and are always fetched. Seeds do not guarantee eligibility or
+sponsorship. `source extract PATH` produces draft source text,
 never confirmed facts. `boards list` and `boards import PATH` preview sources
 before explicit --confirm; public examples are in examples/boards.json. Advanced
 intake resources.boards absent/null preserves choices; [] disables them.

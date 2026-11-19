@@ -7,10 +7,11 @@ All configs below are synthetic; no network is used.
 
 import io
 import json
+import re
 from importlib.resources import files
 from unittest.mock import Mock
 
-from test_support import ReleaseCase
+from test_support import RELEASE, ReleaseCase
 
 GROUPS = ("sp500", "unicorn")
 
@@ -134,3 +135,64 @@ class ImportedBoardGroupTests(ReleaseCase):
         active = {board["board"] for board in boards.active_boards(self.root)}
         self.assertEqual(active, {"examplelabs", "examplecorp"})
         self.assertTrue(all("group" not in board for board in boards.active_boards(self.root)))
+
+
+SEED_DOCS = (
+    ".claude/commands/setup.md",
+    ".claude/commands/fetch.md",
+    ".codex/skills/autoapply-local/SKILL.md",
+    "autoapply_local/data/bootstrap/command-setup.md",
+    "autoapply_local/data/bootstrap/command-fetch.md",
+    "autoapply_local/data/bootstrap/skill.md",
+)
+GROUP_LABELS = {"sp500": "S&P 500 companies", "unicorn": "unicorns"}
+ATS_LABELS = {"greenhouse": "Greenhouse", "workday": "Workday", "rippling": "Rippling",
+              "ashby": "Ashby", "lever": "Lever", "workable": "Workable"}
+
+
+def seed_sentence(seeds):
+    """The one description of the seed groups every doc copy carries, derived from boards.json."""
+    order = {}
+    for seed in seeds:
+        order.setdefault(seed["group"], [])
+        if seed["ats"] not in order[seed["group"]]:
+            order[seed["group"]].append(seed["ats"])
+    parts = [
+        f"`{group}` ({GROUP_LABELS[group]}: {' and '.join(ATS_LABELS[ats] for ats in ats_list)})"
+        for group, ats_list in order.items()
+    ]
+    return (f"Discovery seeds are the shipped public boards in {len(parts)} groups, all on by default: "
+            + " and ".join(parts) + ".")
+
+
+def unknown_seed_boards(text, seeds):
+    """Every Company/ATS pair in text that is not a shipped seed board."""
+    known = {(seed["company"], ATS_LABELS[seed["ats"]]) for seed in seeds}
+    pair = re.compile(r"([A-Z][A-Za-z0-9&.\- ]*?)/(" + "|".join(ATS_LABELS.values()) + r")(?![a-z])")
+    unknown = []
+    for words, ats in pair.findall(text):
+        words = words.split()
+        if not any((" ".join(words[i:]), ats) in known for i in range(len(words))):
+            unknown.append(f"{words[-1]}/{ats}")
+    return unknown
+
+
+class SeedDocTests(ReleaseCase):
+    def text(self, relative):
+        return " ".join((RELEASE / relative).read_text(encoding="utf-8").split())
+
+    def test_every_doc_describes_the_seed_groups_boards_json_defines(self):
+        sentence = seed_sentence(shipped())
+        for relative in SEED_DOCS:
+            with self.subTest(doc=relative):
+                text = self.text(relative)
+                self.assertIn(sentence, text)
+                self.assertIn("`boards group NAME on|off`", text)
+
+    def test_a_doc_names_only_seed_boards_boards_json_has(self):
+        seeds = shipped()
+        self.assertEqual(unknown_seed_boards("Seeds are NVIDIA/Workday and Capital One/Workday.", seeds), [])
+        self.assertEqual(unknown_seed_boards("Seeds are Acme Robotics/Greenhouse.", seeds), ["Robotics/Greenhouse"])
+        for relative in SEED_DOCS:
+            with self.subTest(doc=relative):
+                self.assertEqual(unknown_seed_boards(self.text(relative), seeds), [])
