@@ -7,7 +7,7 @@ would, but in a fresh runtime of its own (``<work-dir>/runtime``, or an empty
 installer started setup; it never writes an existing runtime, and it stops only
 the Chrome its own demo started, never one that may hold application forms.
 
-0. ``setup`` creates the smoke's runtime, as the installer does.
+0. ``setup`` creates the smoke's runtime, as the installer does when it has no terminal.
 1. ``doctor`` finds Chrome, Node and npx.
 2. ``setup --terminal --no-launch`` with scripted stdin. An offline fake
    ``claude`` CLI on PATH answers the login/quota probe, so no engine account

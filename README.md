@@ -56,8 +56,11 @@ runs from). It checks Python 3.11+, git, Node.js/npm and Google Chrome. When one
 missing it prints the exact `winget install ...` or `brew install ...` command and
 exits with code 3; it never installs system software itself. With everything
 present it creates `.venv` inside the repository, runs `pip install -e .` and runs
-`setup` once, which creates the runtime folder `<repo>/user/` with its local
-commands, skill and `autoapply-local.py` launcher. Rerunning the installer is safe:
+`setup --terminal`, which creates the runtime folder `<repo>/user/` with its local
+commands, skill and `autoapply-local.py` launcher and then asks the terminal part
+of setup (below). With no terminal to answer (CI, a pipe) it runs plain `setup`,
+which only creates the runtime, and prints the `setup --terminal` command to run
+next. Rerunning the installer is safe:
 the existing `.venv` is reused and setup keeps every file you edited. Pass
 `--no-setup` to install only. Nothing is written outside the repository; all your
 data stays in `<repo>/user/` (gitignored, see [Your data](#your-data)).
