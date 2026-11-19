@@ -962,6 +962,7 @@ test('workable: audit reads chosen Yes/No buttons, saved entries and checkbox gr
 
 require('./ashby.test.cjs');
 require('./workday.test.cjs');
+require('./real_forms.test.cjs');
 
 /* Offline demo form (plan aa-09): autoapply_local/data/demo_form.json is the page
  * setup fills to prove the stack works. The Greenhouse adapter must scan every
