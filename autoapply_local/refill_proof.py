@@ -103,3 +103,26 @@ def unproven(fields, answers, live):
         ):
             missing.add(field["id"])
     return missing
+
+
+def blocked_fields(fields, blocked):
+    """The open fields an engine reported blocked; an unknown ID keeps every field."""
+    by_id = {field.get("id"): field for field in fields}
+    held = []
+    for item in blocked:
+        field = by_id.get(item.get("id")) if isinstance(item, dict) else None
+        if field is None:
+            return list(fields)
+        if field not in held:
+            held.append(field)
+    return held
+
+
+def blocked_reason(blocked):
+    """The engine's blocked reasons as one problem line, or None."""
+    reasons = []
+    for item in blocked:
+        reason = str(item.get("reason") or "") if isinstance(item, dict) else str(item)
+        if reason and reason not in reasons:
+            reasons.append(reason)
+    return "Engine blocked: " + ", ".join(reasons) if reasons else None

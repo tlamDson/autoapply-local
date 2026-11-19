@@ -119,7 +119,8 @@ amount in the options); it is never inferred. A refill never writes to a tab sho
 is refilled by native engine interaction. A refilled field counts only when the
 fresh readback of the tab shows the user's own answer for it (a review row is
 read as an option label only); a wrong, empty, ambiguous or missing value keeps
-that field for `questions --refill`.
+that field for `questions --refill`, and so does a field the engine reports blocked
+(an unknown blocked ID keeps every field).
 
 Workday sign-in credentials live only in `user/secrets.json` (`autoapply_local/wd_cred.py`): never
 print, log or echo a password, mask text with `wd_cred.redact`, and never track `user/` or any

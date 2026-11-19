@@ -24,9 +24,10 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .storage import atomic_write_json, read_json
+from .storage import atomic_write_json, lock, read_json
 
 FILE = "user/answer-bank.json"
+LOCK = "user/answer-bank.lock"
 JOB_SCOPE = ("country", "level", "company", "start_date")
 SENSITIVE = re.compile(
     r"authori[sz]|sponsor|visa|citizen|immigra|work permit|right to work|clearance|export|itar|consent|"
@@ -144,6 +145,7 @@ def key(field, job):
 class AnswerBank:
     def __init__(self, root):
         self.path = Path(root) / FILE
+        self.lock_path = Path(root) / LOCK
 
     def _load(self):
         if not self.path.exists():
@@ -185,20 +187,22 @@ class AnswerBank:
             value = multi_value(field, value)
             if value is None:
                 raise ValueError("A multi-select answer needs one or more distinct listed options")
-        data = self._load()
-        wanted = key(field, job)
-        data["answers"] = [entry for entry in data["answers"] if entry["key"] != wanted]
-        data["answers"].append(
-            {
-                "key": wanted,
-                "question": str(field.get("label", "")).strip(),
-                "kind": kind(field),
-                "options": options(field),
-                "scope": scope(field, job),
-                "value": value,
-                "status": "confirmed",
-                "provenance": {"kind": "user_confirmation", "source_id": source_id},
-                "confirmed_at": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-        atomic_write_json(self.path, data)
+        # Hold the lock across read-modify-write so a concurrent confirm cannot drop this answer.
+        with lock(self.lock_path):
+            data = self._load()
+            wanted = key(field, job)
+            data["answers"] = [entry for entry in data["answers"] if entry["key"] != wanted]
+            data["answers"].append(
+                {
+                    "key": wanted,
+                    "question": str(field.get("label", "")).strip(),
+                    "kind": kind(field),
+                    "options": options(field),
+                    "scope": scope(field, job),
+                    "value": value,
+                    "status": "confirmed",
+                    "provenance": {"kind": "user_confirmation", "source_id": source_id},
+                    "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            atomic_write_json(self.path, data)
