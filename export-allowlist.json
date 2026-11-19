@@ -220,6 +220,10 @@
   "tests/board_payloads.json",
   "autoapply_local/polite_http.py",
   "tests/test_workday_rate_limit.py",
+  "scripts/import_real_forms.py",
+  "tests/test_import_real_forms.py",
+  "tests/test_real_forms_export.py",
+  "tests/real_forms.test.cjs",
   "tests/fixtures/real/wd/01.json",
   "tests/fixtures/real/wd/02.json",
   "tests/fixtures/real/wd/03.json",
@@ -305,9 +309,5 @@
   "tests/fixtures/real/generic/03.json",
   "tests/fixtures/real/generic/04.json",
   "tests/fixtures/real/generic/05.json",
-  "tests/fixtures/real/generic/06.json",
-  "scripts/import_real_forms.py",
-  "tests/test_import_real_forms.py",
-  "tests/test_real_forms_export.py",
-  "tests/real_forms.test.cjs"
+  "tests/fixtures/real/generic/06.json"
 ]

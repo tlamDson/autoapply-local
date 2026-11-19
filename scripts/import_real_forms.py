@@ -272,7 +272,7 @@ def import_forms(source, dest=DEST, names=()):
                 number += 1
                 target = dest / ats / f"{number:02d}.json"
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(json.dumps({"fields": kept}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+                target.write_bytes((json.dumps({"fields": kept}, indent=1, ensure_ascii=False) + "\n").encode("utf-8"))
                 written.append(target)
     return written, dropped
 
@@ -282,7 +282,7 @@ def update_allowlist(written, root=ROOT, dest=DEST):
     prefix = Path(dest).resolve().relative_to(Path(root).resolve()).as_posix() + "/"
     allowed = [item for item in json.loads(path.read_text(encoding="utf-8")) if not item.startswith(prefix)]
     allowed += [item.resolve().relative_to(Path(root).resolve()).as_posix() for item in written]
-    path.write_text(json.dumps(allowed, indent=2) + "\n", encoding="utf-8")
+    path.write_bytes((json.dumps(allowed, indent=2) + "\n").encode("utf-8"))
 
 
 def main(argv=None):

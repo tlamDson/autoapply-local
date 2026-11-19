@@ -49,7 +49,7 @@ function group(parent, field, index, type) {
   const set = parent.appendChild(new Element('fieldset'));
   set.appendChild(new Element('legend', {}, field.label + (field.req ? '*' : '')));
   for (const [value, text] of options(field).length ? options(field) : [['yes', 'Yes'], ['no', 'No']]) {
-    const box = new Input({ ...attrs(field, index, { type }), id: `${field.id || index}-${value}`, value });
+    const box = new Input({ ...attrs(field, index, { type }), id: `${field.id || index}-${value}`, value }, value);
     addField(set, box, text);
   }
 }
@@ -97,7 +97,7 @@ function lever(fields) {
     const box = question.appendChild(new Element('div', { class: 'application-field' }));
     if (['radio', 'checks'].includes(field.kind)) {
       for (const [value, text] of options(field)) {
-        const el = new Input({ type: field.kind === 'radio' ? 'radio' : 'checkbox', name: field.id || `real-${index}`, value });
+        const el = new Input({ type: field.kind === 'radio' ? 'radio' : 'checkbox', name: field.id || `real-${index}`, value }, value);
         const label = box.appendChild(new Element('label', {}, text));
         label.appendChild(el);
         el.labels = [label];
