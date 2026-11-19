@@ -87,6 +87,7 @@
   "tests/greenhouse_form.json",
   "tests/lever_form.json",
   "tests/rippling.test.cjs",
+  "tests/test_answer_bank_lock.py",
   "tests/test_answer_identity.py",
   "tests/test_bootstrap.py",
   "tests/test_autoapply_local.py",
