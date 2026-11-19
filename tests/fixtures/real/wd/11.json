@@ -1,0 +1,95 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb92cd2ac9a0000",
+   "label": "Are you legally eligible to work in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb92e068da70000",
+   "label": "Will you, now or in the future, require sponsorship for employment work authorization in the United States, such as sponsorship for an H-1B, TN, O, L, STEM OPT, or other employment-based work authorization?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb92ea0462e0001",
+   "label": "All employment is contingent upon successful completion of a drug screen and background screen, as permitted by law. Are you willing to undergo all such lawful pre-employment screenings, if you are offered and accept a position with Nissan?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb92fd36b750000",
+   "label": "Are you 18 years or older?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb93106ab090000",
+   "label": "Are you currently or have you ever worked as a contractor at Nissan?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb93239cb330001",
+   "label": "Do you have any family members who are currently retained or employed, either directly or as contractors, for any company performing work at Nissan or by any company that is in competition with Nissan?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb9336d3fd20000",
+   "label": "What year are you currently in school?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb935d41cf20001",
+   "label": "Will you be actively enrolled in an undergraduate/graduate degree program during the entire duration of the internship program? (Please answer 'Yes' even if you will be on summer break during the internship.)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb9370788490000",
+   "label": "Is your cumulative GPA 3.0 or higher?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb937a149f80001",
+   "label": "Are you able to provide an official or unofficial transcript to verify your GPA?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010ebfd82d9cef0000",
+   "label": "By selecting “Yes, I consent,” you agree to provide a phone number to which Nissan and its service providers may send text messages. These messages will update you on your application’s status, and, if an offer of employment is extended, provide you a secure link to complete pre-employment screening documents. Consent is not a condition of employment. Message and data rates apply. You can opt out at any time by replying “STOP.”",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010eb93239cb330000",
+   "label": "Do you have any family member who currently works in the department for the position that you are applying? If yes, what is the name of the family member and what is your relationship to them?",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--bf34e0d06abf10010ec7eaa8dca60000",
+   "label": "Please provide the number at which you consent to be texted:",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

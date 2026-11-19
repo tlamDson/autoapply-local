@@ -1,0 +1,179 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "start-month--0",
+   "label": "Start date month",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "start-year--0",
+   "label": "Start date year",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7622798009",
+   "label": "What is your work authorization status?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7622790009",
+   "label": "Can you meet the on-site requirements for this role? (Up to 40 hours per week in Summer 2027)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7622789009",
+   "label": "Do you now, or will you in the future, require visa sponsorship to work in the country in which this position is located?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7622791009",
+   "label": "What attracted you to this role at Example Co?",
+   "kind": "textarea",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7622793009",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_7622792009",
+   "label": "Please provide your GitHub link",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_7622794009",
+   "label": "Please list any accommodations or adjustments you may need during the recruitment process.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_7689660009",
+   "label": "I would like to receive updates from a recruiter about my job application via text and/or SMS. I consent to the transfer and processing of my personal data for purposes of these communications subject to the Example Co Privacy Statement. I understand that I may withdraw my consent any time via the methods described within the Example Co Privacy Statement.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_7689663009",
+   "label": "I would like to receive promotional texts and SMS messages about job opportunities and recruiting events at Example Co. I consent to the transfer and processing of my personal data for purposes of these marketing communications subject to the Example Co Privacy Statement. I understand that I may withdraw my consent any time via the methods described within the Example Co Privacy Statement.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

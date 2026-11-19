@@ -1,0 +1,147 @@
+{
+ "fields": [
+  {
+   "id": "",
+   "label": "First name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Last name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Search",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Current company",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Search",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Phone number",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "textbox",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "LinkedIn Link",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "What are your compensation expectations? Please provide a specific range. 12/300",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select...",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select...",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select...",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Select...",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "",
+   "label": "Yes - I consent to receiving text messages",
+   "kind": "radio",
+   "req": false,
+   "opts": [
+    "true",
+    "false"
+   ]
+  }
+ ]
+}

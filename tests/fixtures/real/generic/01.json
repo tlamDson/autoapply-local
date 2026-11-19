@@ -1,0 +1,159 @@
+{
+ "fields": [
+  {
+   "id": "resumator-firstname-value",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "resumator-lastname-value",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "resumator-email-value",
+   "label": "Email Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "resumator-phone-value",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "resumator-address-value",
+   "label": "Address",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-city-value",
+   "label": "City",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-state-value",
+   "label": "State/Province",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-postal-value",
+   "label": "Postal",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-resume-value",
+   "label": "Resume",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "resumator-coverletter-value",
+   "label": "Cover Letter",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-relocate-value",
+   "label": "Are you willing to relocate?",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "resumator-linkedin-value",
+   "label": "LinkedIn Profile URL:",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-website-value",
+   "label": "Website, blog or portfolio:",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-questionnaire-file-1840455",
+   "label": "Please attach any additional files, such as portfolios, writing samples, and cover letters.",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-questionnaire-file-1840457",
+   "label": "Additional Documents",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "resumator-questionnaire-q2648073",
+   "label": "This role follows an in-person schedule. Are you willing and able to work on-site at our Irvine, CA office five days per week?",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "resumator-questionnaire-q2690690",
+   "label": "At this time, we are only able to accommodate candidates who are authorized to work in the United States. Unfortunately, we are not able to provide visa sponsorship or accept international applicants for our internship program. Do you now or will you in the future require employer sponsorship to work in the United States?",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "resumator-eeo_gender-value",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "Decline to answer",
+    "Female",
+    "Male"
+   ]
+  },
+  {
+   "id": "resumator-eeo_race-value",
+   "label": "Race/Ethnicity",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "Decline to answer",
+    "Hispanic or Latino",
+    "White, not Hispanic or Latino",
+    "Black or African-American, not Hispanic or Latino",
+    "Asian, not Hispanic or Latino",
+    "Native Hawaiian or Other Pacific Islander, not Hispanic or Latino",
+    "American Indian or Alaskan Native, not Hispanic or Latino",
+    "Two or More Races, not Hispanic or Latino"
+   ]
+  }
+ ]
+}

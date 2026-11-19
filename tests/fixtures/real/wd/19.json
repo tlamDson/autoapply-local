@@ -1,0 +1,39 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3db9b6827c0000",
+   "label": "Are you legally authorized to work in the country where the position is based?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dc500df6d0000",
+   "label": "Do you now, or will you in the future, require sponsorship to obtain or maintain employment authorization in the country where the position is based?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dd03b74b10000",
+   "label": "Have you ever applied for a position at a Example Co entity?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dd98ef9dd0000",
+   "label": "Have you ever been employed at a Example Co entity?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--7d6cd6e852e910015f3dec0c5af20000",
+   "label": "How do you know if you have a disability?A disability is a condition that substantially limits one or more of your “major life activities.” If you have or have ever had such a condition, you are a person with a disability. Disabilities include, but are not limited to:Alcohol or other substance use disorder (not currently using drugs illegally)Autoimmune disorder, for example, lupus, fibromyalgia, rheumatoid arthritis, HIV/AIDSBlind or low visionCancer (past or present)Cardiovascular or heart diseaseCeliac diseaseCerebral palsyDeaf or serious difficulty hearingDiabetesDisfigurement, for example, disfigurement caused by burns, wounds, accidents, or congenital disordersEpilepsy or other seizure disorderGastrointestinal disorders, for example, Crohn's Disease, irritable bowel syndromeIntellectual or developmental disabilityMental health conditions, for example, depression, bipolar disorder, anxiety disorder, schizophrenia, PTSMissing limbs or partially missing limbsMobility impairment, benefiting from the use of a wheelchair, scooter, walker, leg brace(s) and/or other supportsNervous system condition, for example, migraine headaches, Parkinson’s disease, multiple sclerosis (MS)Neurodivergence, for example, attention-deficit/hyperactivity disorder (ADHD), autism spectrum disorder, dyslexia, dyspraxia, other learning disabilitiesPartial or complete paralysis (any cause)Pulmonary or respiratory conditions, for example, tuberculosis, asthma, emphysemaShort stature (dwarfismTraumatic brain injuryPUBLIC BURDEN STATEMENT: According to the Paperwork Reduction Act of 1995 no persons are required to respond to a collection of information unless such collection displays a valid OMB control number. This survey should take about 5 minutes to complete.Please select one of the choices below:",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

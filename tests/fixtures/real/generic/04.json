@@ -1,0 +1,102 @@
+{
+ "fields": [
+  {
+   "id": "field-first_name",
+   "label": "Vorname",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "field-last_name",
+   "label": "Nachname",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "field-email",
+   "label": "E-Mail",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "field-phone",
+   "label": "Telefon",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "field-available_from",
+   "label": "Verfügbar ab",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "field-salary_expectations",
+   "label": "Gehaltsvorstellung",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "field-custom_attribute_1198444",
+   "label": "XING",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "field-custom_attribute_1198455",
+   "label": "GitHub",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "field-custom_attribute_1198443",
+   "label": "LinkedIn",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "field-location",
+   "label": "Ort",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "doc-input-cv",
+   "label": "Lebenslauf (Resume/CV)",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "doc-input-other",
+   "label": "Andere",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "doc-input-cover-letter",
+   "label": "Anschreiben (Cover letter)",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "doc-input-employment-reference",
+   "label": "Arbeitszeugnis",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

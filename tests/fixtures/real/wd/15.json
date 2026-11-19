@@ -1,0 +1,341 @@
+{
+ "fields": [
+  {
+   "id": "education-5--degree",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-6--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-6--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-7--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-7--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-8--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-8--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--jobTitle",
+   "label": "Job Title",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--companyName",
+   "label": "Company",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--location",
+   "label": "Location",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--currentlyWorkHere",
+   "label": "I currently work here",
+   "kind": "box",
+   "req": false,
+   "opts": [
+    "I currently work here"
+   ]
+  },
+  {
+   "id": "workExperience-9--startDate-dateSectionMonth-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--startDate-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--endDate-dateSectionMonth-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--endDate-dateSectionYear-input",
+   "label": "To",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "workExperience-9--roleDescription",
+   "label": "Role Description",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "education-5--schoolName",
+   "label": "School or University",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "education-5--fieldOfStudy",
+   "label": "Field of Study",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "education-5--gradeAverage",
+   "label": "Overall Result (GPA)",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "education-5--firstYearAttended-dateSectionYear-input",
+   "label": "From",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "education-5--lastYearAttended-dateSectionYear-input",
+   "label": "To (Actual or Expected)",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "skills--skills",
+   "label": "Type to Add Skills",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "webAddress-4--url",
+   "label": "URL",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "socialNetworkAccounts--linkedInAccount",
+   "label": "Linkedin",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "socialNetworkAccounts--facebookAccount",
+   "label": "Facebook",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "socialNetworkAccounts--twitterAccount",
+   "label": "Twitter",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

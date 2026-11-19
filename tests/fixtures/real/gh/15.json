@@ -1,0 +1,200 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "cover_letter",
+   "label": "Cover Letter",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "start-month--0",
+   "label": "Start date month",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "start-year--0",
+   "label": "Start date year",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69589926",
+   "label": "Have you previously worked for Example Co (formerly Pure Storage)?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69589927",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_69589928",
+   "label": "How did you hear about this job?",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_69589930[]_754163668",
+   "label": "Acknowledge/Confirm",
+   "kind": "box",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69589931",
+   "label": "Does the deemed export rule affect your employment by Example Co?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69589932",
+   "label": "Are you authorized to work in the country you are applying to work in?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69589933",
+   "label": "Will you now or in the future require sponsorship for employment visa status?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_69590112",
+   "label": "This position will be assigned to the Santa Clara, CA office and employees are expected to work each work day during a normal business week. Are you able to work in-person from this location if selected?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

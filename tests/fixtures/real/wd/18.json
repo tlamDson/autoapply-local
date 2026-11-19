@@ -1,0 +1,41 @@
+{
+ "fields": [
+  {
+   "id": "personalInfoUS--gender",
+   "label": "Gender?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--veteranStatus",
+   "label": "Veteran?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--hispanicOrLatino",
+   "label": "Hispanic or Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--ethnicity",
+   "label": "Ethncity?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "termsAndConditions--acceptTermsAndAgreements",
+   "label": "Yes, I have read and consent to the acknowledgments, terms, and conditions",
+   "kind": "box",
+   "req": true,
+   "opts": [
+    "Yes, I have read and consent to the acknowledgments, terms, and conditions*"
+   ]
+  }
+ ]
+}

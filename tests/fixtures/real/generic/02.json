@@ -1,0 +1,122 @@
+{
+ "fields": [
+  {
+   "id": "jv-field-yTzSYfw2",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-yUzSYfw3",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-y3n70fwh",
+   "label": "Preferred Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-ySzSYfw1",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-yfSWYfwL",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-y4n70fwi",
+   "label": "Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-y5n70fwj",
+   "label": "Address2",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "jv-field-y6n70fwk",
+   "label": "City",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-y7n70fwl",
+   "label": "State",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Not Applicable",
+    "Alaska",
+    "Alabama",
+    "Arkansas",
+    "Arizona",
+    "California",
+    "Colorado"
+   ]
+  },
+  {
+   "id": "jv-field-y8n70fwm",
+   "label": "Zip",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "jv-field-y9n70fwn",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "United States",
+    "Canada",
+    "United Kingdom",
+    "Aland Islands",
+    "Afghanistan",
+    "Albania",
+    "Algeria"
+   ]
+  },
+  {
+   "id": "ygSWYfwM",
+   "label": "Will you now or in the future require the Company to sponsor you for or support you with any U.S. immigration benefit application (such as H-1B, OPT, STEM OPT, CPT, TN, J-1, etc.) so that you may remain authorized to work for the Company in the U.S?",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Yes (currently require sponsorship or Visa)",
+    "Yes (will likely require sponsorship or Visa in the future)",
+    "No (will never require sponsorship or Visa in the future)"
+   ]
+  },
+  {
+   "id": "file-input-0",
+   "label": "File",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "file-input-1",
+   "label": "File",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

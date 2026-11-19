@@ -1,0 +1,132 @@
+{
+ "fields": [
+  {
+   "id": "application_form_application_first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_email",
+   "label": "Email Address",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "application_form_application_linkedin_url",
+   "label": "LinkedIn URL",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "application_form[application][cv]",
+   "label": "Attach Résumé / CV",
+   "kind": "file",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personal-summary",
+   "label": "Personal Summary This section is optional. Use it to tell us a little more about yourself.",
+   "kind": "textarea",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "application_form[application][answers_attributes][0][boolean_answer]",
+   "label": "Are you within a commutable distance or willing to relocate?",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "application_form[application][answers_attributes][1][boolean_answer]",
+   "label": "Are you legally authorized to work in the United States as per the below ITAR requirements?",
+   "kind": "choice",
+   "req": true,
+   "opts": [
+    "Yes",
+    "No"
+   ]
+  },
+  {
+   "id": "application_form_equality_monitoring_gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "Male",
+    "Female",
+    "Choose not to self-identify"
+   ]
+  },
+  {
+   "id": "application_form_equality_monitoring_ethnicity",
+   "label": "Ethnicity",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "American Indian or Alaskan Native",
+    "Asian",
+    "Black or African American",
+    "White",
+    "Native Hawaiian or Other Pacific Islander",
+    "Two or More Races",
+    "Hispanic or Latino"
+   ]
+  },
+  {
+   "id": "application_form_equality_monitoring_disability",
+   "label": "Disability",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "Yes, I have a disability, or have had one in the past",
+    "No, I do not have a disability and have not had one in the past",
+    "I do not want to answer"
+   ]
+  },
+  {
+   "id": "application_form_equality_monitoring_veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": [
+    "I am not a protected veteran",
+    "I choose not to answer",
+    "Disabled veteran",
+    "Recently separated veteran",
+    "Active duty wartime or campaign badge veteran",
+    "Armed forces service medal veteran",
+    "I identify as one of more of the classifications of a protected veteran"
+   ]
+  },
+  {
+   "id": "application_process_information",
+   "label": "Allow us to process your personal information.",
+   "kind": "box",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "fields": [
+  {
+   "id": "_systemfield_education_history",
+   "label": "College/University",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

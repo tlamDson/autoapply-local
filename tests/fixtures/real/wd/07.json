@@ -1,0 +1,41 @@
+{
+ "fields": [
+  {
+   "id": "personalInfoUS--ethnicity",
+   "label": "Race/Ethnicity",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--hispanicOrLatino",
+   "label": "Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "personalInfoUS--veteranStatus",
+   "label": "Veterans Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "termsAndConditions--acceptTermsAndAgreements",
+   "label": "I willingly accept the Terms and Conditions for submitting an application with the Company.",
+   "kind": "box",
+   "req": true,
+   "opts": [
+    "I willingly accept the Terms and Conditions for submitting an application with the Company.*"
+   ]
+  }
+ ]
+}

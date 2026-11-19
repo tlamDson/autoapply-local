@@ -1,0 +1,11 @@
+{
+ "fields": [
+  {
+   "id": "5a326a1d-1a9e-42b1-a918-ca74022064dc",
+   "label": "LinkedIn URL",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "candidate-location",
+   "label": "Location (City)",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_70010913",
+   "label": "How did you initially hear about this job?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_70010914",
+   "label": "If you chose Example Co Employee, Conference / Event / Career Fair, or Other, please specify here:",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_70010915",
+   "label": "Are you legally authorized to work in the country where this job is located?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_70010916",
+   "label": "Will you now or in the future require visa sponsorship?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_70010918",
+   "label": "Select ‘Yes’ to join Example Co’s Talent Community and receive newsletters to help you stay up to date on career-related news, events and opportunities at Example Co.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_70010919",
+   "label": "Will you be able to regularly commute and work in an office in job posting location?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "gdpr_retention_consent_given_1",
+   "label": "By checking this box, I agree to allow Example Co to retain my data for future opportunities for employment for up to 730 days after the conclusion of consideration of my current application for employment.",
+   "kind": "box",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

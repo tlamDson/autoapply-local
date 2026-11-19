@@ -1,0 +1,74 @@
+{
+ "fields": [
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905a728db40001",
+   "label": "Are you 18 years or older? if ”No”, offer for regular employment is subject to verification of company and legal minimum age requirements, and possibly parental consent. As a condition of employment, you will be required to submit proof of age/identity.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905b0c1fee0005",
+   "label": "Are you legally authorized to work in the country this position is located? If hired, you will be required to submit proof of your identity and legal authorization as a condition of employment.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905ba5a1c00001",
+   "label": "Is there any personal relationship with an employee, director or officer at Example Co, including family relationship or other close relationship?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905ba5a1c00004",
+   "label": "Have you ever been employed in the United States as a contingent worker or contractor of Example Co, its affiliates or companies either acquired or previously owned by Example Co?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905ba5a1c00008",
+   "label": "Do you now, or will you at any time in the future, require visa sponsorship to work in the United States (e.g. H-1B or TN visa status)?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905c3f33d90002",
+   "label": "Have you ever been denied a license, permit or privilege to operate a motor vehicle?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905c3f33d90005",
+   "label": "Do you have the right licenses/permits that are relevant for the position and are you able to present documentation?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905cd8beab0000",
+   "label": "Have you been informed by any government agency that you are excluded from or may not work for or provide services to federal, state or local government agencies, including Medicare or Medicaid?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--65de3f7a9ab91001af905cd8beab0003",
+   "label": "Would you like to be considered for other roles?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "primaryQuestionnaire--03c0eadebd41100045d5c525bda10000",
+   "label": "Where applicable law requires my explicit consent (e.g., for processing sensitive data, conducting background checks or transferring my personal information outside my home country), I consent to that specific processing as described in the Privacy Notice for Applicants. I understand I may withdraw this consent at any time.",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  }
+ ]
+}

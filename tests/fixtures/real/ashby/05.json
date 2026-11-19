@@ -1,0 +1,18 @@
+{
+ "fields": [
+  {
+   "id": "_systemfield_education_history",
+   "label": "Education History",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "5aa40baa-323b-490d-a090-1dfa94433f44",
+   "label": "LinkedIn Profile",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

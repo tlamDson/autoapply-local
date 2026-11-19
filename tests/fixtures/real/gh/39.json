@@ -1,0 +1,144 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8186158009",
+   "label": "Website",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_8186159009",
+   "label": "Will you now or in the future require “sponsorship or support for an immigration-related employment benefit\"?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8186209009",
+   "label": "What is your major(s)/minor(s)?",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8186161009",
+   "label": "What degree are you currently working toward?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8186160009",
+   "label": "When is your anticipated graduation term?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8197323009",
+   "label": "Will you return to school for at least one more term after this internship?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8186163009",
+   "label": "Where did you hear about this opportunity?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_8197116009",
+   "label": "If you were referred to the role by a current Example Co teammate, please share their name here.",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  }
+ ]
+}

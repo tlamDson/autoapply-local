@@ -1,0 +1,255 @@
+{
+ "fields": [
+  {
+   "id": "resume",
+   "label": "Resume/CV",
+   "kind": "file",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "first_name",
+   "label": "First Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "last_name",
+   "label": "Last Name",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "preferred_name",
+   "label": "Preferred First Name",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "email",
+   "label": "Email",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "country",
+   "label": "Country",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "phone",
+   "label": "Phone",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "school--0",
+   "label": "School",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "degree--0",
+   "label": "Degree",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "discipline--0",
+   "label": "Discipline",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "start-month--0",
+   "label": "Start date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "start-year--0",
+   "label": "Start date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-month--0",
+   "label": "End date month",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "end-year--0",
+   "label": "End date year",
+   "kind": "text",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138780005",
+   "label": "Please re-confirm the university you currently attend",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138781005",
+   "label": "Please re-confirm your expected graduation date",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138782005[]_24546649005",
+   "label": "Undergrad Discipline(s)",
+   "kind": "checks",
+   "req": true,
+   "opts": [
+    "Mathematics",
+    "Statistics",
+    "Applied Mathematics",
+    "Pure Mathematics",
+    "Computational Mathematics",
+    "Computer Science",
+    "Software Engineering",
+    "Computer Engineering",
+    "Data Science",
+    "Artificial Intelligence",
+    "Machine Learning",
+    "Cybersecurity"
+   ]
+  },
+  {
+   "id": "question_9138783005",
+   "label": "Do you have relevant internship experience at a proprietary trading firm?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138784005",
+   "label": "If yes, select your most recent proprietary trading firm experience",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9138785005",
+   "label": "If other, please specify",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9138786005",
+   "label": "What country do you currently reside in?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138787005",
+   "label": "If applicable, which US state do you reside in?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9138788005",
+   "label": "Are you legally authorized to work in the country where this role is based?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138789005",
+   "label": "Will you now or in the future require employer sponsorship for work authorization in this country? If you will be working under a student visa for this role, please select \"Yes.\"",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138790005",
+   "label": "If yes, please provide your visa type and expiration date.",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9138791005",
+   "label": "What are your preferred pronouns?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138792005",
+   "label": "How did you hear about Example Co?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138793005",
+   "label": "If other, please explain",
+   "kind": "text",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "question_9138794005",
+   "label": "Are you able to work onsite at our Chicago office 5 days a week?",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "question_9138795005",
+   "label": "Terms & Conditions",
+   "kind": "choice",
+   "req": true,
+   "opts": []
+  },
+  {
+   "id": "gender",
+   "label": "Gender",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "hispanic_ethnicity",
+   "label": "Are you Hispanic/Latino?",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "race",
+   "label": "Please identify your race",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  },
+  {
+   "id": "veteran_status",
+   "label": "Veteran Status",
+   "kind": "choice",
+   "req": false,
+   "opts": []
+  }
+ ]
+}
