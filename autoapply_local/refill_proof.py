@@ -6,7 +6,8 @@ fresh readback of the tab: the field with the same ID or, on a page that only
 lists answers (a multipage review page), the row with the same question. A
 field counts only when every such row was observed and shows the user's own
 answer; a wrong, empty, unobserved or missing value keeps it for
-``questions --refill``. This module reads evidence only and never touches a tab.
+``questions --refill``. A checkbox group counts only when its checked set is
+exactly the saved set: a missing or an extra box keeps it. This module reads evidence only and never touches a tab.
 """
 
 from . import answer_bank
@@ -25,13 +26,15 @@ def _shows(field, answer, observed, summary=False):
     ``summary`` marks a row that lists the answer as text (a review row, or a
     row found by its question): a choice is read there as an option label only.
     """
+    kind = answer_bank.kind(field)
+    if kind == "multi":
+        return _shows_set(field, answer, observed, summary)
     if isinstance(observed, (list, tuple)):
         if len(observed) != 1:
             return False
         observed = observed[0]
     if observed is None or observed == "":
         return False
-    kind = answer_bank.kind(field)
     if kind == "boolean":
         if type(observed) is bool:
             return observed is answer
@@ -40,19 +43,38 @@ def _shows(field, answer, observed, summary=False):
         return False
     if kind == "text":
         return _text(observed) == _text(answer)
+    # A review row shows the option's label; a control may report its value or
+    # its label. Every option the observed text could name must be the chosen
+    # one, so a text that reads as two different options proves nothing.
+    return _named(field, observed, summary) == {str(answer)}
+
+
+def _named(field, observed, summary):
+    """The option values one observed text could name."""
     pairs = []
     for option in field.get("options") or []:
         value = option.get("value") if isinstance(option, dict) else option
         label = option.get("label", value) if isinstance(option, dict) else option
         if value not in ("", None):
             pairs.append((str(value), answer_bank.normalize(label)))
-    # A review row shows the option's label; a control may report its value or
-    # its label. Every option the observed text could name must be the chosen
-    # one, so a text that reads as two different options proves nothing.
     named = {value for value, label in pairs if label == answer_bank.normalize(observed)}
     if not summary:
         named |= {value for value, _ in pairs if value == str(observed)}
-    return named == {str(answer)}
+    return named
+
+
+def _shows_set(field, answer, observed, summary):
+    """Whether the observed checked boxes are exactly the saved set, each naming one option."""
+    if not isinstance(answer, list) or not answer:
+        return False
+    items = list(observed) if isinstance(observed, (list, tuple)) else [observed]
+    if not items or any(type(item) is bool or item in (None, "") for item in items):
+        return False
+    named = [_named(field, item, summary) for item in items]
+    if any(len(values) != 1 for values in named):
+        return False
+    checked = [next(iter(values)) for values in named]
+    return len(set(checked)) == len(checked) and set(checked) == {str(item) for item in answer}
 
 
 def _listed(field, row):

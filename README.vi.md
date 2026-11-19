@@ -235,6 +235,8 @@ Không có N thì điền đúng số job mỗi lượt đã chọn trong setup.
    ty khác. Câu về quyền làm việc, bảo lãnh, đồng ý, EEO, lương và câu riêng của
    công ty không bao giờ được suy ra. Một lần điền lại chỉ tính khi tab, đọc lại
    mới, hiện đúng đáp án của bạn; nếu không thì `questions --refill` thử lại.
+   Câu hỏi checkbox "chọn tất cả lựa chọn phù hợp" nhận nhiều lựa chọn; nó chỉ
+   tính khi đúng các ô bạn đã chọn được đánh dấu.
 7. Không bao giờ Submit. Bạn tự kiểm từng tab đang giữ và tự nộp.
 8. Job trên ATS chưa có driver (iCIMS, SmartRecruiters, Taleo, ...) không bao giờ
    được mở: chúng vào danh sách tự nộp kèm link và resume gợi ý. CAPTCHA, đăng nhập

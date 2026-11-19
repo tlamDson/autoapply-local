@@ -241,6 +241,8 @@ Without N it fills the jobs-per-run number from setup. One run, in order:
    sponsorship, consent, EEO, pay and employer-specific questions are never
    inferred. A refill counts only when a fresh readback of the tab shows your
    answer; otherwise `questions --refill` retries it.
+   A "select all that apply" checkbox question takes several options; it counts
+   only when exactly the boxes you picked are checked.
 7. Never Submit. You review each held tab and submit it yourself.
 8. Jobs on an ATS with no driver (iCIMS, SmartRecruiters, Taleo, ...) are never
    opened: they go to a submit-by-hand list with link and suggested resume. A

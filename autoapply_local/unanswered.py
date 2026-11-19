@@ -8,7 +8,9 @@ tool, and ``answer`` reads the user's actual answers and saves them to the
 answer bank. ``refill_plan`` gives each held tab the banked values for its open
 fields, so a refill that failed is retried from the bank. This module never
 opens a browser, calls a model or clicks anything; timeout and skip are not
-answers.
+answers. A checkbox-group question is multi-select: the user picks every
+option that applies, the bank keeps the picks as a list of option labels and
+the refill sets each one.
 """
 
 import copy
@@ -27,6 +29,7 @@ LIMITS = {"claude": (4, 4), "codex": (3, 3), "codex-async": (None, None)}
 TEXT_LIMIT = 1000
 LABEL_LIMIT = 60  # longest option label shown as a native button
 HEADER = "Application"  # native headers take at most 12 characters
+SEPARATOR = "|"  # between the options of a typed multi-select answer
 
 
 def pending_fields(fill_result):
@@ -49,14 +52,29 @@ def _option_label(option):
     return option.get("label", option.get("value")) if isinstance(option, dict) else option
 
 
-def tab_value(kind, field_options, value):
-    """The value one tab's own control takes for a bank or popup answer, or None."""
-    if kind != "choice":
-        return value
+def _one_value(field_options, label):
     matches = [option for option in field_options or []
                if _option_value(option) not in ("", None)
-               and answer_bank.normalize(_option_label(option)) == answer_bank.normalize(value)]
+               and answer_bank.normalize(_option_label(option)) == answer_bank.normalize(label)]
     return _option_value(matches[0]) if len(matches) == 1 else None
+
+
+def tab_value(kind, field_options, value):
+    """The value one tab's own control takes for a bank or popup answer, or None.
+
+    A multi answer maps to the list of the tab's own option values, and only
+    when every picked label names exactly one of its options.
+    """
+    if kind == "multi":
+        if not isinstance(value, list) or not value:
+            return None
+        values = [_one_value(field_options, label) for label in value]
+        if None in values or len(set(values)) != len(values):
+            return None
+        return values
+    if kind != "choice":
+        return value
+    return _one_value(field_options, value)
 
 
 def check_answers(fields, answers):
@@ -76,6 +94,11 @@ def check_answers(fields, answers):
             values = [_option_value(option) for option in field.get("options") or []]
             if value in ("", None) or values.count(value) != 1:
                 raise ValueError(f"{field_id} needs one of its own listed options")
+        elif kind == "multi":
+            values = [_option_value(option) for option in field.get("options") or []]
+            if (not isinstance(value, list) or not value or len(set(map(str, value))) != len(value)
+                    or any(item in ("", None) or values.count(item) != 1 for item in value)):
+                raise ValueError(f"{field_id} needs one or more distinct options of its own list")
         elif not isinstance(value, str) or not value.strip() or len(value) > TEXT_LIMIT:
             raise ValueError(f"{field_id} needs a non-empty answer of at most 1000 characters")
 
@@ -86,7 +109,7 @@ def _digest(value):
 
 def _choices(question):
     qid = question["id"]
-    if question["kind"] == "choice":
+    if question["kind"] in ("choice", "multi"):
         picks = [{"id": f"{qid}:option:{index}", "label": label, "value": label}
                  for index, label in enumerate(question["options"])]
     elif question["kind"] == "boolean":
@@ -117,8 +140,15 @@ def _buttons(question, choices, per_question):
 def _native(question, choices, ui):
     count = len(question["targets"])
     prompt = question["label"] + f" (asked by {count} held application{'s' if count != 1 else ''})"
+    multi = question["kind"] == "multi"
     shown, typed = _buttons(question, choices, LIMITS[ui][1])
-    if typed:
+    if multi and ui != "claude":
+        # Only the Claude tool picks several buttons; the others type every pick.
+        shown, typed = choices[-2:], True
+    if typed and multi:
+        prompt += (" Options: " + " | ".join(question["options"])
+                   + f". Type every option that applies exactly, separated by {SEPARATOR}, in the text box.")
+    elif typed:
         prompt += " Options: " + " | ".join(question["options"]) + ". Type one exactly in the text box."
     elif question["kind"] != "boolean" and not any(choice["value"] is not None for choice in shown):
         prompt += " Type the answer in the text box."
@@ -130,7 +160,7 @@ def _native(question, choices, ui):
     if ui == "codex":
         item["id"] = question["id"]
     else:
-        item["multiSelect"] = False
+        item["multiSelect"] = multi
     return item, shown
 
 
@@ -236,10 +266,42 @@ class Questions:
                 "ui": {"tool": TOOLS[ui], "calls": [{"questions": natives}], "bindings": bindings},
                 "next": ("Make this one native call as the popup, wait for the user's actual answers, then write "
                          '{"batch_id": ..., "answers": [{"question_id": ..., "option_id" or "text": ...}]} to a private file '
-                         "and run questions --answer PATH. Timeout or preselection is not an answer." + later)}
+                         'and run questions --answer PATH; a multi question takes "option_ids" (every picked option) '
+                         f"or a text of options separated by {SEPARATOR}. Timeout or preselection is not an answer." + later)}
 
     @staticmethod
     def _decode(question, entry):
+        if question["kind"] == "multi":
+            return Questions._decode_multi(question, entry)
+        return Questions._decode_one(question, entry)
+
+    @staticmethod
+    def _decode_multi(question, entry):
+        """Every picked option label in the question's option order, or None for skip."""
+        if set(entry) == {"question_id", "option_ids"} and isinstance(entry["option_ids"], list):
+            parts = [{"question_id": entry["question_id"], "option_id": option_id} for option_id in entry["option_ids"]]
+        elif set(entry) == {"question_id", "text"} and isinstance(entry["text"], str):
+            if len(" ".join(entry["text"].split())) > TEXT_LIMIT:
+                raise ValueError("A typed answer must be non-empty and at most 1000 characters")
+            parts = [{"question_id": entry["question_id"], "text": text} for text in entry["text"].split(SEPARATOR)]
+        elif set(entry) == {"question_id", "option_id"}:
+            parts = [entry]
+        else:
+            raise ValueError("Each answer needs option_ids, one option_id or text")
+        if not parts:
+            raise ValueError("Pick one or more options, or skip")
+        values = [Questions._decode_one(question, part) for part in parts]
+        if all(value is None for value in values):
+            return None
+        if None in values:
+            raise ValueError("Skip cannot be combined with an answer")
+        picked = answer_bank.multi_value({"options": question["options"]}, values)
+        if picked is None:
+            raise ValueError("Each listed option can be picked once")
+        return picked
+
+    @staticmethod
+    def _decode_one(question, entry):
         choices = _choices(question)
         if set(entry) == {"question_id", "option_id"}:
             matches = [item for item in choices if item["id"] == entry["option_id"]]
@@ -259,7 +321,7 @@ class Questions:
             if not found:
                 raise ValueError("The typed answer is not one of the listed options")
             choice = found[0]
-        if choice["value"] is not None and question["kind"] == "choice":
+        if choice["value"] is not None and question["kind"] in ("choice", "multi"):
             same = [label for label in question["options"]
                     if answer_bank.normalize(label) == answer_bank.normalize(choice["label"])]
             if len(same) != 1:

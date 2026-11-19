@@ -105,6 +105,8 @@ collected for the whole `apply` run and asked once at the end: `questions --ui U
 returns one native popup packet (a single native call; questions that do not
 fit are `deferred` to the next popup); after the user's actual answers, `questions
 --answer PATH` saves them to `user/answer-bank.json` and refills the held tabs.
+A checkbox-group question is multi-select: the bank keeps the list of picked
+option labels and the refill counts only when the checked set equals it.
 Skip, timeout or no native tool keeps them pending; a failed refill is retried
 with `questions --refill`. A banked answer is reused only for the same question
 wording, options, country and job type, and crosses employers only for a
