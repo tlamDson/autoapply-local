@@ -275,10 +275,15 @@ def sync_filters(state):
         if field not in marked:
             _put(state, field, derived[field])
     state["document"]["derived_filters"] = derived
-    if not any(pending.get("quick_step") == "filters" for pending in state["queue"]):
+    # A filter review still pending further down the queue moves to the front.
+    pending = [q for q in state["queue"] if q.get("quick_step") == "filters"]
+    if pending:
+        review = pending[0]
+        state["queue"] = [q for q in state["queue"] if q is not review]
+    else:
         review = copy.deepcopy(state["issued"].get(FILTERS_ID) or _review(FILTERS_ID, "filters", {"en": "", "vi": ""}, {}))
         review["_alone"] = True
-        state["queue"].insert(0, review)
+    state["queue"].insert(0, review)
 
 
 def apply(state, question, status, value):

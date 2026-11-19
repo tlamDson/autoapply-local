@@ -176,6 +176,27 @@ class GuidedQuickTests(ReleaseCase):
         packet = self.run_guided()
         self.assertEqual([q["id"] for q in packet["questions"]], MISSING[:3])
 
+    def test_edit_of_an_answered_field_keeps_the_pending_queue(self):
+        self.prepared(resume=None)
+        packet = self.run_guided()
+        self.assertEqual([q["id"] for q in packet["questions"]], MISSING[:3])
+        packet = self.reply(packet, [self.entry(q, status="notasked") for q in packet["questions"]])
+        self.assertEqual([q["id"] for q in packet["questions"]], MISSING[3:6])
+        pending = [q["id"] for q in self.progress()["queue"]]
+        self.assertEqual(pending[:3], MISSING[3:6])
+        packet = self.run_guided(edit=MISSING[0])
+        self.assertEqual([q["id"] for q in packet["questions"]], [MISSING[0], *MISSING[3:5]])
+        self.assertEqual([q["id"] for q in self.progress()["queue"]], [MISSING[0], *pending])
+
+    def test_edit_of_a_queued_field_moves_it_first_without_duplicate(self):
+        self.prepared(resume=None)
+        self.run_guided()
+        pending = [q["id"] for q in self.progress()["queue"]]
+        self.assertEqual(pending[:3], MISSING[:3])
+        self.run_guided(edit=MISSING[2])
+        queue = [q["id"] for q in self.progress()["queue"]]
+        self.assertEqual(queue, [MISSING[2], *[q for q in pending if q != MISSING[2]]])
+
     def test_without_terminal_setup_the_original_order_is_kept(self):
         self.prepared(terminal=False)
         packet = self.run_guided()

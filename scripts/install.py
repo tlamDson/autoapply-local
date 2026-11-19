@@ -1,4 +1,4 @@
-"""Second stage of install.ps1 / install.sh: check dependencies, build .venv, start setup.
+"""Second stage of install.ps1 / install.sh: check dependencies, build .venv, start setup --terminal.
 
 Run by the system Python 3.11+ that the shell script found. Safe to rerun: an
 existing .venv is reused, `pip install -e .` is repeated, and setup keeps every
@@ -56,11 +56,19 @@ def main(argv=None, *, root=ROOT, run=subprocess.call, create_venv=_create_venv,
     if run([str(python), "-m", "pip", "install", "-e", str(root)], cwd=str(root), env=env) != 0:
         print("pip install -e . failed; fix the error above and rerun the installer.")
         return 4
+    hint = f"{python} autoapply-local.py setup --terminal"
     if args.no_setup:
-        print(f"Installed. Start setup with: {python} autoapply-local.py setup")
+        print(f"Installed. Start setup with: {hint}")
         return 0
     print(f"Starting setup. Your data stays in {root / 'user'}")
-    return run([str(python), str(root / "autoapply-local.py"), "setup"], cwd=str(root), env=env)
+    launcher = [str(python), str(root / "autoapply-local.py"), "setup"]
+    if sys.stdin is not None and sys.stdin.isatty():
+        return run([*launcher, "--terminal"], cwd=str(root), env=env)
+    # No terminal to answer the prompts (CI, a pipe): create the runtime only.
+    code = run(launcher, cwd=str(root), env=env)
+    if code == 0:
+        print(f"No terminal to answer setup. Continue in a terminal with: {hint}")
+    return code
 
 
 if __name__ == "__main__":

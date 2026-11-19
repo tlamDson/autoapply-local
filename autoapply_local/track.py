@@ -218,7 +218,8 @@ def _could_send(record, entry, sent):
     Broader than ``_fits`` on purpose: a job that cannot be matched by email
     (a legacy record, a held job without a tab, one being recorded by hand)
     still makes an email of its company ambiguous. Only a named other role, an
-    email sent before the form's known held day, or a submission recorded more
+    email sent before the form's known held day (or, for a recorded job without
+    one, before the job was created), or a submission recorded more
     than TRACK_DAYS before the email rules a job out.
     """
     if entry["role"] and not _same_role(record["role"], entry["role"]):
@@ -230,8 +231,10 @@ def _could_send(record, entry, sent):
     done = _day(confirmation.get("confirmed_at"))
     if sent is None or done is None:
         return False
-    # Without a held day nothing dates the submission: the page or row may be seen days after it.
-    return (held is None or held <= sent) and sent <= done + timedelta(days=TRACK_DAYS)
+    # Without a held day the record's own creation day is the earliest the form could be sent; with
+    # neither, nothing dates the submission: the page or row may be seen days after it.
+    start = held or _day(record.get("created_at"))
+    return (start is None or start <= sent) and sent <= done + timedelta(days=TRACK_DAYS)
 
 
 def _mail_matches(held, rows, seen, today=None, tracked=(), others=()):

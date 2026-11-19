@@ -54,8 +54,10 @@ Script clone kho mã vào `./autoapply-local` (hoặc dùng checkout chứa nó)
 kiểm Python 3.11+, git, Node.js/npm và Google Chrome. Thiếu thứ nào thì in đúng
 lệnh `winget install ...` hoặc `brew install ...` rồi thoát với mã 3; script không
 bao giờ tự cài phần mềm hệ thống. Đủ hết thì tạo `.venv` trong kho mã, chạy
-`pip install -e .` và chạy `setup` một lần để tạo thư mục runtime `<repo>/user/`
-cùng command, skill và launcher `autoapply-local.py`. Chạy lại installer an toàn:
+`pip install -e .` và chạy `setup --terminal`: tạo thư mục runtime `<repo>/user/`
+cùng command, skill và launcher `autoapply-local.py`, rồi hỏi phần terminal của
+setup (bên dưới). Không có terminal để trả lời (CI, pipe) thì chạy `setup` thường,
+chỉ tạo runtime, và in lệnh `setup --terminal` để chạy tiếp. Chạy lại installer an toàn:
 `.venv` có sẵn được dùng lại và setup giữ nguyên mọi file bạn đã sửa. Thêm
 `--no-setup` để chỉ cài. Không ghi gì ra ngoài kho mã; mọi dữ liệu của bạn nằm
 trong `<repo>/user/` (đã gitignore, xem [Dữ liệu của bạn](#dữ-liệu-của-bạn)).
