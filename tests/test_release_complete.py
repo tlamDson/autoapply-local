@@ -91,6 +91,22 @@ class ReleaseCompleteTests(ReleaseCase):
                 report = self.report(root, [name], [name, *members])
                 self.assertIs(report["ok"], True, report["violations"])
 
+    def test_source_zip_ships_structure_only_real_forms_and_rejects_any_value_in_them(self):
+        root = self.source()
+        field = {"id": "q1", "label": "Gender", "kind": "choice", "req": False, "opts": ["Female", "Male"]}
+        top = "autoapply-local-0.0.0/"
+        member = top + "tests/fixtures/real/gh/01.json"
+        public = {top + key: value for key, value in self.public_members(".zip").items()}
+        for content, ok in (({"fields": [field]}, True), ({"fields": [{**field, "val": "Male"}]}, False)):
+            with self.subTest(ok=ok):
+                members = {**public, member: json.dumps(content)}
+                name = self.archive(root, ".zip", members)
+                report = self.report(root, [name], [name, *members])
+                self.assertIs(report["ok"], ok, report["violations"])
+        members = {**public, top + "tests/fixtures/realistic/01.json": json.dumps({"fields": [field]})}
+        name = self.archive(root, ".zip", members)
+        self.assertIs(self.report(root, [name], [name, *members])["ok"], False)
+
     def test_sdist_fixed_build_metadata_is_scanned_without_allowing_private_generated_members(self):
         root = self.source()
         member = "autoapply-local-demo-0.0.0/autoapply_local.egg-info/PKG-INFO"

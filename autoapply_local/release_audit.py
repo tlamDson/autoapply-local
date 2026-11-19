@@ -76,6 +76,11 @@ def _real_form(pure):
     return tuple(pure.parts[:3]) == ("tests", "fixtures", "real") and len(pure.parts) == 5 and pure.suffix == ".json"
 
 
+def _real_member(entry, pure):
+    """A real-form fixture inside the source ZIP, under its single top-level folder."""
+    return entry.endswith(".zip") and len(pure.parts) > 1 and _real_form(PurePosixPath(*pure.parts[1:]))
+
+
 def _structure_only(text):
     try:
         data = json.loads(text)
@@ -169,7 +174,8 @@ def _archive_violations(payload, entry, permitted, denied, members=None):
             in {"PKG-INFO", "SOURCES.txt", "dependency_links.txt", "entry_points.txt", "requires.txt", "top_level.txt"}
             and name in permitted
         )
-        if _private(pure) and not metadata:
+        real = _real_member(entry, pure)
+        if _private(pure) and not metadata and not real:
             reject("private or generated archive member")
         total += len(data)
         if total > 100_000_000:
@@ -181,6 +187,8 @@ def _archive_violations(payload, entry, permitted, denied, members=None):
         except UnicodeDecodeError:
             reject("non-text archive member requires explicit safe handling")
             return
+        if real and not _structure_only(content):
+            reject("real form fixture holds more than id, label, kind, req, opts")
         for reason in _content_violations(content, pure):
             reject(reason)
         if members is not None:
