@@ -46,7 +46,7 @@ class MultiPopupTests(ReleaseCase):
         packet = self.questions.packet("claude")
         item = packet["ui"]["calls"][0]["questions"][0]
         self.assertIs(item["multiSelect"], True)
-        self.assertEqual([option["label"] for option in item["options"]], ["New York", "Austin", "Remote"])
+        self.assertEqual([option["label"] for option in item["options"]], ["New York", "Austin", "Remote", "Skip for now"])
         self.assertEqual(packet["questions"][0]["kind"], "multi")
 
     def test_a_single_choice_question_stays_single_select(self):

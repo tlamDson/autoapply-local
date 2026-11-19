@@ -1,7 +1,8 @@
 """Answer bank: the user's own answers to form questions no profile fact covers.
 
 Each entry is an answer the user gave in the end-of-run popup, keyed by the
-exact question: its normalized label, its kind (choice, boolean or text), its
+exact question: its normalized label, its kind (choice, multi, boolean or
+text), its
 option labels and the job's country and job type. Only a question known to be
 about the candidate alone (education, skills, languages, clubs, projects and
 the like) is shared across employers; every other question keeps the employer
@@ -61,7 +62,9 @@ VERDICT = re.compile(
     r"(?:agree|disagree|accept|decline|consent|acknowledge|understand|certify|confirm))\b",
     re.I,
 )
-CHOICE_TYPES = {"select", "select-one", "radio", "combobox", "listbox", "checkbox-group"}
+CHOICE_TYPES = {"select", "select-one", "radio", "combobox", "listbox"}
+# A group of checkboxes takes every option that applies: its answer is a list of option labels.
+MULTI_TYPES = {"checkbox-group"}
 
 
 def normalize(text):
@@ -86,7 +89,21 @@ def options(field):
 def kind(field):
     if field.get("type") == "checkbox" and not field.get("options"):
         return "boolean"
+    if field.get("type") in MULTI_TYPES:
+        return "multi"
     return "choice" if field.get("type") in CHOICE_TYPES or options(field) else "text"
+
+
+def multi_value(field, value):
+    """The listed option labels a multi answer picks, in the field's option order, or None."""
+    labels = options(field)
+    if not isinstance(value, list) or not value or any(not isinstance(item, str) for item in value):
+        return None
+    picked = [normalize(item) for item in value]
+    if len(set(picked)) != len(picked):
+        return None
+    chosen = [label for label in labels if normalize(label) in picked]
+    return chosen if len(chosen) == len(picked) else None
 
 
 def job_scope(job):
@@ -142,7 +159,7 @@ class AnswerBank:
         """The confirmed answer for this exact question, or None."""
         wanted = key(field, job)
         for entry in reversed(self._load()["answers"]):
-            if entry["key"] == wanted and entry.get("status") == "confirmed" and entry.get("value") not in (None, ""):
+            if entry["key"] == wanted and entry.get("status") == "confirmed" and entry.get("value") not in (None, "", []):
                 return copy.deepcopy({name: entry[name] for name in ("value", "status", "provenance", "confirmed_at")})
         return None
 
@@ -150,10 +167,11 @@ class AnswerBank:
         """Confirmed answers whose scope matches this job, for the engine fill."""
         found = {}
         for entry in self._load()["answers"]:
-            if entry.get("status") != "confirmed" or entry.get("value") in (None, ""):
+            if entry.get("status") != "confirmed" or entry.get("value") in (None, "", []):
                 continue
+            types = {"boolean": "checkbox", "multi": "checkbox-group"}
             field = {"label": entry.get("question", ""), "options": entry.get("options") or [],
-                     **({"type": "checkbox"} if entry.get("kind") == "boolean" else {})}
+                     **({"type": types[entry["kind"]]} if entry.get("kind") in types else {})}
             if entry.get("scope") != scope(field, job):
                 continue
             found[entry["key"]] = {name: copy.deepcopy(entry.get(name)) for name in ("question", "kind", "options", "value")}
@@ -163,6 +181,10 @@ class AnswerBank:
         """Save an explicit user answer; a newer answer replaces the older one."""
         if value in (None, "") or (kind(field) == "boolean" and type(value) is not bool):
             raise ValueError("Only an actual answer can be saved")
+        if kind(field) == "multi":
+            value = multi_value(field, value)
+            if value is None:
+                raise ValueError("A multi-select answer needs one or more distinct listed options")
         data = self._load()
         wanted = key(field, job)
         data["answers"] = [entry for entry in data["answers"] if entry["key"] != wanted]
