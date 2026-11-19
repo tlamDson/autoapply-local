@@ -30,6 +30,7 @@ NO_JOB_NOTE = (
     "This confirmation page does not name the job; it is recorded when its Gmail confirmation arrives, "
     "or run `submitted <id>` if you submitted this form"
 )
+UNDO = "track --undo {}"
 
 
 def confirmation_page(url):
@@ -183,7 +184,7 @@ def _record_mail(store, record, row, entry, clock):
     store.mark_submitted(record["id"], {
         "status": "confirmed", "job_id": record["id"], "channel": "gmail", "account": ACCOUNT,
         "message_id": entry["key"], "url": record["url"], "text": "Gmail: " + entry["subject"],
-        "confirmed_at": entry["date"] or clock(),
+        "confirmed_at": entry["date"] or clock(), "previous_state": record["state"],
     })
     store.record_mail_event({"account": ACCOUNT, "message_id": entry["key"], "kind": "confirm",
                              "job_id": record["id"], "company": entry["company"], "role": entry["role"],
@@ -310,7 +311,7 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
             reachable.append(url)
         except (OSError, ValueError, RuntimeError):
             continue
-    report = {"submitted": [], "waiting": [], "gone": [], "unknown": [], "problems": [],
+    report = {"submitted": [], "check": [], "waiting": [], "gone": [], "unknown": [], "problems": [],
               "history": {"added": 0, "duplicates": 0, "ignored": 0}, "gmail": "not checked"}
     rows = []
     today = _day(clock()) or datetime.now(timezone.utc).date()
@@ -335,6 +336,9 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
                 row, entry = mails[record["id"]]
                 _record_mail(store, record, row, entry, clock)
                 report["submitted"].append(_summary(record, via="email", evidence="Gmail: " + entry["subject"]))
+                if tab is None or not confirmation_page(tab["url"]):
+                    # Nothing in the job's own tab backs the email: it may confirm a form sent outside the tool.
+                    report["check"].append(_summary(record, email_date=entry["date"], undo=UNDO.format(record["id"])))
             elif tab is not None and confirmation_page(tab["url"]) and _names_job(record, tab["url"]):
                 _record_page(store, record, tab, clock)
                 report["submitted"].append(_summary(record, via="page", evidence=tab["url"]))
@@ -368,3 +372,12 @@ def run(root, *, cdp=cdp_module, gmail=None, clock=None):
         {"company": item["company"], "role": item["role"], "date": item["date"]} for item in history["entries"]
     ]
     return report
+
+
+def undo(root, job_id):
+    """Undo a job ``run`` recorded from a confirmation email alone: back to held, tracker row removed.
+
+    The email stays in the seen mail events, so the next run does not match it again.
+    """
+    record = Store(root).undo_email_submission(job_id)
+    return {"job_id": record["id"], "state": record["state"]}

@@ -351,7 +351,10 @@ skill Codex dùng cùng launcher đó. Không lệnh nào bấm Submit.
   giữ, đã điền hoặc vừa được ghi) có thể đã gửi nó; không thì mail được để lại.
   Trang Workday không nêu job nào thì chờ mail. Tab còn ở form được liệt kê là đang
   chờ; tab đã mất mà chưa có bằng chứng được liệt kê kèm URL. Lệnh không bao giờ
-  chạy script trong tab job và không đổi gì khi Chrome của tool chưa chạy.
+  chạy script trong tab job và không đổi gì khi Chrome của tool chưa chạy. Job được
+  ghi chỉ nhờ mail (tab của nó không hiện trang xác nhận) được liệt kê ở mục
+  "Recorded from email only, check it" kèm ID, công ty, role và ngày mail; nếu bạn
+  không nộp form đó, `track --undo ID` giữ lại job và xoá dòng tracker của nó.
 - `status`: xem form đang giữ, số đếm và đơn chưa giải quyết, không cần engine.
 - `update`: backup, cập nhật và migrate (xem [Cập nhật](#cập-nhật)).
 
