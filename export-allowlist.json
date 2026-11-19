@@ -220,6 +220,8 @@
   "tests/board_payloads.json",
   "autoapply_local/polite_http.py",
   "tests/test_workday_rate_limit.py",
+  "tests/test_port_cases.py",
+  "tests/cases/corpus.json",
   "scripts/import_real_forms.py",
   "tests/test_import_real_forms.py",
   "tests/test_real_forms_export.py",
