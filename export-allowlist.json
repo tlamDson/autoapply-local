@@ -219,5 +219,7 @@
   "tests/test_demo_form.py",
   "tests/board_payloads.json",
   "autoapply_local/polite_http.py",
-  "tests/test_workday_rate_limit.py"
+  "tests/test_workday_rate_limit.py",
+  "tests/test_port_cases.py",
+  "tests/cases/corpus.json"
 ]
