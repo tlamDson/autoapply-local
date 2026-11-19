@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .refill_proof import unproven
+from .refill_proof import blocked_fields as _blocked_fields, blocked_reason as _blocked_reason, unproven
 from .storage import Store, lock, read_json
 from .unanswered import check_answers, pending_fields
 
@@ -217,8 +217,15 @@ class Workflow:
             if live.get("errors") or live.get("required_unknown"):
                 # An unclean form keeps every field for questions --refill.
                 remaining = fields
-            if remaining or result.get("blocked") or live.get("errors") or live.get("required_unknown"):
-                self.store.update(job_id, unanswered=remaining, problem="Held form still contains unresolved fields")
+            blocked = result.get("blocked") or []
+            if blocked:
+                # A blocked field stays open even when the readback looks right,
+                # so questions lists the job and questions --refill retries it.
+                held = _blocked_fields(fields, blocked)
+                remaining = [item for item in fields if item in remaining or item in held]
+            if remaining or blocked or live.get("errors") or live.get("required_unknown"):
+                problem = _blocked_reason(blocked) or "Held form still contains unresolved fields"
+                self.store.update(job_id, unanswered=remaining, problem=problem)
                 return {"job_id": job_id, "status": "needs_manual", "tab_id": tab_id, "questions": len(remaining)}
             self.store.update(job_id, state="filled", unanswered=[], problem=None, fill_snapshot=live)
             return {"job_id": job_id, "status": "filled", "tab_id": tab_id}
